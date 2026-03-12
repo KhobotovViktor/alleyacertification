@@ -21,29 +21,49 @@ export default function ArticleEditor() {
     });
     const [activeTab, setActiveTab] = useState('content');
 
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
-        setEmployees(getAllEmployees() || []);
-        if (!isNew && id) {
-            const existing = getArticleById(id);
-            if (existing) {
-                setArticle(existing);
-            } else {
-                navigate('/admin');
+        const loadInitialData = async () => {
+            setIsLoading(true);
+            try {
+                const employeesData = await getAllEmployees();
+                setEmployees(employeesData || []);
+
+                if (!isNew && id) {
+                    const existing = await getArticleById(id);
+                    if (existing) {
+                        setArticle(existing);
+                    } else {
+                        navigate('/admin');
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load article editor data:', err);
+            } finally {
+                setIsLoading(false);
             }
-        }
+        };
+
+        loadInitialData();
     }, [id, isNew, navigate]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!article.title.trim() || !article.content.trim()) {
             alert('Пожалуйста, заполните название и содержимое материала.');
             return;
         }
 
-        saveArticle({
-            ...article,
-            id: isNew ? Date.now().toString() : article.id
-        });
-        navigate('/admin');
+        setIsLoading(true);
+        try {
+            await saveArticle(article);
+            navigate('/admin');
+        } catch (err) {
+            alert('Ошибка при сохранении материала');
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const toggleUserAccess = (userId) => {
@@ -56,6 +76,10 @@ export default function ArticleEditor() {
             }
         });
     };
+
+    if (isLoading) {
+        return <div className="flex items-center justify-center p-20 text-accent-primary animate-pulse font-bold">Загрузка данных материала...</div>;
+    }
 
     return (
         <div className="max-w-4xl mx-auto flex-col gap-6">

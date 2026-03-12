@@ -10,27 +10,47 @@ export default function AdminDashboard() {
     const [articleProgress, setArticleProgress] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [activeTab, setActiveTab] = useState('tests');
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         loadData();
     }, []);
 
-    const loadData = () => {
-        setTests(getTests() || []);
-        setArticles(getArticles() || []);
-        setResults(getResults() || []);
-        setArticleProgress(getArticleProgress() || []);
-        setEmployees(getAllEmployees() || []);
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const [testsData, articlesData, resultsData, progressData, employeesData] = await Promise.all([
+                getTests(),
+                getArticles(),
+                getResults(),
+                getArticleProgress(),
+                getAllEmployees()
+            ]);
+            
+            setTests(testsData || []);
+            setArticles(articlesData || []);
+            setResults(resultsData || []);
+            setArticleProgress(progressData || []);
+            setEmployees(employeesData || []);
+        } catch (err) {
+            console.error('Failed to load admin data:', err);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleDeleteTest = (id) => {
-        deleteTest(id);
-        loadData();
+    const handleDeleteTest = async (id) => {
+        if (confirm('Удалить этот тест?')) {
+            await deleteTest(id);
+            await loadData();
+        }
     };
 
-    const handleDeleteArticle = (id) => {
-        deleteArticle(id);
-        loadData();
+    const handleDeleteArticle = async (id) => {
+        if (confirm('Удалить этот материал?')) {
+            await deleteArticle(id);
+            await loadData();
+        }
     };
 
     const getEmpName = (id) => employees.find(e => e.id === id)?.name || 'Удаленный пользователь';
@@ -44,6 +64,10 @@ export default function AdminDashboard() {
     const getEmployeeTestResults = (employeeId, testId) => {
         return results.filter(r => r.userId === employeeId && r.testId === testId);
     };
+
+    if (isLoading) {
+        return <div className="flex items-center justify-center p-20 text-accent-primary animate-pulse font-bold">Загрузка данных из облака...</div>;
+    }
 
     return (
         <div className="flex-col gap-6">
@@ -172,10 +196,10 @@ export default function AdminDashboard() {
                             </h3>
                             {results.length > 0 && (
                                 <button
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                         if (e.currentTarget.textContent === 'Точно очистить?') {
-                                            clearResults();
-                                            loadData();
+                                            await clearResults();
+                                            await loadData();
                                         } else {
                                             const btn = e.currentTarget;
                                             const originalText = btn.textContent;

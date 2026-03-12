@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, BookOpen, ShieldCheck } from 'lucide-react';
-import { getCurrentUser, logout, initializeDB } from './services/db';
+import { getCurrentUser, logout } from './services/db';
 
-initializeDB();
 
 // Pages
 import Login from './components/Login';

@@ -11,15 +11,28 @@ export default function Login() {
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
         // Redirect if already logged in
         const user = getCurrentUser();
         if (user) {
             navigate(user.role === 'admin' ? '/admin' : '/employee');
+            return;
         }
 
-        const allUsers = getAllUsers();
-        setUsers(allUsers || []);
+        const fetchUsers = async () => {
+            try {
+                const allUsers = await getAllUsers();
+                setUsers(allUsers || []);
+            } catch (err) {
+                setError('Ошибка загрузки пользователей. Проверьте подключение.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchUsers();
     }, [navigate]);
 
     const handleSelectUser = (user) => {
@@ -29,14 +42,19 @@ export default function Login() {
         setIsOpen(false);
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        const user = login(selectedUser.id, password);
-        if (user) {
-            if (user.role === 'admin') navigate('/admin');
-            else navigate('/employee');
-        } else {
-            setError('Неверный пароль');
+        setError('');
+        try {
+            const user = await login(selectedUser.id, password);
+            if (user) {
+                if (user.role === 'admin') navigate('/admin');
+                else navigate('/employee');
+            } else {
+                setError('Неверный пароль');
+            }
+        } catch (err) {
+            setError('Ошибка авторизации. Проверьте подключение.');
         }
     };
 
@@ -77,12 +95,12 @@ export default function Login() {
                                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1.25rem', borderRadius: '1rem', border: '2px solid transparent', background: 'rgba(255,255,255,0.7)', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px -1px rgba(0,0,0,0.04)' }}
                             >
                                 <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: selectedUser ? 'var(--text-primary)' : '#94a3b8' }}>
-                                    {selectedUser ? selectedUser.name : 'Выберите аккаунт...'}
+                                    {isLoading ? 'Загрузка профилей...' : (selectedUser ? selectedUser.name : 'Выберите аккаунт...')}
                                 </span>
                                 <ChevronDown size={18} style={{ color: '#94a3b8', transition: 'transform 0.3s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
                             </button>
 
-                            {isOpen && (
+                            {isOpen && !isLoading && (
                                 <div className="custom-scrollbar animate-fade-in" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.5rem', maxHeight: '280px', overflowY: 'auto', background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', border: '1px solid #e2e8f0', borderRadius: '1rem', padding: '0.5rem', boxShadow: '0 12px 24px -6px rgba(0,0,0,0.08)', zIndex: 30 }}>
                                     {users.map((user) => (
                                         <div

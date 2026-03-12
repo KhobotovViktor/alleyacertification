@@ -36,30 +36,43 @@ export default function ArticleViewer() {
     const [timeLeft, setTimeLeft] = useState(0);
     const [canFinish, setCanFinish] = useState(true);
 
-    useEffect(() => {
-        if (user && id) {
-            const dbArticle = getArticleById(id);
-            if (!dbArticle) {
-                navigate(user.role === 'admin' ? '/admin' : '/employee');
-                return;
-            }
+    const [isLoading, setIsLoading] = useState(true);
 
-            // Check access if employee
-            if (user.role === 'employee' && dbArticle.allowedUsers && dbArticle.allowedUsers.length > 0) {
-                if (!dbArticle.allowedUsers.includes(user.id)) {
-                    navigate('/employee');
-                    return;
+    useEffect(() => {
+        const loadArticle = async () => {
+            if (user && id) {
+                setIsLoading(true);
+                try {
+                    const dbArticle = await getArticleById(id);
+                    if (!dbArticle) {
+                        navigate(user.role === 'admin' ? '/admin' : '/employee');
+                        return;
+                    }
+
+                    // Check access if employee
+                    if (user.role === 'employee' && dbArticle.allowedUsers && dbArticle.allowedUsers.length > 0) {
+                        if (!dbArticle.allowedUsers.includes(user.id)) {
+                            navigate('/employee');
+                            return;
+                        }
+                    }
+
+                    setArticle(dbArticle);
+                    if (dbArticle.minTimeMinutes && dbArticle.minTimeMinutes > 0) {
+                        setTimeLeft(dbArticle.minTimeMinutes * 60);
+                        setCanFinish(false);
+                    } else {
+                        setCanFinish(true);
+                    }
+                } catch (err) {
+                    console.error('Failed to load article:', err);
+                } finally {
+                    setIsLoading(false);
                 }
             }
+        };
 
-            setArticle(dbArticle);
-            if (dbArticle.minTimeMinutes && dbArticle.minTimeMinutes > 0) {
-                setTimeLeft(dbArticle.minTimeMinutes * 60);
-                setCanFinish(false);
-            } else {
-                setCanFinish(true);
-            }
-        }
+        loadArticle();
     }, [id, user?.id, navigate]);
 
     useEffect(() => {
@@ -73,16 +86,17 @@ export default function ArticleViewer() {
         }
     }, [timeLeft, article]);
 
-    if (!article) return <div className="p-8 text-center text-secondary">Загрузка...</div>;
+    if (isLoading) return <div className="p-20 text-center text-accent-primary animate-pulse font-bold">Загрузка материала из облака...</div>;
+    if (!article) return <div className="p-8 text-center text-secondary">Материал не найден.</div>;
 
     const goBack = () => {
         navigate(user?.role === 'admin' ? '/admin' : '/employee');
     };
 
-    const handleFinish = () => {
+    const handleFinish = async () => {
         if (user?.role === 'employee' && article) {
             const timeSpentSeconds = (article.minTimeMinutes || 0) * 60 - timeLeft;
-            saveArticleProgress(user.id, article.id, Math.max(timeSpentSeconds, 1)); // Save at least 1s
+            await saveArticleProgress(user.id, article.id, Math.max(timeSpentSeconds, 1)); // Save at least 1s
         }
         goBack();
     };

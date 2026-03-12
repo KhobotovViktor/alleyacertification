@@ -26,36 +26,46 @@ export default function TestRunner() {
         isFinished
     });
 
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
-        console.log("--- EFFECT 1 RUNNING ---", { id, userId: user?.id });
-        if (user && id) {
-            const dbTest = getTestById(id);
-            if (!dbTest) {
-                navigate('/employee');
-                return;
+        const initTest = async () => {
+            if (user && id) {
+                setIsLoading(true);
+                try {
+                    const dbTest = await getTestById(id);
+                    if (!dbTest) {
+                        navigate('/employee');
+                        return;
+                    }
+
+                    const attempts = await getTestAttemptsCount(user.id, dbTest.id);
+                    if (dbTest.maxAttempts > 0 && attempts >= dbTest.maxAttempts) {
+                        alert('Лимит попыток исчерпан!');
+                        navigate('/employee');
+                        return;
+                    }
+
+                    let questionsToUse = [...dbTest.questions];
+                    if (dbTest.shuffleQuestions) {
+                        questionsToUse.sort(() => Math.random() - 0.5);
+                    }
+                    if (dbTest.questionsLimit > 0 && dbTest.questionsLimit < questionsToUse.length) {
+                        questionsToUse = questionsToUse.slice(0, dbTest.questionsLimit);
+                    }
+
+                    setTest(dbTest);
+                    setActiveQuestions(questionsToUse);
+                    setTimeLeft(dbTest.timeLimit);
+                } catch (err) {
+                    console.error('Failed to initialize test:', err);
+                } finally {
+                    setIsLoading(false);
+                }
             }
+        };
 
-            const attempts = getTestAttemptsCount(user.id, dbTest.id);
-            if (dbTest.maxAttempts > 0 && attempts >= dbTest.maxAttempts) {
-                alert('Лимит попыток исчерпан!');
-                navigate('/employee');
-                return;
-            }
-
-            let questionsToUse = [...dbTest.questions];
-            if (dbTest.shuffleQuestions) {
-                questionsToUse.sort(() => Math.random() - 0.5);
-            }
-            if (dbTest.questionsLimit > 0 && dbTest.questionsLimit < questionsToUse.length) {
-                questionsToUse = questionsToUse.slice(0, dbTest.questionsLimit);
-            }
-
-
-
-            setTest(dbTest);
-            setActiveQuestions(questionsToUse);
-            setTimeLeft(dbTest.timeLimit);
-        }
+        initTest();
     }, [id, user?.id, navigate]);
 
     useEffect(() => {
@@ -122,20 +132,28 @@ export default function TestRunner() {
         };
     };
 
-    const handleSubmit = (isTimeout = false) => {
+    const handleSubmit = async (isTimeout = false) => {
         if (timerRef.current) clearInterval(timerRef.current);
-        setIsFinished(true);
-
+        
+        setIsLoading(true);
         const { score, passed } = evaluateScore();
-        saveResult({
-            userId: user.id,
-            testId: test.id,
-            score,
-            passed,
-            answers,
-            timeSpent: test.timeLimit - timeLeft
-        });
-        setResultId(Date.now());
+        try {
+            await saveResult({
+                userId: user.id,
+                testId: test.id,
+                score,
+                total: activeQuestions.length,
+                passed,
+                // answers, // Not storing full answers in this simple schema for now to avoid complexity
+                // timeSpent: test.timeLimit - timeLeft
+            });
+            setIsFinished(true);
+        } catch (err) {
+            alert('Ошибка при сохранении результата');
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const formatTime = (seconds) => {
@@ -144,7 +162,8 @@ export default function TestRunner() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    if (!test) return <div className="p-8 text-center"><Lock size={24} className="animate-spin mx-auto text-accent-primary" /></div>;
+    if (isLoading) return <div className="p-20 text-center text-accent-primary animate-pulse font-bold text-xl">Секунду, работаем с облаком...</div>;
+    if (!test) return <div className="p-8 text-center text-danger">Тест не найден.</div>;
 
     if (isFinished) {
         const { score, passed } = evaluateScore();

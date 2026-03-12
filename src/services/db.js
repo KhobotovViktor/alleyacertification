@@ -1,193 +1,233 @@
-const STORAGE_KEY_TESTS = 'employee_tests';
-const STORAGE_KEY_USERS = 'employee_users';
-const STORAGE_KEY_RESULTS = 'employee_results';
+import { supabase } from './supabaseClient';
+
 const STORAGE_KEY_CURRENT_USER = 'employee_current_user';
-const STORAGE_KEY_ARTICLES = 'employee_articles';
-const STORAGE_KEY_ARTICLE_PROGRESS = 'employee_article_progress';
-
-// --- Initialization ---
-export const initializeDB = () => {
-  // Always update users list to match requirements (they could be updated)
-  const defaultUsers = [
-    { id: 'admin1', name: 'Хоботов Виктор', role: 'admin', password: 'admin' },
-    { id: 'emp_davydova', name: 'Давыдова Лидия', role: 'employee', password: '741980' },
-    { id: 'emp_dyagileva', name: 'Дягилева Юлия', role: 'employee', password: '621786' },
-    { id: 'emp_ivlutina', name: 'Ивлютина Алена', role: 'employee', password: '223684' },
-    { id: 'emp_ilinskaya', name: 'Ильинская Анастасия', role: 'employee', password: '976271' },
-    { id: 'emp_kalinina', name: 'Калинина Светлана', role: 'employee', password: '590062' },
-    { id: 'emp_kamkina', name: 'Камкина Юлия', role: 'employee', password: '820193' },
-    { id: 'emp_steklova', name: 'Стеклова Полина', role: 'employee', password: '364553' },
-    { id: 'emp_toropova', name: 'Торопова Ирина', role: 'employee', password: '832234' },
-    { id: 'test_emp', name: 'Тестовый сотрудник', role: 'employee', password: '111111' },
-    { id: 'test_admin', name: 'Тестовый администратор', role: 'admin', password: '111111' }
-  ];
-  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(defaultUsers));
-
-  if (!localStorage.getItem(STORAGE_KEY_TESTS)) {
-    localStorage.setItem(STORAGE_KEY_TESTS, JSON.stringify([]));
-  }
-  if (!localStorage.getItem(STORAGE_KEY_RESULTS)) {
-    localStorage.setItem(STORAGE_KEY_RESULTS, JSON.stringify([]));
-  }
-  if (!localStorage.getItem(STORAGE_KEY_ARTICLES)) {
-    localStorage.setItem(STORAGE_KEY_ARTICLES, JSON.stringify([]));
-  }
-  if (!localStorage.getItem(STORAGE_KEY_ARTICLE_PROGRESS)) {
-    localStorage.setItem(STORAGE_KEY_ARTICLE_PROGRESS, JSON.stringify([]));
-  }
-};
 
 // --- Auth ---
-export const login = (userId, password) => {
-  const users = JSON.parse(localStorage.getItem(STORAGE_KEY_USERS));
-  const user = users.find(u => u.id === userId && u.password === password);
-  if (user) {
-    localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
-    return user;
-  }
-  return null;
+export const login = async (userId, password) => {
+    const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .eq('password', password)
+        .single();
+
+    if (user && !error) {
+        localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
+        return user;
+    }
+    return null;
 };
 
 export const logout = () => {
-  localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+    localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
 };
 
 export const getCurrentUser = () => {
-  const user = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
-  return user ? JSON.parse(user) : null;
+    const user = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
+    return user ? JSON.parse(user) : null;
 };
 
-export const getAllUsers = () => {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY_USERS));
+export const getAllUsers = async () => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('id');
+    return data || [];
 };
 
-export const getAllEmployees = () => {
-  const users = getAllUsers();
-  return users.filter(u => u.role === 'employee');
+export const getAllEmployees = async () => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'employee');
+    return data || [];
 };
 
 // --- Tests ---
-/*
-Test model updated:
-{
-  ...
-  allowedUsers: string[] // User IDs allowed to take this test. Empty = all allowed
-}
-*/
-export const getTests = () => {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY_TESTS)) || [];
+export const getTests = async () => {
+    const { data, error } = await supabase
+        .from('tests')
+        .select('*')
+        .order('createdAt', { ascending: false });
+    return data || [];
 };
 
-export const getTestById = (id) => {
-  const tests = getTests();
-  return tests.find(t => t.id?.toString() === id?.toString());
+export const getTestById = async (id) => {
+    const { data, error } = await supabase
+        .from('tests')
+        .select('*')
+        .eq('id', id)
+        .single();
+    return data;
 };
 
-export const saveTest = (test) => {
-  const tests = getTests();
-  const existingIndex = tests.findIndex(t => t.id?.toString() === test.id?.toString());
-  // Ensure allowedUsers defaults to empty array if undefined
-  const testToSave = { ...test, allowedUsers: test.allowedUsers || [] };
+export const saveTest = async (test) => {
+    const testToSave = {
+        ...test,
+        allowedUsers: test.allowedUsers || [],
+        questions: test.questions || []
+    };
 
-  if (existingIndex >= 0) {
-    tests[existingIndex] = testToSave;
-  } else {
-    tests.push({ ...testToSave, id: test.id || Date.now().toString() });
-  }
-  localStorage.setItem(STORAGE_KEY_TESTS, JSON.stringify(tests));
+    if (test.id && test.id.length > 20) { // Assuming UUID length
+        const { error } = await supabase
+            .from('tests')
+            .update(testToSave)
+            .eq('id', test.id);
+        if (error) throw error;
+    } else {
+        const { id, ...newTestData } = testToSave;
+        const { error } = await supabase
+            .from('tests')
+            .insert([newTestData]);
+        if (error) throw error;
+    }
 };
 
-export const deleteTest = (id) => {
-  const tests = getTests();
-  localStorage.setItem(STORAGE_KEY_TESTS, JSON.stringify(tests.filter(t => t.id?.toString() !== id?.toString())));
+export const deleteTest = async (id) => {
+    const { error } = await supabase
+        .from('tests')
+        .delete()
+        .eq('id', id);
+    if (error) throw error;
 };
 
 // --- Articles ---
-export const getArticles = () => {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY_ARTICLES)) || [];
+export const getArticles = async () => {
+    const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .order('createdAt', { ascending: false });
+    return data || [];
 };
 
-export const getArticleById = (id) => {
-  const articles = getArticles();
-  return articles.find(a => a.id?.toString() === id?.toString());
+export const getArticleById = async (id) => {
+    const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('id', id)
+        .single();
+    return data;
 };
 
-export const saveArticle = (article) => {
-  const articles = getArticles();
-  const existingIndex = articles.findIndex(a => a.id?.toString() === article.id?.toString());
-  const articleToSave = { ...article, allowedUsers: article.allowedUsers || [] };
+export const saveArticle = async (article) => {
+    const articleToSave = {
+        ...article,
+        allowedUsers: article.allowedUsers || []
+    };
 
-  if (existingIndex >= 0) {
-    articles[existingIndex] = articleToSave;
-  } else {
-    articles.push({ ...articleToSave, id: article.id || Date.now().toString(), createdAt: new Date().toISOString() });
-  }
-  localStorage.setItem(STORAGE_KEY_ARTICLES, JSON.stringify(articles));
+    if (article.id && article.id.length > 20) {
+        const { error } = await supabase
+            .from('articles')
+            .update(articleToSave)
+            .eq('id', article.id);
+        if (error) throw error;
+    } else {
+        const { id, ...newArticleData } = articleToSave;
+        const { error } = await supabase
+            .from('articles')
+            .insert([newArticleData]);
+        if (error) throw error;
+    }
 };
 
-export const deleteArticle = (id) => {
-  const articles = getArticles();
-  localStorage.setItem(STORAGE_KEY_ARTICLES, JSON.stringify(articles.filter(a => a.id?.toString() !== id?.toString())));
+export const deleteArticle = async (id) => {
+    const { error } = await supabase
+        .from('articles')
+        .delete()
+        .eq('id', id);
+    if (error) throw error;
 };
 
 // --- Article Progress ---
-export const getArticleProgress = () => {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY_ARTICLE_PROGRESS)) || [];
+export const getArticleProgress = async () => {
+    const { data, error } = await supabase
+        .from('article_progress')
+        .select('*')
+        .order('lastReadAt', { ascending: false });
+    return data || [];
 };
 
-export const saveArticleProgress = (userId, articleId, timeSpentSeconds) => {
-  const progressList = getArticleProgress();
+export const saveArticleProgress = async (userId, articleId, timeSpentSeconds) => {
+    const { data: existing } = await supabase
+        .from('article_progress')
+        .select('*')
+        .eq('userId', userId)
+        .eq('articleId', articleId)
+        .single();
 
-  // Check if duplicate complete exists
-  const existingIndex = progressList.findIndex(p => p.userId === userId && p.articleId === articleId);
-
-  if (existingIndex >= 0) {
-    progressList[existingIndex] = {
-      ...progressList[existingIndex],
-      timeSpentSeconds: progressList[existingIndex].timeSpentSeconds + timeSpentSeconds,
-      lastReadAt: new Date().toISOString()
-    };
-  } else {
-    progressList.push({
-      id: Date.now().toString(),
-      userId,
-      articleId,
-      timeSpentSeconds,
-      firstReadAt: new Date().toISOString(),
-      lastReadAt: new Date().toISOString()
-    });
-  }
-
-  localStorage.setItem(STORAGE_KEY_ARTICLE_PROGRESS, JSON.stringify(progressList));
+    if (existing) {
+        await supabase
+            .from('article_progress')
+            .update({
+                timeSpentSeconds: (existing.timeSpentSeconds || 0) + timeSpentSeconds,
+                lastReadAt: new Date().toISOString()
+            })
+            .eq('id', existing.id);
+    } else {
+        await supabase
+            .from('article_progress')
+            .insert([{
+                userId,
+                articleId,
+                timeSpentSeconds,
+                firstReadAt: new Date().toISOString(),
+                lastReadAt: new Date().toISOString()
+            }]);
+    }
 };
 
-export const hasUserCompletedArticle = (userId, articleId) => {
-  if (!articleId) return true; // If no article required, consider it true
-  const progressList = getArticleProgress();
-  return progressList.some(p => p.userId === userId && p.articleId === articleId);
+export const hasUserCompletedArticle = async (userId, articleId) => {
+    if (!articleId) return true;
+    const { data } = await supabase
+        .from('article_progress')
+        .select('id')
+        .eq('userId', userId)
+        .eq('articleId', articleId)
+        .single();
+    return !!data;
 };
 
 // --- Results ---
-export const getResults = () => {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY_RESULTS)) || [];
+export const getResults = async () => {
+    const { data, error } = await supabase
+        .from('results')
+        .select('*')
+        .order('date', { ascending: false });
+    return data || [];
 };
 
-export const getUserResults = (userId) => {
-  const results = getResults();
-  return results.filter(r => r.userId === userId);
+export const getUserResults = async (userId) => {
+    const { data, error } = await supabase
+        .from('results')
+        .select('*')
+        .eq('userId', userId)
+        .order('date', { ascending: false });
+    return data || [];
 };
 
-export const saveResult = (result) => {
-  const results = getResults();
-  results.push({ ...result, id: Date.now().toString(), date: new Date().toISOString() });
-  localStorage.setItem(STORAGE_KEY_RESULTS, JSON.stringify(results));
+export const saveResult = async (result) => {
+    const { error } = await supabase
+        .from('results')
+        .insert([{
+            ...result,
+            date: new Date().toISOString()
+        }]);
+    if (error) throw error;
 };
 
-export const clearResults = () => {
-  localStorage.removeItem(STORAGE_KEY_RESULTS);
+export const clearResults = async () => {
+    const { error } = await supabase
+        .from('results')
+        .delete()
+        .neq('id', '0'); // Delete all
+    if (error) throw error;
 };
 
-export const getTestAttemptsCount = (userId, testId) => {
-  const results = getResults();
-  return results.filter(r => r.userId === userId && r.testId === testId).length;
+export const getTestAttemptsCount = async (userId, testId) => {
+    const { count, error } = await supabase
+        .from('results')
+        .select('*', { count: 'exact', head: true })
+        .eq('userId', userId)
+        .eq('testId', testId);
+    return count || 0;
 };

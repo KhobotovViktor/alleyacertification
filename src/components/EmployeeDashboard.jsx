@@ -7,30 +7,58 @@ export default function EmployeeDashboard() {
     const [tests, setTests] = useState([]);
     const [articles, setArticles] = useState([]);
     const [results, setResults] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const user = getCurrentUser();
 
     useEffect(() => {
         if (user) {
-            const allTests = getTests() || [];
-            const allArticles = getArticles() || [];
-            const userRes = getUserResults(user.id) || [];
+            loadDashboardData();
+        }
+    }, [user?.id]);
+
+    const loadDashboardData = async () => {
+        setIsLoading(true);
+        try {
+            const [allTests, allArticles, userRes] = await Promise.all([
+                getTests(),
+                getArticles(),
+                getUserResults(user.id)
+            ]);
 
             const filteredTests = allTests.filter(t => !t.allowedUsers || t.allowedUsers.length === 0 || t.allowedUsers.includes(user.id));
             const filteredArticles = allArticles.filter(a => !a.allowedUsers || a.allowedUsers.length === 0 || a.allowedUsers.includes(user.id));
 
-            const testsWithStats = filteredTests.map(t => ({
-                ...t,
-                attemptsCount: getTestAttemptsCount(user.id, t.id),
-                bestResult: userRes.filter(r => r.testId === t.id).sort((a, b) => b.score - a.score)[0] || null,
-                articleCompleted: t.requiredArticleId ? hasUserCompletedArticle(user.id, t.requiredArticleId) : true,
-                requiredArticle: t.requiredArticleId ? allArticles.find(a => a.id === t.requiredArticleId) : null
-            }));
+            // Fetch attempt counts and completion status in parallel for filtered tests
+            const testsWithStatsPromises = filteredTests.map(async (t) => {
+                const [attemptsCount, articleCompleted] = await Promise.all([
+                    getTestAttemptsCount(user.id, t.id),
+                    t.requiredArticleId ? hasUserCompletedArticle(user.id, t.requiredArticleId) : Promise.resolve(true)
+                ]);
+
+                return {
+                    ...t,
+                    attemptsCount,
+                    bestResult: userRes.filter(r => r.testId === t.id).sort((a, b) => b.score - a.score)[0] || null,
+                    articleCompleted,
+                    requiredArticle: t.requiredArticleId ? allArticles.find(a => a.id === t.requiredArticleId) : null
+                };
+            });
+
+            const testsWithStats = await Promise.all(testsWithStatsPromises);
 
             setTests(testsWithStats);
             setArticles(filteredArticles);
             setResults(userRes);
+        } catch (err) {
+            console.error('Failed to load employee dashboard:', err);
+        } finally {
+            setIsLoading(false);
         }
-    }, [user?.id]);
+    };
+
+    if (isLoading) {
+        return <div className="flex items-center justify-center p-20 text-accent-primary animate-pulse font-bold">Загрузка ваших тестов...</div>;
+    }
 
     return (
         <div className="flex-col gap-8">
