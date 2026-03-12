@@ -16,17 +16,21 @@ export default function EmployeeDashboard() {
         }
     }, [user?.id]);
 
+    const [activeTab, setActiveTab] = useState('tests');
+
     const loadDashboardData = async () => {
         setIsLoading(true);
         try {
-            const [allTests, allArticles, userRes] = await Promise.all([
+            const [allTests, allArticles, userRes, articleProg] = await Promise.all([
                 getTests(),
                 getArticles(),
-                getUserResults(user.id)
+                getUserResults(user.id),
+                getArticleProgress()
             ]);
 
             const filteredTests = allTests.filter(t => !t.allowedUsers || t.allowedUsers.length === 0 || t.allowedUsers.includes(user.id));
             const filteredArticles = allArticles.filter(a => !a.allowedUsers || a.allowedUsers.length === 0 || a.allowedUsers.includes(user.id));
+            const userArticleProgress = articleProg.filter(p => p.userId === user.id);
 
             // Fetch attempt counts and completion status in parallel for filtered tests
             const testsWithStatsPromises = filteredTests.map(async (t) => {
@@ -57,48 +61,56 @@ export default function EmployeeDashboard() {
     };
 
     if (isLoading) {
-        return <div className="flex items-center justify-center p-20 text-accent-primary animate-pulse font-bold">Загрузка ваших тестов...</div>;
+        return <div className="flex items-center justify-center p-20 text-accent-primary animate-pulse font-bold">Секунду, работаем с облаком...</div>;
     }
 
-    return (
-        <div className="flex-col gap-8">
-            {/* Articles Section */}
-            <div>
-                <div className="mb-4">
-                    <h2 className="mb-2 flex items-center gap-2"><BookOpen size={24} className="text-accent-primary" /> Учебные материалы</h2>
-                    <p className="mb-0 text-secondary">Рекомендуется изучить перед прохождением тестирования</p>
-                </div>
+    const formatDate = (dateStr) => {
+        return new Date(dateStr).toLocaleDateString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.5rem' }}>
-                    {articles.map((article, index) => (
-                        <div key={article.id} className={`card flex-col h-full relative overflow-hidden group border-l-4 border-l-accent-primary animate-fade-in stagger-${(index % 5) + 1}`}>
-                            <h3 className="text-lg font-bold text-primary mb-2 pr-2">{article.title}</h3>
-                            <div className="flex items-center gap-2 text-sm text-secondary mt-2 mb-6">
-                                <FileText size={16} />
-                                <span>Материал доступен для чтения</span>
-                            </div>
-                            <div className="mt-auto">
-                                <Link to={`/article/${article.id}`} className="btn btn-secondary w-full flex justify-center gap-2">
-                                    <BookOpen size={18} /> Читать
-                                </Link>
-                            </div>
-                        </div>
-                    ))}
-                    {articles.length === 0 && (
-                        <div className="col-span-full p-6 text-center text-secondary border border-dashed border-[var(--border-color)] rounded-xl">
-                            Нет доступных обучающих материалов.
-                        </div>
-                    )}
+    return (
+        <div className="flex-col gap-6">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                    <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Мой Профиль</h2>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>Пройдите тесты и изучите обучающие материалы</p>
                 </div>
             </div>
 
-            {/* Tests Section */}
-            <div>
-                <div className="mb-4">
-                    <h2 className="mb-2 flex items-center gap-2"><Play size={24} className="text-accent-primary" /> Мои Тесты</h2>
-                    <p className="mb-0 text-secondary">Список доступных и пройденных тестирований</p>
+            <div style={{ marginBottom: '1.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ display: 'inline-flex', gap: '0.25rem', padding: '0.375rem', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', whiteSpace: 'nowrap' }}>
+                    {[
+                        { key: 'tests', icon: <Play size={16} />, label: 'Тесты' },
+                        { key: 'results', icon: <CheckCircle size={16} />, label: 'Результаты' },
+                        { key: 'articles', icon: <BookOpen size={16} />, label: 'Учебные материалы' },
+                        { key: 'trainingStats', icon: <Clock size={16} />, label: 'Статистика обучения' }
+                    ].map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                padding: '0.5rem 1.25rem', borderRadius: '0.75rem',
+                                border: 'none', fontSize: '0.8125rem', fontWeight: 600,
+                                cursor: 'pointer', transition: 'all 0.2s',
+                                background: activeTab === tab.key ? 'white' : 'transparent',
+                                color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                            }}
+                        >
+                            {tab.icon} {tab.label}
+                        </button>
+                    ))}
                 </div>
+            </div>
 
+            {activeTab === 'tests' && (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                     {tests.map((test, index) => {
                         const isBlocked = test.maxAttempts > 0 && test.attemptsCount >= test.maxAttempts;
@@ -146,7 +158,7 @@ export default function EmployeeDashboard() {
                                             className="btn btn-primary w-full flex justify-center gap-2 relative overflow-hidden group"
                                         >
                                             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
-                                            {hasPassed ? <Play size={18} className="relative z-10" /> : <Play size={18} className="relative z-10" />} <span className="relative z-10">{hasPassed ? 'Пройти снова' : 'Начать тест'}</span>
+                                            <Play size={18} className="relative z-10" /> <span className="relative z-10">{hasPassed ? 'Пройти снова' : 'Начать тест'}</span>
                                         </button>
                                     )}
                                 </div>
@@ -159,7 +171,103 @@ export default function EmployeeDashboard() {
                         </div>
                     )}
                 </div>
-            </div>
+            )}
+
+            {activeTab === 'articles' && (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.5rem' }}>
+                    {articles.map((article, index) => (
+                        <div key={article.id} className={`card flex-col h-full relative overflow-hidden group border-l-4 border-l-accent-primary animate-fade-in stagger-${(index % 5) + 1}`}>
+                            <h3 className="text-lg font-bold text-primary mb-2 pr-2">{article.title}</h3>
+                            <div className="flex items-center gap-2 text-sm text-secondary mt-2 mb-6">
+                                <FileText size={16} />
+                                <span>Материал доступен для чтения</span>
+                            </div>
+                            <div className="mt-auto">
+                                <Link to={`/article/${article.id}`} className="btn btn-secondary w-full flex justify-center gap-2">
+                                    <BookOpen size={18} /> Читать
+                                </Link>
+                            </div>
+                        </div>
+                    ))}
+                    {articles.length === 0 && (
+                        <div className="col-span-full p-6 text-center text-secondary border border-dashed border-[var(--border-color)] rounded-xl">
+                            Нет доступных обучающих материалов.
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'results' && (
+                <div className="card animate-fade-in">
+                    <table className="w-full">
+                        <thead>
+                            <tr>
+                                <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Тест</th>
+                                <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Баллы</th>
+                                <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Дата</th>
+                                <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {results.map((res, idx) => {
+                                const testName = tests.find(t => t.id === res.testId)?.title || 'Тест удален';
+                                return (
+                                    <tr key={res.id} className="border-t border-[var(--border-color)]">
+                                        <td className="py-3 px-4 font-medium">{testName}</td>
+                                        <td className="py-3 px-4">
+                                            <span className="font-bold">{res.score}</span> / {res.total}
+                                            <span className="ml-2 text-xs text-secondary">({Math.round((res.score / res.total) * 100)}%)</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-sm text-secondary">{formatDate(res.date)}</td>
+                                        <td className="py-3 px-4">
+                                            <span className={`badge ${res.passed ? 'badge-success' : 'badge-danger'}`}>
+                                                {res.passed ? 'Сдано' : 'Не сдано'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            {results.length === 0 && (
+                                <tr>
+                                    <td colSpan="4" className="py-8 text-center text-secondary">Вы еще не проходили тесты.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {activeTab === 'trainingStats' && (
+                <div className="card animate-fade-in">
+                    <div className="flex-col gap-4">
+                        {articles.map(article => {
+                            const isCompleted = tests.find(t => t.requiredArticleId === article.id)?.articleCompleted;
+                            return (
+                                <div key={article.id} className="flex items-center justify-between p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)]">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCompleted ? 'bg-success/10 text-success' : 'bg-secondary/10 text-secondary'}`}>
+                                            {isCompleted ? <CheckCircle size={20} /> : <BookOpen size={20} />}
+                                        </div>
+                                        <div>
+                                            <div className="font-bold">{article.title}</div>
+                                            <div className="text-xs text-secondary uppercase tracking-tighter mt-0.5">
+                                                {isCompleted ? 'Материал изучен' : 'В процессе изучения'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Link to={`/article/${article.id}`} className="btn btn-secondary py-1.5 px-3 text-xs">
+                                        Открыть
+                                    </Link>
+                                </div>
+                            );
+                        })}
+                        {articles.length === 0 && (
+                            <div className="py-8 text-center text-secondary">Нет доступных материалов для отслеживания.</div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
+}
 }
