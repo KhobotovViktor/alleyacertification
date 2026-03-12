@@ -65,10 +65,11 @@ export const saveTest = async (test) => {
     const testToSave = {
         ...test,
         allowedUsers: test.allowedUsers || [],
-        questions: test.questions || []
+        questions: test.questions || [],
+        requiredArticleId: test.requiredArticleId || null // Ensure empty string becomes null for FK
     };
 
-    if (test.id && test.id.length > 20) { // Assuming UUID length
+    if (test.id && test.id.length > 20) {
         const { error } = await supabase
             .from('tests')
             .update(testToSave)
@@ -123,6 +124,7 @@ export const saveArticle = async (article) => {
         if (error) throw error;
     } else {
         const { id, ...newArticleData } = articleToSave;
+        // If id is empty string, the destructuring above correctly excludes it from newArticleData
         const { error } = await supabase
             .from('articles')
             .insert([newArticleData]);
