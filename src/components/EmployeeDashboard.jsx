@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen } from 'lucide-react';
-import { getTests, getCurrentUser, getTestAttemptsCount, getUserResults, getArticles, hasUserCompletedArticle } from '../services/db';
+import { 
+    getTests, 
+    getCurrentUser, 
+    getTestAttemptsCount, 
+    getUserResults, 
+    getArticles, 
+    getArticleProgress 
+} from '../services/db';
 
 export default function EmployeeDashboard() {
     const [tests, setTests] = useState([]);
@@ -32,18 +39,18 @@ export default function EmployeeDashboard() {
             const filteredArticles = allArticles.filter(a => !a.allowedUsers || a.allowedUsers.length === 0 || a.allowedUsers.includes(user.id));
             const userArticleProgress = articleProg.filter(p => p.userId === user.id);
 
-            // Fetch attempt counts and completion status in parallel for filtered tests
+            // Fetch attempt counts in parallel for filtered tests
             const testsWithStatsPromises = filteredTests.map(async (t) => {
-                const [attemptsCount, articleCompleted] = await Promise.all([
-                    getTestAttemptsCount(user.id, t.id),
-                    t.requiredArticleId ? hasUserCompletedArticle(user.id, t.requiredArticleId) : Promise.resolve(true)
-                ]);
+                const attemptsCount = await getTestAttemptsCount(user.id, t.id);
+                
+                // Identify if required article is completed from pre-fetched articleProg
+                const isArticleCompleted = !t.requiredArticleId || userArticleProgress.some(p => p.articleId === t.requiredArticleId);
 
                 return {
                     ...t,
                     attemptsCount,
                     bestResult: userRes.filter(r => r.testId === t.id).sort((a, b) => b.score - a.score)[0] || null,
-                    articleCompleted,
+                    articleCompleted: isArticleCompleted,
                     requiredArticle: t.requiredArticleId ? allArticles.find(a => a.id === t.requiredArticleId) : null
                 };
             });
