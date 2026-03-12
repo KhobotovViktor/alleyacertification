@@ -205,29 +205,29 @@ export default function EmployeeDashboard() {
             )}
 
             {activeTab === 'results' && (
-                <div className="card animate-fade-in">
+                <div className="card animate-fade-in overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr>
-                                <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Тест</th>
-                                <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Баллы</th>
-                                <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Дата</th>
-                                <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Статус</th>
+                            <tr className="border-b border-[var(--border-color)]">
+                                <th className="text-left py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Тест</th>
+                                <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Баллы</th>
+                                <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Дата</th>
+                                <th className="text-right py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Статус</th>
                             </tr>
                         </thead>
                         <tbody>
                             {results.map((res, idx) => {
                                 const testName = tests.find(t => t.id === res.testId)?.title || 'Тест удален';
                                 return (
-                                    <tr key={res.id} className="border-t border-[var(--border-color)]">
-                                        <td className="py-3 px-4 font-medium">{testName}</td>
-                                        <td className="py-3 px-4">
+                                    <tr key={res.id} className="border-t border-[var(--border-color)] hover:bg-accent-primary/5 transition-colors">
+                                        <td className="py-4 px-4 font-medium text-left">{testName}</td>
+                                        <td className="py-4 px-4 text-center">
                                             <span className="font-bold">{res.score}</span> / {res.total}
                                             <span className="ml-2 text-xs text-secondary">({Math.round((res.score / res.total) * 100)}%)</span>
                                         </td>
-                                        <td className="py-3 px-4 text-sm text-secondary">{formatDate(res.date)}</td>
-                                        <td className="py-3 px-4">
-                                            <span className={`badge ${res.passed ? 'badge-success' : 'badge-danger'}`}>
+                                        <td className="py-4 px-4 text-sm text-secondary text-center">{formatDate(res.date)}</td>
+                                        <td className="py-4 px-4 text-right">
+                                            <span className={`badge ${res.passed ? 'badge-success' : 'badge-danger'}`} style={{ display: 'inline-flex' }}>
                                                 {res.passed ? 'Сдано' : 'Не сдано'}
                                             </span>
                                         </td>
@@ -236,7 +236,7 @@ export default function EmployeeDashboard() {
                             })}
                             {results.length === 0 && (
                                 <tr>
-                                    <td colSpan="4" className="py-8 text-center text-secondary">Вы еще не проходили тесты.</td>
+                                    <td colSpan="4" className="py-12 text-center text-secondary">Вы еще не проходили тесты.</td>
                                 </tr>
                             )}
                         </tbody>

@@ -356,27 +356,37 @@ export default function TestEditor() {
             {activeTab === 'questions' && (
                 <div className="flex-col gap-6 animate-fade-in">
                     {test.questions.map((q, qIndex) => (
-                        <div key={q.id} className="card relative border-l-4 border-l-accent-primary">
+                        <div key={q.id} className="card relative border-l-4 border-l-accent-primary animate-fade-in" style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(10px)' }}>
                             <button
                                 onClick={() => removeQuestion(q.id)}
-                                className="absolute top-4 right-4 text-secondary hover:text-danger bg-transparent border-none cursor-pointer"
+                                title="Удалить вопрос"
+                                style={{
+                                    position: 'absolute', top: '1rem', right: '1rem',
+                                    width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)', cursor: 'pointer',
+                                    transition: 'all 0.2s', zIndex: 10
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; }}
                             >
                                 <Trash2 size={18} />
                             </button>
 
-                            <div className="flex flex-col md:flex-row gap-4 mb-4 items-start pr-8">
-                                <span className="bg-accent-primary text-white w-8 h-8 flex items-center justify-center rounded-full font-bold flex-shrink-0">
-                                    {qIndex + 1}
-                                </span>
-
-                                <div className="flex-grow w-full">
-                                    <div className="form-group flex gap-4">
+                            <div className="flex flex-col gap-5 pr-10">
+                                <div className="flex items-center gap-4">
+                                    <span className="bg-accent-primary text-white w-9 h-9 flex items-center justify-center rounded-xl font-bold flex-shrink-0 shadow-sm">
+                                        {qIndex + 1}
+                                    </span>
+                                    <div className="flex-grow flex gap-3">
                                         <input
                                             type="text"
                                             className="form-control flex-grow"
+                                            style={{ fontSize: '1.05rem', fontWeight: 600 }}
                                             value={q.text}
                                             onChange={e => updateQuestion(q.id, { text: e.target.value })}
-                                            placeholder="Текст вопроса..."
+                                            placeholder="Введите текст вопроса..."
                                         />
                                         <select
                                             className="form-control w-auto min-w-[180px]"
@@ -391,47 +401,63 @@ export default function TestEditor() {
                                             <option value="text">Текстовый ввод</option>
                                         </select>
                                     </div>
+                                </div>
 
-                                    {q.type !== 'text' ? (
-                                        <div className="flex-col gap-2 mt-4 bg-[var(--bg-primary)] p-4 rounded-lg border border-[var(--border-color)]">
-                                            <div className="text-sm font-medium mb-2 text-secondary">Варианты ответов (отметьте правильные):</div>
+                                {q.type !== 'text' ? (
+                                    <div className="flex-col gap-3 bg-white/40 p-5 rounded-2xl border border-white/60 shadow-inner">
+                                        <div className="text-xs font-bold uppercase tracking-widest text-secondary mb-2 opacity-70">Варианты ответов</div>
+                                        <div className="flex-col gap-2">
                                             {q.options.map((opt, optIdx) => (
                                                 <div key={optIdx} className="flex items-center gap-3">
-                                                    <input
-                                                        type={q.type === 'single' ? 'radio' : 'checkbox'}
-                                                        name={`correct-${q.id}`}
-                                                        checked={q.correctAnswers.includes(opt)}
-                                                        onChange={() => toggleCorrectAnswer(q.id, opt, q.type)}
-                                                        className="w-5 h-5 accent-accent-primary cursor-pointer"
-                                                    />
+                                                    <div className="relative flex items-center justify-center group/check h-10 w-10 shrink-0">
+                                                        <input
+                                                            type={q.type === 'single' ? 'radio' : 'checkbox'}
+                                                            name={`correct-${q.id}`}
+                                                            checked={q.correctAnswers.includes(opt)}
+                                                            onChange={() => toggleCorrectAnswer(q.id, opt, q.type)}
+                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                        />
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${q.correctAnswers.includes(opt) ? 'bg-success text-white shadow-md' : 'bg-white border border-slate-200 text-transparent group-hover/check:border-success/50 group-hover/check:text-success/30'}`}>
+                                                            <CheckCircle size={18} strokeWidth={3} />
+                                                        </div>
+                                                    </div>
+                                                    
                                                     <input
                                                         type="text"
-                                                        className="form-control flex-grow py-1.5"
+                                                        className="form-control h-10"
                                                         value={opt}
                                                         onChange={e => updateOption(q.id, optIdx, e.target.value)}
                                                     />
-                                                    <button onClick={() => removeOption(q.id, optIdx)} className="text-danger opacity-70 hover:opacity-100 bg-transparent border-none p-1 cursor-pointer">
-                                                        &times;
+                                                    
+                                                    <button 
+                                                        onClick={() => removeOption(q.id, optIdx)}
+                                                        className="h-10 w-10 flex items-center justify-center rounded-lg bg-danger/5 text-danger border border-danger/10 hover:bg-danger hover:text-white transition-all shrink-0"
+                                                        title="Удалить вариант"
+                                                    >
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             ))}
-                                            <button onClick={() => addOption(q.id)} className="btn btn-secondary btn-sm mt-3 self-start text-xs py-1">
-                                                + Добавить вариант
-                                            </button>
                                         </div>
-                                    ) : (
-                                        <div className="mt-4 bg-[var(--bg-primary)] p-4 rounded-lg border border-[var(--border-color)]">
-                                            <label className="form-label">Правильный ответ (точное совпадение без учета регистра)</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                value={q.correctAnswers[0] || ''}
-                                                onChange={e => updateQuestion(q.id, { correctAnswers: [e.target.value] })}
-                                                placeholder="Введите эталонный ответ"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
+                                        <button 
+                                            onClick={() => addOption(q.id)} 
+                                            className="btn btn-secondary flex items-center justify-center gap-2 mt-2 h-10 w-full bg-white/60 hover:bg-white border-dashed"
+                                        >
+                                            <Plus size={16} /> Добавить вариант
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white/40 p-5 rounded-2xl border border-white/60 shadow-inner">
+                                        <label className="form-label text-xs font-bold uppercase tracking-widest opacity-70">Правильный ответ</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={q.correctAnswers[0] || ''}
+                                            onChange={e => updateQuestion(q.id, { correctAnswers: [e.target.value] })}
+                                            placeholder="Введите эталонный ответ для сравнения..."
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
