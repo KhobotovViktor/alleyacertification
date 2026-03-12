@@ -209,10 +209,10 @@ export default function EmployeeDashboard() {
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-[var(--border-color)]">
-                                <th className="text-left py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Тест</th>
+                                <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Тест</th>
                                 <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Баллы</th>
                                 <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Дата</th>
-                                <th className="text-right py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Статус</th>
+                                <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Статус</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -220,13 +220,13 @@ export default function EmployeeDashboard() {
                                 const testName = tests.find(t => t.id === res.testId)?.title || 'Тест удален';
                                 return (
                                     <tr key={res.id} className="border-t border-[var(--border-color)] hover:bg-accent-primary/5 transition-colors">
-                                        <td className="py-4 px-4 font-medium text-left">{testName}</td>
+                                        <td className="py-4 px-4 font-medium text-center">{testName}</td>
                                         <td className="py-4 px-4 text-center">
                                             <span className="font-bold">{res.score}</span> / {res.total}
                                             <span className="ml-2 text-xs text-secondary">({Math.round((res.score / res.total) * 100)}%)</span>
                                         </td>
                                         <td className="py-4 px-4 text-sm text-secondary text-center">{formatDate(res.date)}</td>
-                                        <td className="py-4 px-4 text-right">
+                                        <td className="py-4 px-4 text-center">
                                             <span className={`badge ${res.passed ? 'badge-success' : 'badge-danger'}`} style={{ display: 'inline-flex' }}>
                                                 {res.passed ? 'Сдано' : 'Не сдано'}
                                             </span>

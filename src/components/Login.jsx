@@ -121,7 +121,7 @@ export default function Login() {
                         </div>
 
                         {selectedUser && (
-                            <form onSubmit={handleLogin} className="flex-col gap-6 animate-fade-in relative z-10">
+                            <form onSubmit={handleLogin} className="animate-fade-in relative z-10" style={{ display: 'flex', flexDirection: 'column' }}>
                                 <div className="form-group mb-0 relative">
                                     <div className="relative group">
                                         <input
@@ -133,9 +133,19 @@ export default function Login() {
                                             autoFocus
                                         />
                                     </div>
-                                    {error && <div className="text-danger text-sm mt-3 animate-fade-in flex items-center justify-center gap-1 font-medium text-center"><ShieldCheck size={14} /> {error}</div>}
                                 </div>
-                                <button type="submit" className="btn btn-primary w-full py-4 text-lg tracking-wide font-bold rounded-2xl mt-4 shadow-lg hover:shadow-[0_10px_25px_rgba(3,152,0,0.3)] hover:-translate-y-1 transition-all">
+
+                                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {error ? (
+                                        <div className="text-danger text-sm animate-fade-in flex items-center justify-center gap-1 font-medium text-center">
+                                            <ShieldCheck size={14} /> {error}
+                                        </div>
+                                    ) : (
+                                        <div style={{ height: '1.25rem' }}></div>
+                                    )}
+                                </div>
+
+                                <button type="submit" className="btn btn-primary w-full py-4 text-lg tracking-wide font-bold rounded-2xl shadow-lg hover:shadow-[0_10px_25px_rgba(3,152,0,0.3)] hover:-translate-y-1 transition-all">
                                     Продолжить
                                 </button>
                             </form>
