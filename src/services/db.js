@@ -10,14 +10,16 @@ export const initializeDB = () => {
   // Always update users list to match requirements (they could be updated)
   const defaultUsers = [
     { id: 'admin1', name: 'Хоботов Виктор', role: 'admin', password: 'admin' },
-    { id: 'emp_toropova', name: 'Торопова Ирина', role: 'employee', password: '832234' },
     { id: 'emp_davydova', name: 'Давыдова Лидия', role: 'employee', password: '741980' },
     { id: 'emp_dyagileva', name: 'Дягилева Юлия', role: 'employee', password: '621786' },
     { id: 'emp_ivlutina', name: 'Ивлютина Алена', role: 'employee', password: '223684' },
     { id: 'emp_ilinskaya', name: 'Ильинская Анастасия', role: 'employee', password: '976271' },
     { id: 'emp_kalinina', name: 'Калинина Светлана', role: 'employee', password: '590062' },
     { id: 'emp_kamkina', name: 'Камкина Юлия', role: 'employee', password: '820193' },
-    { id: 'emp_steklova', name: 'Стеклова Полина', role: 'employee', password: '364553' }
+    { id: 'emp_steklova', name: 'Стеклова Полина', role: 'employee', password: '364553' },
+    { id: 'emp_toropova', name: 'Торопова Ирина', role: 'employee', password: '832234' },
+    { id: 'test_emp', name: 'Тестовый сотрудник', role: 'employee', password: '111111' },
+    { id: 'test_admin', name: 'Тестовый администратор', role: 'admin', password: '111111' }
   ];
   localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(defaultUsers));
 

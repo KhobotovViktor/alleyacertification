@@ -64,8 +64,6 @@ export default function EmployeeDashboard() {
                 </div>
             </div>
 
-            <hr className="border-[var(--border-color)]" />
-
             {/* Tests Section */}
             <div>
                 <div className="mb-4">

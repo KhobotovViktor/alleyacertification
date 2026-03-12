@@ -160,8 +160,8 @@ export default function TestEditor() {
                 </button>
             </div>
 
-            <div style={{ marginBottom: '0.5rem' }}>
-                <div style={{ display: 'inline-flex', gap: '0.25rem', padding: '0.375rem', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div style={{ marginBottom: '0.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ display: 'inline-flex', gap: '0.25rem', padding: '0.375rem', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', whiteSpace: 'nowrap' }}>
                     {[
                         { key: 'settings', icon: <Settings size={16} />, label: 'Настройки' },
                         { key: 'questions', icon: <FileQuestion size={16} />, label: `Вопросы (${test.questions.length})` },
