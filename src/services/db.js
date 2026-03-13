@@ -112,7 +112,10 @@ export const getArticleById = async (id) => {
 
 export const saveArticle = async (article) => {
     const articleToSave = {
-        ...article,
+        title: article.title,
+        content: article.content,
+        videoUrl: article.videoUrl || '',
+        minTimeMinutes: parseInt(article.minTimeMinutes) || 0,
         allowedUsers: article.allowedUsers || []
     };
 
@@ -123,11 +126,9 @@ export const saveArticle = async (article) => {
             .eq('id', article.id);
         if (error) throw error;
     } else {
-        const { id, ...newArticleData } = articleToSave;
-        // If id is empty string, the destructuring above correctly excludes it from newArticleData
         const { error } = await supabase
             .from('articles')
-            .insert([newArticleData]);
+            .insert([articleToSave]);
         if (error) throw error;
     }
 };
