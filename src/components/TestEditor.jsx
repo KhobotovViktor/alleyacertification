@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle } from 'lucide-react';
 import { getTestById, saveTest, getAllEmployees, getArticles } from '../services/db';
+import { EditorSkeleton } from './SkeletonLoader';
 
 export default function TestEditor() {
     const { id } = useParams();
@@ -168,22 +169,22 @@ export default function TestEditor() {
     };
 
     if (isLoading) {
-        return <div className="flex items-center justify-center p-20 text-accent-primary animate-pulse font-bold">Загрузка данных теста...</div>;
+        return <EditorSkeleton />;
     }
 
     return (
         <div className="flex-col gap-6 max-w-4xl mx-auto">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button onClick={() => navigate('/admin')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600, transition: 'all 0.2s' }}
+                    <button onClick={() => navigate('/admin')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s' }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                     >
                         <ArrowLeft size={16} />
                     </button>
-                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>{isNew ? 'Создание нового теста' : 'Редактирование теста'}</h2>
+                    <h2 style={{ margin: 0 }}>{isNew ? 'Создание нового теста' : 'Редактирование теста'}</h2>
                 </div>
-                <button onClick={handleSave} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', borderRadius: '0.75rem', fontSize: '0.875rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <button onClick={handleSave} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', borderRadius: '0.75rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                     <Save size={16} /> Сохранить
                 </button>
             </div>
@@ -201,7 +202,7 @@ export default function TestEditor() {
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '0.5rem',
                                 padding: '0.5rem 1.25rem', borderRadius: '0.75rem',
-                                border: 'none', fontSize: '0.8125rem', fontWeight: 600,
+                                border: 'none',
                                 cursor: 'pointer', transition: 'all 0.2s',
                                 background: activeTab === tab.key ? 'white' : 'transparent',
                                 color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -241,12 +242,12 @@ export default function TestEditor() {
                         <p className="text-sm text-secondary mb-4">
                             Выберите сотрудников, которым будет доступен этот тест. Оставьте поле пустым, чтобы тест был доступен всем.
                         </p>
-                        <div className="flex-col gap-2 max-h-[400px] overflow-y-auto pr-2">
+                        <div className="flex-col gap-1 max-h-[400px] overflow-y-auto pr-2">
                             {employees.map(emp => (
-                                <label key={emp.id} className="flex items-center gap-3 p-3 border border-[var(--border-color)] rounded-lg cursor-pointer hover:border-accent-primary transition-colors">
+                                <label key={emp.id} className="flex items-center p-2.5 rounded-xl hover:bg-black/5 cursor-pointer transition-all group">
                                     <input
                                         type="checkbox"
-                                        className="w-5 h-5 accent-accent-primary"
+                                        className="w-5 h-5 accent-accent-primary mr-3 flex-shrink-0"
                                         checked={(test.allowedUsers || []).includes(emp.id)}
                                         onChange={(e) => {
                                             const current = test.allowedUsers || [];
@@ -257,7 +258,7 @@ export default function TestEditor() {
                                             }
                                         }}
                                     />
-                                    <span>{emp.name}</span>
+                                    <span className="text-sm font-medium text-slate-700 group-hover:text-primary transition-colors">{emp.name}</span>
                                 </label>
                             ))}
                         </div>
@@ -377,35 +378,47 @@ export default function TestEditor() {
 
                             <div className="flex-col gap-6">
                                 {/* Header: Number, Input, Type */}
-                                <div className="flex items-center gap-4">
-                                    <div className="bg-accent-primary text-white w-10 h-10 flex items-center justify-center rounded-xl font-bold flex-shrink-0 shadow-[0_4px_12px_rgba(var(--accent-primary-rgb),0.3)]">
-                                        {qIndex + 1}
+                                <div className="flex-col gap-4">
+                                    {/* Row 1: Question Number Badge */}
+                                    <div className="flex items-center">
+                                        <div className="bg-accent-primary text-white px-4 h-10 flex items-center justify-center rounded-xl font-bold flex-shrink-0 shadow-[0_4px_12px_rgba(var(--accent-primary-rgb),0.3)] text-sm">
+                                            Вопрос №{qIndex + 1}
+                                        </div>
                                     </div>
-                                    <div className="flex-grow flex items-center gap-4">
+
+                                    {/* Row 2: Widened Question Input aligned with Answer Inputs' right edge */}
+                                    <div className="flex items-center gap-4">
                                         <input
                                             type="text"
-                                            className="form-control"
-                                            style={{ flex: '1', fontSize: '1.125rem', fontWeight: 700, background: 'transparent', border: 'none', borderBottom: '2px solid rgba(0,0,0,0.05)', borderRadius: '0', padding: '0.75rem 0' }}
+                                            className="form-control flex-grow h-11 px-5"
+                                            style={{ borderRadius: '1rem', background: 'white', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
                                             value={q.text}
                                             onChange={e => updateQuestion(q.id, { text: e.target.value })}
                                             placeholder="Введите текст вопроса..."
                                         />
-                                        <div className="flex flex-col gap-1 min-w-[200px]">
+                                        <div className="w-11 shrink-0"></div> {/* Spacer to align right edge with answer inputs */}
+                                    </div>
+
+                                    {/* Row 3: Type Selector aligned with width */}
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex flex-col gap-1 w-fit">
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-50 ml-1">Тип ответа</span>
                                             <select
                                                 className="form-control"
-                                                style={{ height: '2.75rem', borderRadius: '0.875rem', fontSize: '0.875rem', fontWeight: 600 }}
+                                                style={{ height: '3rem', minWidth: '220px', borderRadius: '1rem', background: 'rgba(255,255,255,0.8)', border: '1.5px solid #e2e8f0' }}
                                                 value={q.type}
                                                 onChange={e => updateQuestion(q.id, {
                                                     type: e.target.value,
                                                     correctAnswers: e.target.value === 'single' && q.options.length ? [q.options[0]] : []
                                                 })}
                                             >
-                                                <option value="single">Один вариант</option>
-                                                <option value="multiple">Несколько вариантов</option>
-                                                <option value="text">Текстовый ввод</option>
+                                                <option value="single">Один правильный</option>
+                                                <option value="multiple">Несколько ответов</option>
+                                                <option value="text">Текстовый ответ</option>
                                             </select>
                                         </div>
+                                        <div className="flex-grow"></div>
+                                        <div className="w-11 shrink-0"></div>
                                     </div>
                                 </div>
 
@@ -424,8 +437,10 @@ export default function TestEditor() {
                                                             onChange={() => toggleCorrectAnswer(q.id, opt, q.type)}
                                                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                                         />
-                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${q.correctAnswers.includes(opt) ? 'bg-success text-white shadow-[0_4px_12px_rgba(34,197,94,0.3)] scale-100' : 'bg-white/80 border-2 border-slate-100 text-transparent scale-95 group-hover/check:border-success/30 group-hover/check:scale-100'}`}>
-                                                            {q.correctAnswers.includes(opt) && <CheckCircle size={20} strokeWidth={3} />}
+                                                        <div className={`w-9 h-9 flex items-center justify-center transition-all duration-300 ${q.type === 'single' ? 'rounded-full' : 'rounded-lg'} ${q.correctAnswers.includes(opt) ? 'bg-success shadow-[0_4px_12px_rgba(34,197,94,0.4)] scale-100' : 'bg-white/80 border-2 border-slate-200 scale-95 group-hover/check:border-success/30'}`}>
+                                                            {q.correctAnswers.includes(opt) && (
+                                                                <div className={`w-3 h-3 bg-white ${q.type === 'single' ? 'rounded-full' : 'rounded-sm'} animate-scale-up`}></div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     
@@ -463,7 +478,7 @@ export default function TestEditor() {
                                             <button 
                                                 onClick={() => addOption(q.id)} 
                                                 className="btn btn-secondary flex items-center justify-center gap-2 h-11 flex-grow bg-white/60 hover:bg-white border-dashed text-accent-primary"
-                                                style={{ borderRadius: '1rem', fontWeight: 700, fontSize: '0.875rem' }}
+                                                style={{ borderRadius: '1rem' }}
                                             >
                                                 <Plus size={18} /> Добавить вариант
                                             </button>

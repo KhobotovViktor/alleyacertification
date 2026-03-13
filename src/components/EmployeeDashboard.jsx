@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen } from 'lucide-react';
+import { Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen, Users } from 'lucide-react';
 import { 
     getTests, 
     getCurrentUser, 
@@ -9,6 +9,7 @@ import {
     getArticles, 
     getArticleProgress 
 } from '../services/db';
+import { DashboardSkeleton } from './SkeletonLoader';
 
 export default function EmployeeDashboard() {
     const [tests, setTests] = useState([]);
@@ -68,7 +69,7 @@ export default function EmployeeDashboard() {
     };
 
     if (isLoading) {
-        return <div className="flex items-center justify-center p-20 text-accent-primary animate-pulse font-bold">Секунду, работаем с облаком...</div>;
+        return <DashboardSkeleton />;
     }
 
     const formatDate = (dateStr) => {
@@ -83,89 +84,133 @@ export default function EmployeeDashboard() {
 
     return (
         <div className="flex-col gap-6">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <div>
-                    <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Мой Профиль</h2>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>Пройдите тесты и изучите обучающие материалы</p>
+            {/* Bento Header Section */}
+            <div className="bento-grid mb-8">
+                {/* Welcome Card */}
+                <div className="bento-card bento-card-large bg-gradient-to-br from-white to-slate-50">
+                    <div className="flex-col justify-center h-full">
+                        <div className="flex items-center gap-4 mb-2">
+                            <div>
+                                <h2 className="m-0 leading-tight">Привет, {user.name}!</h2>
+                                <p className="m-0 text-secondary opacity-70 mt-0.5">{user.role === 'admin' ? 'Администратор' : 'Сотрудник'}</p>
+                            </div>
+                        </div>
+                        <p className="m-0 text-sm text-secondary opacity-80">Готов к сегодняшним достижениям? Твой прогресс выглядит отлично.</p>
+                    </div>
+                </div>
+
+                {/* Stat: Tests Passed */}
+                <div className="bento-card">
+                    <div className="flex items-center gap-3 mb-2.5">
+                        <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                            <CheckCircle size={18} />
+                        </div>
+                        <span className="text-[13px] font-bold uppercase tracking-widest text-secondary opacity-70">Тесты сданы</span>
+                    </div>
+                    <div className="text-4xl font-black text-primary leading-none mb-1">{results.filter(r => r.passed).length}</div>
+                    <p className="text-[11px] text-secondary opacity-60 m-0 mt-1">Верных ответов выше порога</p>
+                </div>
+
+                {/* Stat: Average Score */}
+                <div className="bento-card">
+                    <div className="flex items-center gap-3 mb-2.5">
+                        <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                            <Clock size={18} />
+                        </div>
+                        <span className="text-[13px] font-bold uppercase tracking-widest text-secondary opacity-70">Средний балл</span>
+                    </div>
+                    <div className="text-4xl font-black text-primary leading-none mb-1">
+                        {results.length > 0 
+                            ? Math.round(results.reduce((acc, curr) => acc + (curr.score / curr.total), 0) / results.length * 100) 
+                            : 0}%
+                    </div>
+                    <p className="text-[11px] text-secondary opacity-60 m-0 mt-1">Отношение верных к общему числу</p>
                 </div>
             </div>
 
-            <div style={{ marginBottom: '1.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ marginBottom: '1.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '0.5rem' }}>
                 <div style={{ display: 'inline-flex', gap: '0.25rem', padding: '0.375rem', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', whiteSpace: 'nowrap' }}>
                     {[
                         { key: 'tests', icon: <Play size={16} />, label: 'Тесты' },
                         { key: 'results', icon: <CheckCircle size={16} />, label: 'Результаты' },
-                        { key: 'articles', icon: <BookOpen size={16} />, label: 'Учебные материалы' },
-                        { key: 'trainingStats', icon: <Clock size={16} />, label: 'Статистика обучения' }
+                        { key: 'articles', icon: <BookOpen size={16} />, label: 'Материалы' },
+                        { key: 'trainingStats', icon: <Clock size={16} />, label: 'Статистика' }
                     ].map(tab => (
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                padding: '0.5rem 1.25rem', borderRadius: '0.75rem',
-                                border: 'none', fontSize: '0.8125rem', fontWeight: 600,
+                                padding: '0.5rem 1rem', borderRadius: '0.75rem',
+                                border: 'none',
                                 cursor: 'pointer', transition: 'all 0.2s',
                                 background: activeTab === tab.key ? 'white' : 'transparent',
                                 color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
                                 boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
                             }}
                         >
-                            {tab.icon} {tab.label}
+                            {tab.icon} <span className="mobile-text-sm">{tab.label}</span>
                         </button>
                     ))}
                 </div>
             </div>
 
             {activeTab === 'tests' && (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                <div className="bento-grid">
                     {tests.map((test, index) => {
                         const isBlocked = test.maxAttempts > 0 && test.attemptsCount >= test.maxAttempts;
                         const hasPassed = test.bestResult?.passed;
 
                         return (
-                            <div key={test.id} className={`card flex-col h-full relative overflow-hidden group animate-fade-in stagger-${(index % 5) + 1}`}>
-                                {hasPassed && (
-                                    <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none">
-                                        <div className="absolute transform rotate-45 bg-success text-white font-bold py-1 right-[-35px] top-[15px] w-[120px] text-center text-xs shadow-md">
-                                            СДАН
+                            <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`}>
+
+                                <div className="flex-col gap-1 mb-4 pr-6">
+                                    <h3 className="text-lg font-bold text-primary leading-tight">{test.title}</h3>
+                                </div>
+
+                                <div className="flex-col gap-2.5 mb-6">
+                                    <div className="flex items-center gap-2 text-sm text-secondary">
+                                        <div className="w-6 h-6 rounded bg-slate-50 flex items-center justify-center text-accent-primary">
+                                            <Clock size={14} />
                                         </div>
-                                    </div>
-                                )}
-
-                                <h3 className="text-lg font-bold text-primary mb-2 pr-10">{test.title}</h3>
-
-                                <div className="flex-col gap-2 mt-2 mb-6">
-                                    <div className="flex items-center gap-2 text-sm text-secondary">
-                                        <Clock size={16} className="text-accent-primary" />
-                                        <span>Время: {test.timeLimit / 60} мин</span>
+                                        <span>{test.timeLimit / 60} мин</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-secondary">
-                                        <CheckCircle size={16} className="text-success" />
-                                        <span>Проходной балл: {test.passingScore}</span>
+                                        <div className="w-6 h-6 rounded bg-slate-50 flex items-center justify-center text-success">
+                                            <CheckCircle size={14} />
+                                        </div>
+                                        <span className="mobile-text-sm">Порог: {test.passingScore} балла</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-secondary">
-                                        <AlertTriangle size={16} className={isBlocked && !hasPassed ? 'text-danger' : 'text-warning'} />
-                                        <span>Попыток: {test.attemptsCount} / {test.maxAttempts === 0 ? '∞' : test.maxAttempts}</span>
+                                        <div className={`w-6 h-6 rounded bg-slate-50 flex items-center justify-center ${isBlocked && !hasPassed ? 'text-danger' : 'text-warning'}`}>
+                                            <AlertTriangle size={14} />
+                                        </div>
+                                        <span className="mobile-text-sm">Попытки: {test.attemptsCount} / {test.maxAttempts === 0 ? '∞' : test.maxAttempts}</span>
                                     </div>
                                 </div>
 
-                                <div className="mt-auto">
+                                <div className="mt-auto flex-col gap-2">
+                                    {hasPassed && (
+                                        <div className="btn w-full btn-secondary text-sm bg-success/5 text-success border-success/10 flex justify-center items-center gap-2 pointer-events-none" style={{ padding: '0.875rem' }}>
+                                            <CheckCircle size={18} /> <span className="font-bold">Тест успешно сдан</span>
+                                        </div>
+                                    )}
                                     {!test.articleCompleted ? (
-                                        <Link to={`/article/${test.requiredArticleId}`} className="btn w-full btn-secondary warning overflow-hidden text-ellipsis whitespace-nowrap text-xs flex justify-center items-center gap-1 bg-warning/10 text-warning border-warning/30 hover:bg-warning/20">
-                                            <AlertTriangle size={14} /> Требуется изучение: {test.requiredArticle?.title || 'Материал'}
+                                        <Link to={`/article/${test.requiredArticleId}`} className="btn w-full btn-secondary warning overflow-hidden text-ellipsis whitespace-nowrap text-xs flex justify-center items-center gap-1 bg-warning/10 text-warning border-warning/30 hover:bg-warning/20" style={{ padding: '0.875rem' }}>
+                                            <AlertTriangle size={14} /> <span className="truncate">Изучить: {test.requiredArticle?.title || 'Материал'}</span>
                                         </Link>
                                     ) : isBlocked ? (
-                                        <button className="btn w-full btn-secondary" disabled>
-                                            Лимит попыток исчерпан
+                                        <button className="btn w-full btn-secondary text-sm opacity-50" disabled style={{ padding: '0.875rem' }}>
+                                            Попытки исчерпаны
                                         </button>
                                     ) : (
                                         <button
                                             onClick={() => { window.location.href = `/test/${test.id}`; }}
                                             className="btn btn-primary w-full flex justify-center gap-2 relative overflow-hidden group"
+                                            style={{ padding: '0.875rem' }}
                                         >
                                             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
-                                            <Play size={18} className="relative z-10" /> <span className="relative z-10">{hasPassed ? 'Пройти снова' : 'Начать тест'}</span>
+                                            <Play size={18} className="relative z-10" /> <span className="relative z-10 font-bold">{hasPassed ? 'Пройти снова' : 'Начать тест'}</span>
                                         </button>
                                     )}
                                 </div>
@@ -173,103 +218,105 @@ export default function EmployeeDashboard() {
                         );
                     })}
                     {tests.length === 0 && (
-                        <div className="col-span-full p-8 text-center text-secondary border border-dashed border-[var(--border-color)] rounded-xl">
-                            В данный момент нет доступных тестов для прохождения.
+                        <div className="bento-card col-span-full p-8 text-center text-secondary border-dashed">
+                            Нет доступных тестов.
                         </div>
                     )}
                 </div>
             )}
 
             {activeTab === 'articles' && (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.5rem' }}>
+                <div className="bento-grid">
                     {articles.map((article, index) => (
-                        <div key={article.id} className={`card flex-col h-full relative overflow-hidden group border-l-4 border-l-accent-primary animate-fade-in stagger-${(index % 5) + 1}`}>
-                            <h3 className="text-lg font-bold text-primary mb-2 pr-2">{article.title}</h3>
-                            <div className="flex items-center gap-2 text-sm text-secondary mt-2 mb-6">
-                                <FileText size={16} />
-                                <span>Материал доступен для чтения</span>
+                        <div key={article.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1} border-l-4 border-l-accent-primary`}>
+                            <h3 className="text-lg font-bold text-primary mb-4 leading-tight">{article.title}</h3>
+                            <div className="flex items-center gap-2 text-secondary px-3 py-1 bg-slate-50 w-fit rounded-lg text-[10px] font-bold uppercase tracking-wider opacity-60 mb-6">
+                                <FileText size={12} />
+                                <span>Материал</span>
                             </div>
                             <div className="mt-auto">
-                                <Link to={`/article/${article.id}`} className="btn btn-secondary w-full flex justify-center gap-2">
+                                <Link to={`/article/${article.id}`} className="btn btn-secondary w-full flex justify-center gap-2 font-bold py-3">
                                     <BookOpen size={18} /> Читать
                                 </Link>
                             </div>
                         </div>
                     ))}
                     {articles.length === 0 && (
-                        <div className="col-span-full p-6 text-center text-secondary border border-dashed border-[var(--border-color)] rounded-xl">
-                            Нет доступных обучающих материалов.
+                        <div className="bento-card col-span-full p-8 text-center text-secondary border-dashed">
+                            Нет обучающих материалов.
                         </div>
                     )}
                 </div>
             )}
 
             {activeTab === 'results' && (
-                <div className="card animate-fade-in overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-[var(--border-color)]">
-                                <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Тест</th>
-                                <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Баллы</th>
-                                <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Дата</th>
-                                <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wider text-secondary">Статус</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {results.map((res, idx) => {
-                                const testName = tests.find(t => t.id === res.testId)?.title || 'Тест удален';
-                                return (
-                                    <tr key={res.id} className="border-t border-[var(--border-color)] hover:bg-accent-primary/5 transition-colors">
-                                        <td className="py-4 px-4 font-medium text-center">{testName}</td>
-                                        <td className="py-4 px-4 text-center">
-                                            <span className="font-bold">{res.score}</span> / {res.total}
-                                            <span className="ml-2 text-xs text-secondary">({Math.round((res.score / res.total) * 100)}%)</span>
-                                        </td>
-                                        <td className="py-4 px-4 text-sm text-secondary text-center">{formatDate(res.date)}</td>
-                                        <td className="py-4 px-4 text-center">
-                                            <span className={`badge ${res.passed ? 'badge-success' : 'badge-danger'}`} style={{ display: 'inline-flex' }}>
-                                                {res.passed ? 'Сдано' : 'Не сдано'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                            {results.length === 0 && (
-                                <tr>
-                                    <td colSpan="4" className="py-12 text-center text-secondary">Вы еще не проходили тесты.</td>
+                <div className="animate-fade-in">
+                    <div className="scroll-hint">Листайте таблицу вправо →</div>
+                    <div className="card table-container p-0 overflow-hidden">
+                        <table className="w-full min-w-[500px]">
+                            <thead>
+                                <tr className="border-b border-[var(--border-color)] bg-white/30">
+                                    <th className="text-center py-4 px-3 font-black uppercase tracking-[0.1em] text-secondary">Тест</th>
+                                    <th className="text-center py-4 px-3 font-black uppercase tracking-[0.1em] text-secondary">Баллы</th>
+                                    <th className="text-center py-4 px-3 font-black uppercase tracking-[0.1em] text-secondary">Дата</th>
+                                    <th className="text-center py-4 px-3 font-black uppercase tracking-[0.1em] text-secondary">Статус</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--border-color)]">
+                                {results.map((res, idx) => {
+                                    const testName = tests.find(t => t.id === res.testId)?.title || 'Тест удален';
+                                    return (
+                                        <tr key={res.id} className="hover:bg-accent-primary/5 transition-colors">
+                                            <td className="py-4 px-3 font-medium text-center text-sm">{testName}</td>
+                                            <td className="py-4 px-3 text-center">
+                                                <span className="font-bold">{res.score}</span><span className="opacity-40"> / {res.total}</span>
+                                            </td>
+                                            <td className="py-4 px-3 text-[11px] text-secondary text-center">{formatDate(res.date)}</td>
+                                            <td className="py-4 px-3 text-center">
+                                                <span className={`badge ${res.passed ? 'badge-success' : 'badge-danger'}`} style={{ display: 'inline-flex' }}>
+                                                    {res.passed ? 'Сдано' : 'Не сдано'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {results.length === 0 && (
+                                    <tr>
+                                        <td colSpan="4" className="py-12 text-center text-secondary font-medium italic">Вы еще не проходили тесты.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
             {activeTab === 'trainingStats' && (
-                <div className="card animate-fade-in">
-                    <div className="flex-col gap-4">
+                <div className="card animate-fade-in" style={{ padding: '1rem' }}>
+                    <div className="flex-col gap-2">
                         {articles.map(article => {
                             const isCompleted = tests.find(t => t.requiredArticleId === article.id)?.articleCompleted;
                             return (
-                                <div key={article.id} className="flex items-center justify-between p-4 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)]">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCompleted ? 'bg-success/10 text-success' : 'bg-secondary/10 text-secondary'}`}>
-                                            {isCompleted ? <CheckCircle size={20} /> : <BookOpen size={20} />}
+                                <div key={article.id} className="flex items-center justify-between p-3 bg-white/50 rounded-xl border border-[var(--border-color)] gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isCompleted ? 'bg-success/10 text-success' : 'bg-slate-100 text-slate-400'}`}>
+                                            {isCompleted ? <CheckCircle size={16} /> : <BookOpen size={16} />}
                                         </div>
-                                        <div>
-                                            <div className="font-bold">{article.title}</div>
-                                            <div className="text-xs text-secondary uppercase tracking-tighter mt-0.5">
-                                                {isCompleted ? 'Материал изучен' : 'В процессе изучения'}
+                                        <div className="min-w-0">
+                                            <div className="font-bold text-sm truncate">{article.title}</div>
+                                            <div className="text-[10px] font-bold text-secondary uppercase opacity-50">
+                                                {isCompleted ? 'Изучен' : 'В процессе'}
                                             </div>
                                         </div>
                                     </div>
-                                    <Link to={`/article/${article.id}`} className="btn btn-secondary py-1.5 px-3 text-xs">
+                                    <Link to={`/article/${article.id}`} className="btn btn-secondary py-1 px-3 text-xs shrink-0 font-bold">
                                         Открыть
                                     </Link>
                                 </div>
                             );
                         })}
                         {articles.length === 0 && (
-                            <div className="py-8 text-center text-secondary">Нет доступных материалов для отслеживания.</div>
+                            <div className="py-8 text-center text-secondary font-medium">Нет данных.</div>
                         )}
                     </div>
                 </div>

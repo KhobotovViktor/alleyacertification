@@ -4,6 +4,7 @@ import { Save, ArrowLeft, FileText, Users, Clock, Video } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { getArticleById, saveArticle, getAllEmployees } from '../services/db';
+import { EditorSkeleton } from './SkeletonLoader';
 
 export default function ArticleEditor() {
     const { id } = useParams();
@@ -66,15 +67,12 @@ export default function ArticleEditor() {
         }
     };
 
-    const toggleUserAccess = (userId) => {
-        setArticle(prev => {
-            const isAllowed = prev.allowedUsers.includes(userId);
-            if (isAllowed) {
-                return { ...prev, allowedUsers: prev.allowedUsers.filter(id => id !== userId) };
-            } else {
-                return { ...prev, allowedUsers: [...prev.allowedUsers, userId] };
-            }
-        });
+    const toggleUserAccess = (employeeId) => {
+        const allowed = [...article.allowedUsers];
+        const idx = allowed.indexOf(employeeId);
+        if (idx === -1) allowed.push(employeeId);
+        else allowed.splice(idx, 1);
+        setArticle({ ...article, allowedUsers: allowed });
     };
 
     if (isLoading) {
@@ -84,28 +82,28 @@ export default function ArticleEditor() {
     return (
         <div className="max-w-4xl mx-auto flex-col gap-6">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button onClick={() => navigate('/admin')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600, transition: 'all 0.2s' }}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: '1 1 300px' }}>
+                    <button onClick={() => navigate('/admin')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s', flexShrink: 0 }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                     >
-                        <ArrowLeft size={16} />
+                        <ArrowLeft size={18} />
                     </button>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>{isNew ? 'Создание учебного материала' : 'Редактирование материала'}</h2>
-                        <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Напишите статью, инструкцию или регламент</p>
+                        <h2 style={{ margin: 0 }}>{isNew ? 'Создание материала' : 'Редактирование'}</h2>
+                        <p className="mobile-hide" style={{ margin: '0.125rem 0 0 0' }}>Статьи, инструкции и регламенты</p>
                     </div>
                 </div>
-                <button onClick={handleSave} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', borderRadius: '0.75rem', fontSize: '0.875rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                    <Save size={16} /> Сохранить
+                <button onClick={handleSave} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', borderRadius: '0.75rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', flexGrow: 1, justifyContent: 'center' }}>
+                    <Save size={18} /> Сохранить
                 </button>
             </div>
 
             {/* Editor Tabs */}
-            <div style={{ marginBottom: '0.5rem' }}>
-                <div style={{ display: 'inline-flex', gap: '0.25rem', padding: '0.375rem', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div style={{ marginBottom: '0.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ display: 'inline-flex', gap: '0.25rem', padding: '0.375rem', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', whiteSpace: 'nowrap' }}>
                     {[
-                        { key: 'content', icon: <FileText size={16} />, label: 'Содержимое' },
+                        { key: 'content', icon: <FileText size={16} />, label: 'Текст' },
                         { key: 'access', icon: <Users size={16} />, label: 'Доступ' }
                     ].map(tab => (
                         <button
@@ -113,15 +111,15 @@ export default function ArticleEditor() {
                             onClick={() => setActiveTab(tab.key)}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                padding: '0.5rem 1.25rem', borderRadius: '0.75rem',
-                                border: 'none', fontSize: '0.8125rem', fontWeight: 600,
+                                padding: '0.5rem 1rem', borderRadius: '0.75rem',
+                                border: 'none',
                                 cursor: 'pointer', transition: 'all 0.2s',
                                 background: activeTab === tab.key ? 'white' : 'transparent',
                                 color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
                                 boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
                             }}
                         >
-                            {tab.icon} {tab.label}
+                            {tab.icon} <span className="mobile-text-sm">{tab.label}</span>
                         </button>
                     ))}
                 </div>
@@ -202,23 +200,23 @@ export default function ArticleEditor() {
                         Если ни один сотрудник не выбран, материал будет доступен <strong>всем</strong>.
                     </p>
 
-                    <div className="grid md:grid-cols-2 gap-3">
+                    <div className="grid md:grid-cols-2 gap-2">
                         {employees.map(emp => {
                             const isAllowed = article.allowedUsers.includes(emp.id);
                             return (
                                 <label
                                     key={emp.id}
-                                    className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all ${isAllowed ? 'border-accent-primary bg-accent-primary/5' : 'border-[var(--border-color)] hover:border-accent-primary/30'}`}
+                                    className={`flex items-center p-3 rounded-xl border cursor-pointer transition-all ${isAllowed ? 'border-accent-primary bg-accent-primary/5' : 'border-[var(--border-color)] hover:border-accent-primary/30'}`}
                                 >
                                     <input
                                         type="checkbox"
-                                        className="w-5 h-5 accent-accent-primary mr-4"
+                                        className="w-5 h-5 accent-accent-primary mr-3 flex-shrink-0"
                                         checked={isAllowed}
                                         onChange={() => toggleUserAccess(emp.id)}
                                     />
                                     <div>
-                                        <div className={`font-semibold ${isAllowed ? 'text-primary' : 'text-secondary'}`}>{emp.name}</div>
-                                        <div className="text-xs opacity-70">Сотрудник</div>
+                                        <div className={`font-semibold text-sm ${isAllowed ? 'text-primary' : 'text-slate-600'}`}>{emp.name}</div>
+                                        <div className="text-[10px] opacity-60 uppercase tracking-wider font-bold">Сотрудник</div>
                                     </div>
                                 </label>
                             );

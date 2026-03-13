@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle, Lock } from 'lucide-react';
 import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount } from '../services/db';
+import { RunnerSkeleton } from './SkeletonLoader';
 
 export default function TestRunner() {
     const { id } = useParams();
@@ -162,7 +163,9 @@ export default function TestRunner() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    if (isLoading) return <div className="p-20 text-center text-accent-primary animate-pulse font-bold text-xl">Секунду, работаем с облаком...</div>;
+    if (isLoading) {
+        return <RunnerSkeleton />;
+    }
     if (!test) return <div className="p-8 text-center text-danger">Тест не найден.</div>;
 
     if (isFinished) {
@@ -248,40 +251,40 @@ export default function TestRunner() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto flex-col gap-6 animate-fade-in">
+        <div className="max-w-3xl mx-auto flex-col gap-4 animate-fade-in p-2 md:p-0">
             {/* Header info */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', padding: '1rem 1.5rem', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', position: 'sticky', top: '4.5rem', zIndex: 40, marginBottom: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', padding: '1rem', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', position: 'sticky', top: '4.5rem', zIndex: 40, marginBottom: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
                     <button
                         onClick={() => navigate('/employee')}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 600, transition: 'all 0.2s' }}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '2.5rem', height: '2.5rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s', flexShrink: 0 }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                         title="Вернуться к списку тестов"
                     >
-                        <ArrowLeft size={16} /> Назад
+                        <ArrowLeft size={18} />
                     </button>
-                    <div>
-                        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>{test.title}</h3>
-                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 500, marginTop: '0.125rem' }}>
-                            Вопрос {currentQuestionIndex + 1} из {activeQuestions.length}
+                    <div style={{ minWidth: 0 }}>
+                        <h3 style={{ fontWeight: 700, margin: 0, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{test.title}</h3>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500, marginTop: '0.125rem' }}>
+                            {currentQuestionIndex + 1} / {activeQuestions.length}
                         </div>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.25rem', borderRadius: '0.75rem', fontFamily: 'monospace', fontSize: '1.125rem', fontWeight: 700, border: '1px solid', borderColor: timeLeft < 60 ? 'rgba(239,68,68,0.3)' : '#e2e8f0', background: timeLeft < 60 ? 'rgba(239,68,68,0.08)' : 'white', color: timeLeft < 60 ? '#ef4444' : 'var(--text-primary)' }}>
-                    <Clock size={20} style={{ color: timeLeft < 60 ? '#ef4444' : 'var(--accent-primary)' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.75rem', fontFamily: 'monospace', fontSize: '1rem', fontWeight: 700, border: '1px solid', borderColor: timeLeft < 60 ? 'rgba(239,68,68,0.3)' : '#e2e8f0', background: timeLeft < 60 ? 'rgba(239,68,68,0.08)' : 'white', color: timeLeft < 60 ? '#ef4444' : 'var(--text-primary)' }}>
+                    <Clock size={18} style={{ color: timeLeft < 60 ? '#ef4444' : 'var(--accent-primary)' }} />
                     {formatTime(timeLeft)}
                 </div>
             </div>
 
-            <div className="progress-bg mt-0 rounded-none h-2">
+            <div className="progress-bg mt-0 rounded-none h-1.5">
                 <div className="progress-fill shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${progressPercent}%` }}></div>
             </div>
 
             {/* Question Card */}
-            <div className="card min-h-[400px] flex-col relative pb-28 shadow-xl border-t-0 rounded-t-none">
-                <h2 className="text-2xl font-bold mb-8 leading-relaxed text-primary">{currentQuestion.text}</h2>
+            <div className="card min-h-[400px] flex-col relative pb-32 shadow-xl border-t-0 rounded-t-none" style={{ padding: 'clamp(1rem, 5vw, 2.5rem)' }}>
+                <h2 style={{ marginBottom: '2rem', lineHeight: 1.4, color: 'var(--text-primary)' }}>{current_question.text}</h2>
 
                 <div className="flex-col gap-3">
                     {currentQuestion.type === 'text' ? (
@@ -291,18 +294,19 @@ export default function TestRunner() {
                             value={(answers[currentQuestion.id] || [])[0] || ''}
                             onChange={(e) => handleAnswerChange(currentQuestion.id, 'text', e.target.value)}
                             rows={4}
+                            style={{ width: '100%', padding: '1rem', borderRadius: '1rem' }}
                         />
                     ) : (
                         currentQuestion.options.map((opt, idx) => {
                             const isChecked = (answers[currentQuestion.id] || []).includes(opt);
                             const isCorrectOpt = currentQuestion.correctAnswers.includes(opt);
-                            let bgClass = isChecked ? 'border-accent-primary bg-accent-primary/5 shadow-[0_0_15px_rgba(16,185,129,0.15)] scale-[1.01]' : 'border-[var(--border-color)] bg-white hover:border-accent-primary/50 hover:bg-[var(--bg-secondary)] hover:shadow-md hover:-translate-y-0.5';
+                            let bgClass = isChecked ? 'border-accent-primary bg-accent-primary/5 shadow-[0_4px_12px_rgba(16,185,129,0.1)]' : 'border-[var(--border-color)] bg-white';
 
                             if (showQuestionFeedback) {
                                 if (isCorrectOpt) {
-                                    bgClass = 'border-success bg-success/10 shadow-[0_0_0_2px_var(--success)] scale-[1.01]';
+                                    bgClass = 'border-success bg-success/10 shadow-[0_0_0_2px_var(--success)]';
                                 } else if (isChecked && !isCorrectOpt) {
-                                    bgClass = 'border-danger bg-danger/10 scale-[1.01]';
+                                    bgClass = 'border-danger bg-danger/10';
                                 } else {
                                     bgClass = 'border-[var(--border-color)] opacity-50 bg-gray-50';
                                 }
@@ -311,7 +315,8 @@ export default function TestRunner() {
                             return (
                                 <label
                                     key={idx}
-                                    className={`flex items-center gap-4 p-5 rounded-2xl border cursor-pointer transition-all duration-300 ${bgClass}`}
+                                    className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${bgClass}`}
+                                    style={{ margin: 0 }}
                                 >
                                     <input
                                         type={currentQuestion.type === 'single' ? 'radio' : 'checkbox'}
@@ -320,9 +325,8 @@ export default function TestRunner() {
                                         checked={isChecked}
                                         onChange={(e) => handleAnswerChange(currentQuestion.id, currentQuestion.type, opt, e.target.checked)}
                                         className="w-5 h-5 accent-accent-primary flex-shrink-0"
-                                        style={{ minWidth: '1.25rem' }}
                                     />
-                                    <span className={`${isChecked ? 'text-primary font-medium' : 'text-secondary'}`}>{opt}</span>
+                                    <span style={{ lineHeight: 1.4 }} className={`${isChecked ? 'text-primary font-medium' : 'text-secondary'}`}>{opt}</span>
                                 </label>
                             );
                         })
@@ -330,31 +334,35 @@ export default function TestRunner() {
                 </div>
 
                 {/* Navigation Controls */}
-                <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-
-                    {showQuestionFeedback && (
-                        <div className={`flex items-center gap-2 animate-fade-in ${isCurrentCorrect ? 'text-success' : 'text-danger'}`}>
-                            {isCurrentCorrect ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-                            <div className="font-semibold">{isCurrentCorrect ? 'Правильный ответ!' : 'Неправильный ответ'}</div>
-                        </div>
-                    )}
-
-                    <button
-                        className={`btn ${showQuestionFeedback ? 'btn-primary' : (isLast && (!test.showFeedback || showQuestionFeedback) ? 'btn-success' : 'btn-primary')}`}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.5rem', borderRadius: '0.75rem', fontSize: '0.9375rem', fontWeight: 600 }}
-                        onClick={handleNext}
-                        disabled={test.showFeedback && !hasAnsweredCurrent}
-                    >
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '1.5rem', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '1rem', borderBottomLeftRadius: '2rem', borderBottomRightRadius: '2rem' }}>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                         {showQuestionFeedback ? (
-                            <>Дальше <ArrowRight size={18} /></>
-                        ) : test.showFeedback ? (
-                            <>Проверить ответ <CheckCircle size={18} /></>
-                        ) : !isLast ? (
-                            <>Дальше <ArrowRight size={18} /></>
+                            <div className={`flex items-center gap-2 animate-fade-in ${isCurrentCorrect ? 'text-success' : 'text-danger'}`}>
+                                {isCurrentCorrect ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                                <div className="font-bold text-sm">{isCurrentCorrect ? 'Правильно!' : 'Неверно'}</div>
+                            </div>
                         ) : (
-                            <><CheckCircle size={18} /> Завершить тест</>
+                            <div style={{ flex: 1 }}></div>
                         )}
-                    </button>
+
+                        <button
+                            className={`btn ${showQuestionFeedback ? 'btn-primary' : (isLast && (!test.showFeedback || showQuestionFeedback) ? 'btn-success' : 'btn-primary')}`}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '0.75rem', minWidth: '140px' }}
+                            onClick={handleNext}
+                            disabled={test.showFeedback && !hasAnsweredCurrent}
+                        >
+                            {showQuestionFeedback ? (
+                                <>Далее <ArrowRight size={18} /></>
+                            ) : test.showFeedback ? (
+                                <>Проверить <CheckCircle size={18} /></>
+                            ) : !isLast ? (
+                                <>Далее <ArrowRight size={18} /></>
+                            ) : (
+                                <><CheckCircle size={18} /> Готово</>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

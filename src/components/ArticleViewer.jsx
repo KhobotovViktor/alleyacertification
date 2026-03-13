@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Clock, CheckCircle } from 'lucide-react';
 import { getArticleById, getCurrentUser, saveArticleProgress } from '../services/db';
+import { RunnerSkeleton } from './SkeletonLoader';
 
 // Helper to convert YouTube standard links to embed links
 const getEmbedUrl = (url) => {
@@ -86,7 +87,9 @@ export default function ArticleViewer() {
         }
     }, [timeLeft, article]);
 
-    if (isLoading) return <div className="p-20 text-center text-accent-primary animate-pulse font-bold">Загрузка материала из облака...</div>;
+    if (isLoading) {
+        return <RunnerSkeleton />;
+    }
     if (!article) return <div className="p-8 text-center text-secondary">Материал не найден.</div>;
 
     const goBack = () => {
@@ -120,7 +123,7 @@ export default function ArticleViewer() {
                         <ArrowLeft size={18} />
                     </button>
                     <div>
-                        <h3 className="text-xl font-bold mb-1 flex items-center gap-2 text-primary">
+                        <h3 className="mb-1 flex items-center gap-2 text-primary">
                             <BookOpen size={20} className="text-accent-primary" />
                             {article.title}
                         </h3>
@@ -178,7 +181,7 @@ export default function ArticleViewer() {
                         </button>
                     ) : (
                         <button
-                            className={`btn ${canFinish ? 'btn-primary' : 'btn-secondary opacity-50 cursor-not-allowed'} px-12 py-3 text-lg transition-all shadow-md`}
+                            className={`btn ${canFinish ? 'btn-primary' : 'btn-secondary opacity-50 cursor-not-allowed'} px-12 py-3 transition-all shadow-md`}
                             onClick={handleFinish}
                             disabled={!canFinish}
                         >
@@ -194,11 +197,11 @@ export default function ArticleViewer() {
 
             {/* Quick styles to handle Quill's default HTML output nicely */}
             <style>{`
-                .quill-content { font-size: 1.125rem; line-height: 1.8; color: #334155; }
+                .quill-content { font-size: var(--font-size-base); line-height: 1.8; color: #334155; }
                 .quill-content p { margin-bottom: 1.5em; }
-                .quill-content h1 { font-size: 2.5em; margin-bottom: 0.8em; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
-                .quill-content h2 { font-size: 2em; margin-bottom: 0.8em; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
-                .quill-content h3 { font-size: 1.5em; margin-bottom: 0.8em; font-weight: 600; color: #1e293b; }
+                .quill-content h1 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+                .quill-content h2 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
+                .quill-content h3 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 600; color: #1e293b; }
                 .quill-content ul { list-style-type: disc; padding-left: 2em; margin-bottom: 1.5em; }
                 .quill-content ol { list-style-type: decimal; padding-left: 2em; margin-bottom: 1.5em; }
                 .quill-content a { color: var(--accent-primary); text-decoration: none; font-weight: 500; border-bottom: 1px solid transparent; transition: border-color 0.2s; }

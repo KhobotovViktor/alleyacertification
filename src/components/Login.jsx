@@ -64,30 +64,30 @@ export default function Login() {
             <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vh] bg-[var(--accent-primary)] mix-blend-multiply opacity-[0.05] rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
             <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vh] bg-[#3b82f6] mix-blend-multiply opacity-[0.05] rounded-full blur-[120px] pointer-events-none animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
 
-            <div style={{ width: '100%', maxWidth: '80rem', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: '3rem 1.5rem', gap: '2rem' }}>
+            <div style={{ width: '100%', maxWidth: '80rem', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: '2rem 1rem', gap: '1.5rem' }}>
 
                 {/* Top: Logo and Branding */}
-                <div className="animate-fade-in stagger-1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem' }}>
-                    <img src="/logo.png" alt="Аллея Мебели" style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '1rem' }} />
-                    <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.3, letterSpacing: '-0.02em', margin: 0 }}>
+                <div className="animate-fade-in stagger-1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.75rem' }}>
+                    <img src="/logo.png" alt="Аллея Мебели" style={{ width: 'clamp(60px, 15vw, 80px)', height: 'clamp(60px, 15vw, 80px)', objectFit: 'contain', borderRadius: '1rem' }} />
+                    <h1 className="text-center">
                         Тестирование сотрудников<br />«Аллея Мебели»
                     </h1>
                 </div>
 
                 {/* Right Side: Login Panel */}
-                <div className="animate-fade-in stagger-2" style={{ width: '100%', maxWidth: '28rem' }}>
-                    <div className="glass-panel" style={{ width: '100%', padding: '2rem 2.5rem', borderRadius: '2rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 20px 50px rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(20px)', position: 'relative', overflow: 'visible' }}>
+                <div className="animate-fade-in stagger-2" style={{ width: '100%', maxWidth: '26rem' }}>
+                    <div className="glass-panel" style={{ width: '100%', padding: 'clamp(1.5rem, 5vw, 2.5rem)', borderRadius: '2rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 20px 50px rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(20px)', position: 'relative', overflow: 'visible' }}>
 
                         {/* Decorative subtle top glow inside the card */}
                         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-[var(--accent-primary)] to-transparent opacity-30"></div>
 
 
                         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.25rem', letterSpacing: '-0.02em' }}>Вход в систему</h2>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', margin: 0 }}>Выберите свой профиль для продолжения</p>
+                            <h2 className="text-center">Вход в систему</h2>
+                            <p className="text-center">Выберите свой профиль для продолжения</p>
                         </div>
 
-                        <div style={{ marginBottom: '1rem', position: 'relative', zIndex: 20 }}>
+                        <div style={{ marginBottom: '1rem', position: 'relative', zIndex: 50 }}>
                             <button
                                 type="button"
                                 onClick={() => setIsOpen(!isOpen)}
@@ -101,7 +101,7 @@ export default function Login() {
                             </button>
 
                             {isOpen && !isLoading && (
-                                <div className="custom-scrollbar animate-fade-in" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.5rem', maxHeight: '280px', overflowY: 'auto', background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', border: '1px solid #e2e8f0', borderRadius: '1rem', padding: '0.5rem', boxShadow: '0 12px 24px -6px rgba(0,0,0,0.08)', zIndex: 30 }}>
+                                <div className="custom-scrollbar animate-fade-in" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.5rem', maxHeight: 'max(150px, 30vh)', overflowY: 'auto', background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', border: '1px solid #e2e8f0', borderRadius: '1rem', padding: '0.5rem', boxShadow: '0 12px 24px -6px rgba(0,0,0,0.08)', zIndex: 100 }}>
                                     {users.map((user) => (
                                         <div
                                             key={user.id}
@@ -135,13 +135,13 @@ export default function Login() {
                                     </div>
                                 </div>
 
-                                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ height: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     {error ? (
                                         <div className="text-danger text-sm animate-fade-in flex items-center justify-center gap-1 font-medium text-center">
                                             <ShieldCheck size={14} /> {error}
                                         </div>
                                     ) : (
-                                        <div style={{ height: '1.25rem' }}></div>
+                                        <div style={{ height: '1rem' }}></div>
                                     )}
                                 </div>
 

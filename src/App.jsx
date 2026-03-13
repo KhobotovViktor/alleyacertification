@@ -22,6 +22,22 @@ const Layout = () => {
     setUser(getCurrentUser());
   }, [location.pathname]);
 
+  // Mouse Tracking Glow Effect
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      const el = e.target.closest('.bento-card, .btn');
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        el.style.setProperty('--mouse-x', `${x}px`);
+        el.style.setProperty('--mouse-y', `${y}px`);
+      }
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -32,20 +48,22 @@ const Layout = () => {
   return (
     <>
       <header className="app-header">
-        <div className="container app-header-content">
-          <Link to="/" className="logo flex items-center gap-2">
-            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '2rem', height: '2rem', borderRadius: '0.6rem', background: 'linear-gradient(135deg, var(--accent-primary) 0%, #10b981 100%)', color: 'white', boxShadow: '0 4px 10px rgba(16,185,129,0.3)' }}>
+        <div className="app-header-island">
+          <Link to="/" className="logo flex items-center gap-2" style={{ minWidth: 0 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '2rem', height: '2rem', borderRadius: '0.6rem', background: 'linear-gradient(135deg, var(--accent-primary) 0%, #10b981 100%)', color: 'white', boxShadow: '0 4px 10px rgba(16,185,129,0.3)', flexShrink: 0 }}>
               <ShieldCheck size={18} />
             </div>
-            <span className="font-semibold text-lg">Тестирование сотрудников &laquo;Аллея Мебели&raquo;</span>
+            <span className="font-semibold" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Тестирование сотрудников &laquo;Аллея Мебели&raquo;
+            </span>
           </Link>
-          <div className="user-controls">
+          <div className="user-controls" style={{ flexShrink: 0 }}>
             <div className="user-info">
               <div className="user-avatar">{user.name.charAt(0)}</div>
-              <span>{user.name}</span>
+              <span className="mobile-hide">{user.name}</span>
             </div>
-            <button className="btn btn-secondary flex items-center gap-2" onClick={handleLogout}>
-              <LogOut size={16} /><span className="logout-text">Выйти</span>
+            <button className="btn btn-secondary flex items-center gap-2" onClick={handleLogout} style={{ padding: '0.5rem' }}>
+              <LogOut size={16} /><span className="logout-text mobile-hide">Выйти</span>
             </button>
           </div>
         </div>
