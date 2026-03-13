@@ -68,7 +68,7 @@ const Layout = () => {
           </div>
         </div>
       </header>
-      <main className="container p-6 animate-fade-in">
+      <main className="container animate-fade-in py-6">
         <Outlet />
       </main>
     </>

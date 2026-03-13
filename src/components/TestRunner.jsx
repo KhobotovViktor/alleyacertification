@@ -284,7 +284,7 @@ export default function TestRunner() {
 
             {/* Question Card */}
             <div className="card min-h-[400px] flex-col relative pb-32 shadow-xl border-t-0 rounded-t-none" style={{ padding: 'clamp(1rem, 5vw, 2.5rem)' }}>
-                <h2 style={{ marginBottom: '2rem', lineHeight: 1.4, color: 'var(--text-primary)' }}>{current_question.text}</h2>
+                <h2 style={{ marginBottom: '2rem', lineHeight: 1.4, color: 'var(--text-primary)' }}>{currentQuestion.text}</h2>
 
                 <div className="flex-col gap-3">
                     {currentQuestion.type === 'text' ? (

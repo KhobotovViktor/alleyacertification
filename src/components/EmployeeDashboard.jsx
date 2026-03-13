@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen, Users } from 'lucide-react';
 import { 
     getTests, 
@@ -17,6 +17,7 @@ export default function EmployeeDashboard() {
     const [results, setResults] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const user = getCurrentUser();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (user) {
@@ -205,7 +206,7 @@ export default function EmployeeDashboard() {
                                         </button>
                                     ) : (
                                         <button
-                                            onClick={() => { window.location.href = `/test/${test.id}`; }}
+                                            onClick={() => { navigate(`/test/${test.id}`); }}
                                             className="btn btn-primary w-full flex justify-center gap-2 relative overflow-hidden group"
                                             style={{ padding: '0.875rem' }}
                                         >
