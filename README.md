@@ -1,16 +1,39 @@
-# React + Vite
+# Employee Testing & Training App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A premium, modern web application for employee assessment and educational material management.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Premium UI**: Advanced glassmorphism, bento grid layout, smooth animations, and mesh gradients.
+- **Role-based Access**: Separate dashboards for Employees and Administrators.
+- **Educational Materials**: Study articles with a built-in read-timer to ensure employees don't skip content.
+- **Smart Testing**: Shuffled questions, time limits, passing scores, and instant feedback.
+- **Admin Dashboard**: Create tests, manage articles, and track employee progress/results.
 
-## React Compiler
+## 🛠 Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: React (Vite)
+- **Styling**: Vanilla CSS (Modern CSS variables + glassmorphism)
+- **Backend/DB**: Supabase (PostgreSQL)
+- **Deployment**: Vercel ready
 
-## Expanding the ESLint configuration
+## 📦 Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. **Clone the repo**
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+3. **Configure Environment**:
+   - Rename `.env.example` to `.env`.
+   - Fill in your `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+4. **Database Setup**:
+   - Run the provided SQL scripts in your Supabase SQL Editor to initialize the schema and fix deletion policies.
+5. **Run Development Server**:
+   ```bash
+   npm run dev
+   ```
+
+## 🔒 Security
+
+Row-level Security (RLS) is enabled via Supabase to protect data and ensure only authorized roles can manage content.

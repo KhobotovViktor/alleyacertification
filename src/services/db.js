@@ -89,6 +89,7 @@ export const deleteTest = async (id) => {
         .from('tests')
         .delete()
         .eq('id', id);
+    
     if (error) throw error;
 };
 
@@ -138,6 +139,7 @@ export const deleteArticle = async (id) => {
         .from('articles')
         .delete()
         .eq('id', id);
+    
     if (error) throw error;
 };
 

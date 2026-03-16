@@ -50,9 +50,11 @@ const Layout = () => {
       <header className="app-header">
         <div className="app-header-island">
           <Link to="/" className="logo flex items-center gap-2" style={{ minWidth: 0 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '2rem', height: '2rem', borderRadius: '0.6rem', background: 'linear-gradient(135deg, var(--accent-primary) 0%, #10b981 100%)', color: 'white', boxShadow: '0 4px 10px rgba(16,185,129,0.3)', flexShrink: 0 }}>
-              <ShieldCheck size={18} />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              style={{ width: '2.5rem', height: 'auto', borderRadius: '0.4rem', flexShrink: 0 }} 
+            />
             <span className="font-semibold" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               Тестирование сотрудников &laquo;Аллея Мебели&raquo;
             </span>
@@ -68,7 +70,7 @@ const Layout = () => {
           </div>
         </div>
       </header>
-      <main className="container animate-fade-in py-6">
+      <main className="container py-6">
         <Outlet />
       </main>
     </>

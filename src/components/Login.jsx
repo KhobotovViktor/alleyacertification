@@ -59,12 +59,12 @@ export default function Login() {
     };
 
     return (
-        <div className="flex items-center justify-center w-full relative overflow-hidden min-h-screen bg-[var(--bg-primary)]">
+        <div className="flex items-center justify-center w-full relative min-h-screen bg-[var(--bg-primary)]">
             {/* Ambient Background glows for the whole page */}
             <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vh] bg-[var(--accent-primary)] mix-blend-multiply opacity-[0.05] rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
             <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vh] bg-[#3b82f6] mix-blend-multiply opacity-[0.05] rounded-full blur-[120px] pointer-events-none animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
 
-            <div style={{ width: '100%', maxWidth: '80rem', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: '2rem 1rem', gap: '1.5rem' }}>
+            <div style={{ width: '100%', maxWidth: '80rem', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10, padding: '2rem 1rem', gap: '1.5rem', overflow: 'visible' }}>
 
                 {/* Top: Logo and Branding */}
                 <div className="animate-fade-in stagger-1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.75rem' }}>
@@ -75,7 +75,7 @@ export default function Login() {
                 </div>
 
                 {/* Right Side: Login Panel */}
-                <div className="animate-fade-in stagger-2" style={{ width: '100%', maxWidth: '26rem' }}>
+                <div className="animate-fade-in stagger-2" style={{ width: '100%', maxWidth: '26rem', overflow: 'visible' }}>
                     <div className="glass-panel" style={{ width: '100%', padding: 'clamp(1.5rem, 5vw, 2.5rem)', borderRadius: '2rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 20px 50px rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(20px)', position: 'relative', overflow: 'visible' }}>
 
                         {/* Decorative subtle top glow inside the card */}
@@ -101,17 +101,15 @@ export default function Login() {
                             </button>
 
                             {isOpen && !isLoading && (
-                                <div className="custom-scrollbar animate-fade-in" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.5rem', maxHeight: 'max(150px, 30vh)', overflowY: 'auto', background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', border: '1px solid #e2e8f0', borderRadius: '1rem', padding: '0.5rem', boxShadow: '0 12px 24px -6px rgba(0,0,0,0.08)', zIndex: 100 }}>
+                                <div className="dropdown-list custom-scrollbar animate-fade-in">
                                     {users.map((user) => (
                                         <div
                                             key={user.id}
                                             onClick={() => handleSelectUser(user)}
-                                            style={{ padding: '0.625rem 1rem', borderRadius: '0.5rem', cursor: 'pointer', transition: 'background 0.15s', fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                            className="dropdown-item"
                                         >
                                             <span>{user.name}</span>
-                                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>
+                                            <span className="dropdown-item-role">
                                                 {user.role === 'admin' ? 'Администратор' : 'Сотрудник'}
                                             </span>
                                         </div>

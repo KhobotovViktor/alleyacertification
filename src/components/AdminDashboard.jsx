@@ -41,16 +41,26 @@ export default function AdminDashboard() {
     };
 
     const handleDeleteTest = async (id) => {
-        if (confirm('Удалить этот тест?')) {
-            await deleteTest(id);
-            await loadData();
+        if (confirm('Вы уверены, что хотите удалить этот тест?')) {
+            try {
+                await deleteTest(id);
+                await loadData();
+            } catch (err) {
+                console.error('Failed to delete test:', err);
+                alert(`Ошибка при удалении теста: ${err.message}`);
+            }
         }
     };
 
     const handleDeleteArticle = async (id) => {
-        if (confirm('Удалить этот материал?')) {
-            await deleteArticle(id);
-            await loadData();
+        if (confirm('Вы уверены, что хотите удалить этот материал?')) {
+            try {
+                await deleteArticle(id);
+                await loadData();
+            } catch (err) {
+                console.error('Failed to delete article:', err);
+                alert(`Ошибка при удалении: ${err.message}`);
+            }
         }
     };
 
@@ -202,13 +212,16 @@ export default function AdminDashboard() {
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444',
                                                     border: '1px solid rgba(239, 68, 68, 0.1)', cursor: 'pointer',
-                                                    transition: 'all 0.2s'
+                                                    transition: 'all 0.2s',
+                                                    position: 'relative',
+                                                    zIndex: 50,
+                                                    pointerEvents: 'auto'
                                                 }}
                                                 onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
                                                 onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; e.currentTarget.style.color = '#ef4444'; }}
                                                 title="Удалить тест"
                                             >
-                                                <Trash2 size={16} />
+                                                <Trash2 size={16} style={{ pointerEvents: 'none' }} />
                                             </button>
                                         </div>
                                     </div>
@@ -251,13 +264,16 @@ export default function AdminDashboard() {
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444',
                                                     border: '1px solid rgba(239, 68, 68, 0.1)', cursor: 'pointer',
-                                                    transition: 'all 0.2s'
+                                                    transition: 'all 0.2s',
+                                                    position: 'relative',
+                                                    zIndex: 50,
+                                                    pointerEvents: 'auto'
                                                 }}
                                                 onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
                                                 onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; e.currentTarget.style.color = '#ef4444'; }}
                                                 title="Удалить материал"
                                             >
-                                                <Trash2 size={16} />
+                                                <Trash2 size={16} style={{ pointerEvents: 'none' }} />
                                             </button>
                                         </div>
                                     </div>

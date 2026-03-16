@@ -111,11 +111,11 @@ export default function ArticleViewer() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto flex-col gap-6 animate-fade-in pb-12">
+        <div className="max-w-[1200px] mx-auto flex-col gap-6 pb-12">
             {/* Header info */}
             <div 
-                className="glass-panel py-7 flex items-center justify-between sticky top-[4.5rem] z-40 bg-[rgba(255,255,255,0.85)] backdrop-blur shadow-sm mb-6 border-b-0"
-                style={{ paddingLeft: '2.25rem', paddingRight: '2.25rem' }}
+                className="glass-panel py-7 flex items-center justify-between sticky z-50 bg-[rgba(255,255,255,0.85)] backdrop-blur shadow-sm mb-6 border-b-0 animate-fade-in"
+                style={{ paddingLeft: '2.25rem', paddingRight: '2.25rem', top: '6.8rem' }}
             >
                 <div className="flex items-center gap-4">
                     <button
@@ -181,7 +181,7 @@ export default function ArticleViewer() {
             </div>
 
             {/* Content Range */}
-            <div className="card flex-col gap-10 shadow-2xl p-5 md:p-8 lg:p-16 bg-white min-h-[60vh] border border-white mt-2 relative z-10 rounded-3xl">
+            <div className="card flex-col gap-10 shadow-2xl p-5 md:p-8 lg:p-16 bg-white min-h-[60vh] border border-white mt-4 relative z-10 rounded-3xl animate-fade-in">
 
                 {/* Video Embed */}
                 {article.videoUrl && getEmbedUrl(article.videoUrl) && (
@@ -199,7 +199,9 @@ export default function ArticleViewer() {
                 {/* Main Content (Rich Text) */}
                 <div
                     className="text-primary leading-relaxed quill-content mt-6 mb-8"
-                    dangerouslySetInnerHTML={{ __html: article.content }}
+                    dangerouslySetInnerHTML={{ 
+                        __html: article.content ? article.content.replace(/&nbsp;|\u00A0/g, ' ') : '' 
+                    }}
                 />
 
                 {/* Status Bar / Controls */}
@@ -226,14 +228,15 @@ export default function ArticleViewer() {
 
             {/* Quick styles to handle Quill's default HTML output nicely */}
             <style>{`
-                .quill-content { font-size: var(--font-size-base); line-height: 1.8; color: #334155; white-space: pre-wrap; word-break: normal; overflow-wrap: break-word; word-wrap: break-word; }
-                .quill-content p { margin-bottom: 1.5em; overflow-wrap: break-word; word-wrap: break-word; word-break: normal; }
-                .quill-content h1 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; overflow-wrap: break-word; word-break: normal; }
-                .quill-content h2 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; overflow-wrap: break-word; word-break: normal; }
-                .quill-content h3 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 600; color: #1e293b; overflow-wrap: break-word; word-break: normal; }
+                .quill-content { font-size: var(--font-size-base); line-height: 1.8; color: #334155; white-space: pre-wrap; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+                .quill-content * { word-break: normal !important; overflow-wrap: break-word !important; hyphens: none !important; }
+                .quill-content p { margin-bottom: 1.5em; }
+                .quill-content h1 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+                .quill-content h2 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
+                .quill-content h3 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 600; color: #1e293b; }
                 .quill-content ul { list-style-type: disc; padding-left: 2em; margin-bottom: 1.5em; }
                 .quill-content ol { list-style-type: decimal; padding-left: 2em; margin-bottom: 1.5em; }
-                .quill-content a { color: var(--accent-primary); text-decoration: none; font-weight: 500; border-bottom: 1px solid transparent; transition: border-color 0.2s; overflow-wrap: break-word; word-wrap: break-word; word-break: normal; }
+                .quill-content a { color: var(--accent-primary); text-decoration: none; font-weight: 500; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
                 .quill-content a:hover { border-bottom-color: var(--accent-primary); }
                 .quill-content blockquote { border-left: 4px solid var(--accent-primary); padding-left: 1.5em; color: #64748b; font-style: italic; background: #f8fafc; padding: 1em 1.5em; border-radius: 0 0.5rem 0.5rem 0; margin-bottom: 1.5em; }
                 .quill-content img { border-radius: 0.75rem; box-shadow: var(--shadow-md); margin-bottom: 1.5em; max-width: 100%; height: auto; display: block; }
