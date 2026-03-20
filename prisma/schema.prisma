@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Branch {
+  id              String            @id @default(cuid())
+  name            String
+  city            String?
+  yandexUrl       String?
+  dgisUrl         String?
+  googleUrl       String?
+  externalId      String?
+  templateId      String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  analyticsEvents AnalyticsEvent[]
+  template        QuestionTemplate? @relation(fields: [templateId], references: [id])
+  shortLinks      ShortLink[]
+  surveyResponses SurveyResponse[]
+  ratingHistory   RatingHistory[]
+}
+
+model QuestionTemplate {
+  id        String     @id @default(cuid())
+  name      String
+  minScore  Float      @default(4.0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  branches  Branch[]
+  questions Question[]
+}
+
+model Question {
+  id         String            @id @default(cuid())
+  text       String
+  order      Int               @default(0)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  templateId String?
+  template   QuestionTemplate? @relation(fields: [templateId], references: [id])
+}
+
+model SurveyResponse {
+  id           String   @id @default(cuid())
+  clientId     String
+  dealId       String
+  averageScore Float
+  answers      Json
+  comment      String?
+  createdAt    DateTime @default(now())
+  branchId        String?
+  responsibleName String?
+  branch          Branch?  @relation(fields: [branchId], references: [id])
+
+  @@index([clientId])
+}
+
+model Settings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model ShortLink {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  url       String
+  createdAt DateTime @default(now())
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+
+  @@index([code])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id        String        @id @default(cuid())
+  type      AnalyticsType
+  target    String?
+  branchId  String?
+  createdAt DateTime      @default(now())
+  branch    Branch?       @relation(fields: [branchId], references: [id])
+
+  @@index([type])
+  @@index([branchId])
+}
+
+model SentSurvey {
+  id              String   @id @default(cuid())
+  dealId          String   @unique
+  clientId        String?
+  responsibleName String?
+  createdAt       DateTime @default(now())
+}
+
+model RatingHistory {
+  id          String   @id @default(cuid())
+  branchId    String
+  service     String   // "yandex", "2gis", "google"
+  rating      Float
+  reviewCount Int
+  createdAt   DateTime @default(now())
+  branch      Branch   @relation(fields: [branchId], references: [id])
+
+  @@index([branchId, service])
+}
+
+enum AnalyticsType {
+  VIEW
+  CLICK
+}

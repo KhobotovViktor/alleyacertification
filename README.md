@@ -1,39 +1,34 @@
-# Employee Testing & Training App
+# Feedback Service
 
-A premium, modern web application for employee assessment and educational material management.
+Профессиональный сервис для сбора обратной связи от клиентов, интегрированный с Битрикс24 CRM.
 
-## 🚀 Features
+## Стек технологий
 
-- **Premium UI**: Advanced glassmorphism, bento grid layout, smooth animations, and mesh gradients.
-- **Role-based Access**: Separate dashboards for Employees and Administrators.
-- **Educational Materials**: Study articles with a built-in read-timer to ensure employees don't skip content.
-- **Smart Testing**: Shuffled questions, time limits, passing scores, and instant feedback.
-- **Admin Dashboard**: Create tests, manage articles, and track employee progress/results.
+- **Фреймворк**: Next.js (App Router)
+- **Стилизация**: Tailwind CSS + Framer Motion
+- **База данных**: PostgreSQL (Supabase) + Prisma ORM
+- **Деплой**: Vercel
 
-## 🛠 Tech Stack
+## Быстрый старт (Локально)
 
-- **Frontend**: React (Vite)
-- **Styling**: Vanilla CSS (Modern CSS variables + glassmorphism)
-- **Backend/DB**: Supabase (PostgreSQL)
-- **Deployment**: Vercel ready
+1. Установите зависимости: `npm install`
+2. Настройте `.env` (используйте строки подключения из Supabase)
+3. Синхронизируйте базу: `npx prisma db push`
+4. Запустите: `npm run dev`
 
-## 📦 Getting Started
+## Деплой на Vercel
 
-1. **Clone the repo**
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-3. **Configure Environment**:
-   - Rename `.env.example` to `.env`.
-   - Fill in your `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-4. **Database Setup**:
-   - Run the provided SQL scripts in your Supabase SQL Editor to initialize the schema and fix deletion policies.
-5. **Run Development Server**:
-   ```bash
-   npm run dev
-   ```
+1. Создайте новый репозиторий на GitHub и загрузите туда содержимое папки `feedback-service`.
+2. В Vercel нажмите **Add New Project** и выберите ваш репозиторий.
+3. В разделе **Environment Variables** добавьте следующие переменные:
+   - `DATABASE_URL`: Строка подключения Supabase (Transaction mode, порт 6543)
+   - `DIRECT_URL`: Строка подключения Supabase (Session mode, порт 5432)
+   - `NEXT_PUBLIC_APP_URL`: Публичный адрес вашего проекта (после деплоя)
+   - `JWT_SECRET`: Любая секретная строка для подписи ссылок
+4. Нажмите **Deploy**.
+5. После завершения деплоя, не забудьте обновить `NEXT_PUBLIC_APP_URL` значением реального адреса вашего сайта.
 
-## 🔒 Security
+## Интеграция с Битрикс24
 
-Row-level Security (RLS) is enabled via Supabase to protect data and ensure only authorized roles can manage content.
+1. В админ-панели сервиса (`/admin/integration`) укажите ваш **Входящий вебхук** из Битрикс24.
+2. В Битрикс24 настройте Робота на стадию "Завершено", используя URL вебхука нашего сервиса: `https://ваша-ссылка.vercel.app/api/b24/webhook?clientId={{ID}}&dealId={{DEAL_ID}}`
