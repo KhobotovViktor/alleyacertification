@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, FileText, Users, Clock, Video } from 'lucide-react';
+import { Save, ArrowLeft, FileText, Users, Clock, Video, Headphones } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { getArticleById, saveArticle, getAllEmployees } from '../services/db';
@@ -16,8 +16,9 @@ export default function ArticleEditor() {
         id: isNew ? '' : id,
         title: '',
         content: '',
-        videoUrl: '', // New field for video
-        minTimeMinutes: 5, // New field for timer
+        videoUrl: '',
+        audioUrl: '',
+        minTimeMinutes: 5,
         allowedUsers: [] // Empty means everyone
     });
     const [activeTab, setActiveTab] = useState('content');
@@ -168,6 +169,20 @@ export default function ArticleEditor() {
                         </div>
                     </div>
 
+                    <div className="form-group">
+                        <label className="form-label flex items-center gap-1"><Headphones size={16} /> Ссылка на аудиоурок (MP3 / Подкаст)</label>
+                        <input
+                            type="text"
+                            value={article.audioUrl || ''}
+                            onChange={(e) => setArticle({ ...article, audioUrl: e.target.value })}
+                            className="form-control"
+                            placeholder="https://example.com/audio.mp3"
+                        />
+                        <div className="text-xs text-secondary mt-1">
+                            Вставьте прямую ссылку на аудиофайл или онлайн-подкаст.
+                        </div>
+                    </div>
+
                     <div className="form-group flex-1 flex flex-col">
                         <label className="form-label">Текст материала <span className="text-danger">*</span></label>
                         <div className="bg-white rounded-xl border border-[var(--border-color)] overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -183,7 +198,7 @@ export default function ArticleEditor() {
                                         ['bold', 'italic', 'underline', 'strike'],
                                         [{ 'color': [] }, { 'background': [] }],
                                         [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                                        ['link', 'clean']
+                                        ['link', 'image', 'clean']
                                     ]
                                 }}
                             />

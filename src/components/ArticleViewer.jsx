@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Clock, CheckCircle } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Headphones } from 'lucide-react';
 import { getArticleById, getCurrentUser, saveArticleProgress } from '../services/db';
 import { RunnerSkeleton } from './SkeletonLoader';
 
@@ -193,6 +193,27 @@ export default function ArticleViewer() {
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
                         ></iframe>
+                    </div>
+                )}
+
+                {/* Audio Player Component */}
+                {article.audioUrl && (
+                    <div className="flex items-center justify-center w-full p-6 bg-gradient-to-r from-accent-primary/5 to-blue-500/5 rounded-2xl border border-accent-primary/10 shadow-inner mt-4">
+                        <div className="flex items-center gap-4 w-full max-w-2xl">
+                            <div className="bg-accent-primary text-white p-3 rounded-xl shadow-lg">
+                                <Headphones size={24} />
+                            </div>
+                            <div className="flex-grow">
+                                <div className="text-xs font-bold uppercase tracking-wider text-accent-primary mb-2">Аудиоурок / Подкаст</div>
+                                <audio 
+                                    controls 
+                                    className="w-full h-10" 
+                                    src={article.audioUrl}
+                                >
+                                    Ваш браузер не поддерживает воспроизведение аудио.
+                                </audio>
+                            </div>
+                        </div>
                     </div>
                 )}
 

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle, Lock } from 'lucide-react';
-import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount } from '../services/db';
+import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds } from '../services/db';
+import { sendTestResultToBitrix } from '../services/bitrix';
 import { RunnerSkeleton } from './SkeletonLoader';
 
 export default function TestRunner() {
@@ -48,6 +49,18 @@ export default function TestRunner() {
                     }
 
                     let questionsToUse = [...dbTest.questions];
+
+                    if (dbTest.noRepeatQuestions) {
+                        const answeredIds = await getAlreadyAnsweredQuestionIds(user.id, dbTest.id);
+                        questionsToUse = questionsToUse.filter(q => !answeredIds.includes(q.id));
+                    }
+
+                    if (questionsToUse.length === 0) {
+                        alert('Вы уже ответили на все доступные вопросы этого теста!');
+                        navigate('/employee');
+                        return;
+                    }
+
                     if (dbTest.shuffleQuestions) {
                         questionsToUse.sort(() => Math.random() - 0.5);
                     }
@@ -58,6 +71,17 @@ export default function TestRunner() {
                     setTest(dbTest);
                     setActiveQuestions(questionsToUse);
                     setTimeLeft(dbTest.timeLimit);
+
+                    // Create initial result record to track attempt
+                    const initialResult = await saveResult({
+                        userId: user.id,
+                        testId: dbTest.id,
+                        score: 0,
+                        total: questionsToUse.length,
+                        passed: false,
+                        answeredQuestionIds: []
+                    });
+                    setResultId(initialResult.id);
                 } catch (err) {
                     console.error('Failed to initialize test:', err);
                 } finally {
@@ -140,14 +164,24 @@ export default function TestRunner() {
         const { score, passed } = evaluateScore();
         try {
             await saveResult({
+                id: resultId,
                 userId: user.id,
                 testId: test.id,
                 score,
                 total: activeQuestions.length,
                 passed,
-                // answers, // Not storing full answers in this simple schema for now to avoid complexity
-                // timeSpent: test.timeLimit - timeLeft
+                answeredQuestionIds: activeQuestions.map(q => q.id)
             });
+
+            // Send notification to Bitrix24
+            await sendTestResultToBitrix({
+                userName: user.name,
+                testTitle: test.title,
+                score,
+                total: activeQuestions.length,
+                passed
+            });
+
             setIsFinished(true);
         } catch (err) {
             alert('Ошибка при сохранении результата');

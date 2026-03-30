@@ -66,7 +66,8 @@ export const saveTest = async (test) => {
         ...test,
         allowedUsers: test.allowedUsers || [],
         questions: test.questions || [],
-        requiredArticleId: test.requiredArticleId || null // Ensure empty string becomes null for FK
+        requiredArticleId: test.requiredArticleId || null, // Ensure empty string becomes null for FK
+        noRepeatQuestions: !!test.noRepeatQuestions
     };
 
     if (test.id && test.id.length > 20) {
@@ -116,6 +117,7 @@ export const saveArticle = async (article) => {
         title: article.title,
         content: article.content,
         videoUrl: article.videoUrl || '',
+        audioUrl: article.audioUrl || '',
         minTimeMinutes: parseInt(article.minTimeMinutes) || 0,
         allowedUsers: article.allowedUsers || []
     };
@@ -211,13 +213,39 @@ export const getUserResults = async (userId) => {
 };
 
 export const saveResult = async (result) => {
-    const { error } = await supabase
+    const resultToSave = {
+        ...result,
+        date: result.date || new Date().toISOString(),
+        answeredQuestionIds: result.answeredQuestionIds || []
+    };
+
+    const { data, error } = await supabase
         .from('results')
-        .insert([{
-            ...result,
-            date: new Date().toISOString()
-        }]);
+        .upsert([resultToSave])
+        .select()
+        .single();
+
     if (error) throw error;
+    return data;
+};
+
+export const getAlreadyAnsweredQuestionIds = async (userId, testId) => {
+    const { data, error } = await supabase
+        .from('results')
+        .select('answeredQuestionIds')
+        .eq('userId', userId)
+        .eq('testId', testId);
+    
+    if (error || !data) return [];
+    
+    // Flatten the array of arrays of IDs
+    const allIds = data.reduce((acc, row) => {
+        const ids = Array.isArray(row.answeredQuestionIds) ? row.answeredQuestionIds : [];
+        return [...acc, ...ids];
+    }, []);
+    
+    // Return unique IDs
+    return [...new Set(allIds)];
 };
 
 export const clearResults = async () => {

@@ -20,6 +20,7 @@ export default function TestEditor() {
         allowedUsers: [], // Empty means everyone
         requiredArticleId: '', // Optional article to read before passing
         shuffleQuestions: false,
+        noRepeatQuestions: false,
         questionsLimit: 0, // 0 = all
         showFeedback: false, // immediate feedback
         questions: []
@@ -334,7 +335,17 @@ export default function TestEditor() {
                                     checked={test.showFeedback || false}
                                     onChange={e => setTest({ ...test, showFeedback: e.target.checked })}
                                 />
-                                <span>Показывать, правильный ли ответ, сразу после ответа на вопрос</span>
+                                <span>Показывать правильный ответ сразу (подсветка при ответе)</span>
+                            </label>
+
+                            <label className="flex items-center gap-3 mb-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="w-5 h-5 accent-accent-primary"
+                                    checked={test.noRepeatQuestions || false}
+                                    onChange={e => setTest({ ...test, noRepeatQuestions: e.target.checked })}
+                                />
+                                <span>Исключать вопросы, на которые сотрудник отвечал ранее</span>
                             </label>
 
                             <div className="mt-4">
