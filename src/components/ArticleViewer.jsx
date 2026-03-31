@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Headphones } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Headphones, Play, Pause, RotateCcw, RotateCw, Volume2 } from 'lucide-react';
 import { getArticleById, getCurrentUser, saveArticleProgress } from '../services/db';
 import { RunnerSkeleton } from './SkeletonLoader';
+import { useRef } from 'react';
 
 // Helper to convert YouTube standard links to embed links
 const getEmbedUrl = (url) => {
@@ -38,6 +39,12 @@ export default function ArticleViewer() {
     const [canFinish, setCanFinish] = useState(true);
 
     const [isLoading, setIsLoading] = useState(true);
+
+    // Audio Player State
+    const audioRef = useRef(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
 
     useEffect(() => {
         const loadArticle = async () => {
@@ -106,8 +113,45 @@ export default function ArticleViewer() {
 
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
-        const s = seconds % 60;
+        const s = Math.floor(seconds % 60);
         return `${m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
+    // Audio Logic
+    const togglePlay = () => {
+        if (!audioRef.current) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+        } else {
+            audioRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+    };
+
+    const handleTimeUpdate = () => {
+        if (audioRef.current) {
+            setCurrentTime(audioRef.current.currentTime);
+        }
+    };
+
+    const handleLoadedMetadata = () => {
+        if (audioRef.current) {
+            setDuration(audioRef.current.duration);
+        }
+    };
+
+    const handleSeek = (e) => {
+        const time = parseFloat(e.target.value);
+        if (audioRef.current) {
+            audioRef.current.currentTime = time;
+            setCurrentTime(time);
+        }
+    };
+
+    const skip = (amount) => {
+        if (audioRef.current) {
+            audioRef.current.currentTime = Math.max(0, Math.min(duration, audioRef.current.currentTime + amount));
+        }
     };
 
     return (
@@ -198,21 +242,78 @@ export default function ArticleViewer() {
 
                 {/* Audio Player Component */}
                 {article.audioUrl && (
-                    <div className="flex items-center justify-center w-full p-6 bg-gradient-to-r from-accent-primary/5 to-blue-500/5 rounded-2xl border border-accent-primary/10 shadow-inner mt-4">
-                        <div className="flex items-center gap-4 w-full max-w-2xl">
-                            <div className="bg-accent-primary text-white p-3 rounded-xl shadow-lg">
-                                <Headphones size={24} />
+                    <div className="w-full max-w-4xl mx-auto p-1 bg-gradient-to-r from-accent-primary/20 via-blue-500/10 to-accent-primary/20 rounded-[2rem] shadow-xl mt-4">
+                        <div className="flex flex-col gap-4 p-6 md:p-8 bg-white/80 backdrop-blur-xl rounded-[1.8rem] border border-white/50">
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-accent-primary/10 p-2.5 rounded-xl">
+                                        <Headphones size={20} className="text-accent-primary" />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-accent-primary/60">Audio Class</div>
+                                        <div className="text-sm font-bold text-slate-800">Учебный подкаст</div>
+                                    </div>
+                                </div>
+                                <div className="hidden md:flex items-center gap-2 text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                                    <Volume2 size={12} /> HQ AUDIO ENABLED
+                                </div>
                             </div>
-                            <div className="flex-grow">
-                                <div className="text-xs font-bold uppercase tracking-wider text-accent-primary mb-2">Аудиоурок / Подкаст</div>
-                                <audio 
-                                    controls 
-                                    className="w-full h-10" 
-                                    src={article.audioUrl}
-                                >
-                                    Ваш браузер не поддерживает воспроизведение аудио.
-                                </audio>
+
+                            <div className="flex flex-col md:flex-row items-center gap-6 mt-2">
+                                {/* Controls */}
+                                <div className="flex items-center gap-4">
+                                    <button 
+                                        onClick={() => skip(-10)}
+                                        className="p-2 text-slate-400 hover:text-accent-primary hover:bg-accent-primary/5 rounded-full transition-all"
+                                        title="Назад на 10 сек"
+                                    >
+                                        <RotateCcw size={22} />
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={togglePlay}
+                                        className="w-16 h-16 flex items-center justify-center bg-accent-primary text-white rounded-2xl shadow-lg shadow-accent-primary/30 hover:scale-105 active:scale-95 transition-all"
+                                    >
+                                        {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => skip(10)}
+                                        className="p-2 text-slate-400 hover:text-accent-primary hover:bg-accent-primary/5 rounded-full transition-all"
+                                        title="Вперед на 10 сек"
+                                    >
+                                        <RotateCw size={22} />
+                                    </button>
+                                </div>
+
+                                {/* Seekbar */}
+                                <div className="flex-1 w-full flex flex-col gap-2">
+                                    <div className="flex justify-between text-[11px] font-bold text-slate-500 font-mono">
+                                        <span>{formatTime(currentTime)}</span>
+                                        <span>{formatTime(duration)}</span>
+                                    </div>
+                                    <input 
+                                        type="range"
+                                        min="0"
+                                        max={duration || 0}
+                                        value={currentTime}
+                                        onChange={handleSeek}
+                                        className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-accent-primary hover:bg-slate-200 transition-colors"
+                                        style={{
+                                            background: `linear-gradient(to right, var(--accent-primary) 0%, var(--accent-primary) ${(currentTime / (duration || 1)) * 100}%, #f1f5f9 ${(currentTime / (duration || 1)) * 100}%, #f1f5f9 100%)`
+                                        }}
+                                    />
+                                </div>
                             </div>
+                            
+                            <audio 
+                                ref={audioRef}
+                                src={article.audioUrl}
+                                onTimeUpdate={handleTimeUpdate}
+                                onLoadedMetadata={handleLoadedMetadata}
+                                onEnded={() => setIsPlaying(false)}
+                                className="hidden"
+                            />
                         </div>
                     </div>
                 )}
