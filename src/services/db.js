@@ -145,6 +145,28 @@ export const deleteArticle = async (id) => {
     if (error) throw error;
 };
 
+// --- Storage ---
+export const uploadAudioFile = async (file) => {
+    // Basic validation
+    if (!file) return null;
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { data, error } = await supabase.storage
+        .from('podcasts')
+        .upload(filePath, file);
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase.storage
+        .from('podcasts')
+        .getPublicUrl(filePath);
+
+    return publicUrl;
+};
+
 // --- Article Progress ---
 export const getArticleProgress = async () => {
     const { data, error } = await supabase

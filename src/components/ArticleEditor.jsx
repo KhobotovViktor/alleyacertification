@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, FileText, Users, Clock, Video, Headphones } from 'lucide-react';
+import { Save, ArrowLeft, FileText, Users, Clock, Video, Headphones, Upload, Loader2 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
-import { getArticleById, saveArticle, getAllEmployees } from '../services/db';
+import { getArticleById, saveArticle, getAllEmployees, uploadAudioFile } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
+import { useRef } from 'react';
 
 export default function ArticleEditor() {
     const { id } = useParams();
@@ -24,6 +25,8 @@ export default function ArticleEditor() {
     const [activeTab, setActiveTab] = useState('content');
 
     const [isLoading, setIsLoading] = useState(true);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -74,6 +77,28 @@ export default function ArticleEditor() {
         if (idx === -1) allowed.push(employeeId);
         else allowed.splice(idx, 1);
         setArticle({ ...article, allowedUsers: allowed });
+    };
+
+    const handleUploadAudio = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('audio/')) {
+            alert('Пожалуйста, выберите аудиофайл (mp3, wav и т.д.)');
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const url = await uploadAudioFile(file);
+            setArticle({ ...article, audioUrl: url });
+        } catch (err) {
+            console.error('Upload error:', err);
+            alert('Ошибка при загрузке аудио');
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
     if (isLoading) {
@@ -171,15 +196,33 @@ export default function ArticleEditor() {
 
                     <div className="form-group">
                         <label className="form-label flex items-center gap-1"><Headphones size={16} /> Ссылка на аудиоурок (MP3 / Подкаст)</label>
-                        <input
-                            type="text"
-                            value={article.audioUrl || ''}
-                            onChange={(e) => setArticle({ ...article, audioUrl: e.target.value })}
-                            className="form-control"
-                            placeholder="https://example.com/audio.mp3"
-                        />
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={article.audioUrl || ''}
+                                onChange={(e) => setArticle({ ...article, audioUrl: e.target.value })}
+                                className="form-control flex-1"
+                                placeholder="https://example.com/audio.mp3"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="btn btn-secondary flex items-center justify-center p-3 h-[45px] w-[50px]"
+                                title="Загрузить аудиофайл"
+                            >
+                                {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+                            </button>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="audio/*"
+                                className="hidden"
+                                onChange={handleUploadAudio}
+                            />
+                        </div>
                         <div className="text-xs text-secondary mt-1">
-                            Вставьте прямую ссылку на аудиофайл или онлайн-подкаст.
+                            Вставьте прямую ссылку или загрузите файл напрямую.
                         </div>
                     </div>
 
