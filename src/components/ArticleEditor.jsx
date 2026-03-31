@@ -197,6 +197,16 @@ export default function ArticleEditor() {
                     <div className="form-group">
                         <label className="form-label flex items-center gap-1"><Headphones size={16} /> Ссылка на аудиоурок (MP3 / Подкаст)</label>
                         <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="btn btn-secondary flex items-center justify-center p-3 h-[45px] w-[45px] flex-shrink-0"
+                                title="Загрузить аудиофайл"
+                                style={{ borderRadius: '0.75rem' }}
+                            >
+                                {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+                            </button>
                             <input
                                 type="text"
                                 value={article.audioUrl || ''}
@@ -204,25 +214,16 @@ export default function ArticleEditor() {
                                 className="form-control flex-1"
                                 placeholder="https://example.com/audio.mp3"
                             />
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="btn btn-secondary flex items-center justify-center p-3 h-[45px] w-[50px]"
-                                title="Загрузить аудиофайл"
-                            >
-                                {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-                            </button>
                             <input
                                 ref={fileInputRef}
                                 type="file"
                                 accept="audio/*"
-                                className="hidden"
+                                style={{ display: 'none' }}
                                 onChange={handleUploadAudio}
                             />
                         </div>
                         <div className="text-xs text-secondary mt-1">
-                            Вставьте прямую ссылку или загрузите файл напрямую.
+                            Нажмите на иконку слева для загрузки или вставьте прямую ссылку.
                         </div>
                     </div>
 

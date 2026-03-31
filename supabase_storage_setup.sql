@@ -9,13 +9,14 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 2. Set up RLS Policies for the 'podcasts' bucket
 
--- Allow public access to read files
+-- Allow anyone to read files (required for the player to work)
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
 CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'podcasts');
 
--- Allow authenticated users to upload files
-CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT 
-WITH CHECK (bucket_id = 'podcasts' AND auth.role() = 'authenticated');
+-- Allow uploads (since the app uses custom auth, we allow 'anon' role to upload to this specific bucket)
+DROP POLICY IF EXISTS "Authenticated Upload" ON storage.objects;
+CREATE POLICY "Public Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'podcasts');
 
--- Allow authenticated users to delete their own files (optional, but good for cleanup)
-CREATE POLICY "Authenticated Delete" ON storage.objects FOR DELETE 
-USING (bucket_id = 'podcasts' AND auth.role() = 'authenticated');
+-- Allow deletion
+DROP POLICY IF EXISTS "Authenticated Delete" ON storage.objects;
+CREATE POLICY "Public Delete" ON storage.objects FOR DELETE USING (bucket_id = 'podcasts');
