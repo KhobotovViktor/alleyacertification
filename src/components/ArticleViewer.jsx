@@ -242,67 +242,60 @@ export default function ArticleViewer() {
 
                 {/* Audio Player Component */}
                 {article.audioUrl && (
-                    <div className="w-full max-w-4xl mx-auto p-1 bg-gradient-to-r from-accent-primary/20 via-blue-500/10 to-accent-primary/20 rounded-[2rem] shadow-xl mt-4">
-                        <div className="flex flex-col gap-4 p-6 md:p-8 bg-white/80 backdrop-blur-xl rounded-[1.8rem] border border-white/50">
-                            <div className="flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-accent-primary/10 p-2.5 rounded-xl">
-                                        <Headphones size={20} className="text-accent-primary" />
-                                    </div>
-                                    <div>
-                                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-accent-primary/60">Audio Class</div>
-                                        <div className="text-sm font-bold text-slate-800">Учебный подкаст</div>
-                                    </div>
-                                </div>
-                                <div className="hidden md:flex items-center gap-2 text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-                                    <Volume2 size={12} /> HQ AUDIO ENABLED
-                                </div>
-                            </div>
+                    <div className="w-full max-w-2xl mx-auto mt-8 group">
+                        <div className="relative overflow-hidden bg-white/40 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-6 md:p-8">
+                            {/* Animated Background Accent */}
+                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-accent-primary/10 rounded-full blur-3xl animate-pulse" />
+                            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
-                            <div className="flex flex-col md:flex-row items-center gap-6 mt-2">
-                                {/* Controls */}
-                                <div className="flex items-center gap-4">
+                            <div className="relative z-10 flex flex-col gap-6">
+                                {/* Main Controls Cluster */}
+                                <div className="flex items-center justify-center gap-8">
                                     <button 
                                         onClick={() => skip(-10)}
-                                        className="p-2 text-slate-400 hover:text-accent-primary hover:bg-accent-primary/5 rounded-full transition-all"
+                                        className="p-3 text-slate-400 hover:text-accent-primary hover:bg-accent-primary/10 rounded-2xl transition-all active:scale-90"
                                         title="Назад на 10 сек"
                                     >
-                                        <RotateCcw size={22} />
+                                        <RotateCcw size={28} />
                                     </button>
                                     
                                     <button 
                                         onClick={togglePlay}
-                                        className="w-16 h-16 flex items-center justify-center bg-accent-primary text-white rounded-2xl shadow-lg shadow-accent-primary/30 hover:scale-105 active:scale-95 transition-all"
+                                        className="w-20 h-20 flex items-center justify-center bg-accent-primary text-white rounded-[2rem] shadow-[0_15px_30px_rgba(var(--accent-primary-rgb),0.3)] hover:scale-110 active:scale-95 transition-all group-hover:shadow-[0_20px_40px_rgba(var(--accent-primary-rgb),0.4)]"
                                     >
-                                        {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
+                                        {isPlaying ? (
+                                            <Pause size={36} fill="currentColor" />
+                                        ) : (
+                                            <Play size={36} fill="currentColor" className="ml-1" />
+                                        )}
                                     </button>
                                     
                                     <button 
                                         onClick={() => skip(10)}
-                                        className="p-2 text-slate-400 hover:text-accent-primary hover:bg-accent-primary/5 rounded-full transition-all"
+                                        className="p-3 text-slate-400 hover:text-accent-primary hover:bg-accent-primary/10 rounded-2xl transition-all active:scale-90"
                                         title="Вперед на 10 сек"
                                     >
-                                        <RotateCw size={22} />
+                                        <RotateCw size={28} />
                                     </button>
                                 </div>
 
-                                {/* Seekbar */}
-                                <div className="flex-1 w-full flex flex-col gap-2">
-                                    <div className="flex justify-between text-[11px] font-bold text-slate-500 font-mono">
-                                        <span>{formatTime(currentTime)}</span>
-                                        <span>{formatTime(duration)}</span>
-                                    </div>
+                                {/* Progress Section */}
+                                <div className="flex flex-col gap-3">
                                     <input 
                                         type="range"
                                         min="0"
                                         max={duration || 0}
                                         value={currentTime}
                                         onChange={handleSeek}
-                                        className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-accent-primary hover:bg-slate-200 transition-colors"
+                                        className="w-full h-2 bg-slate-200/50 rounded-full appearance-none cursor-pointer accent-accent-primary hover:h-3 transition-all"
                                         style={{
-                                            background: `linear-gradient(to right, var(--accent-primary) 0%, var(--accent-primary) ${(currentTime / (duration || 1)) * 100}%, #f1f5f9 ${(currentTime / (duration || 1)) * 100}%, #f1f5f9 100%)`
+                                            background: `linear-gradient(to right, var(--accent-primary) 0%, var(--accent-primary) ${(currentTime / (duration || 1)) * 100}%, rgba(0,0,0,0.05) ${(currentTime / (duration || 1)) * 100}%, rgba(0,0,0,0.05) 100%)`
                                         }}
                                     />
+                                    <div className="flex justify-between text-[13px] font-bold text-slate-500/80 font-mono tracking-tighter">
+                                        <span className={isPlaying ? 'text-accent-primary' : ''}>{formatTime(currentTime)}</span>
+                                        <span>{formatTime(duration)}</span>
+                                    </div>
                                 </div>
                             </div>
                             
