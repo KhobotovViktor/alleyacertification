@@ -474,8 +474,47 @@ textarea.form-control {
 .z-10 { z-index: 10; }
 .z-40 { z-index: 40; }
 .top-\[4\.5rem\] { top: 4.5rem; }
+.rounded-2xl { border-radius: 1rem; }
 .rounded-3xl { border-radius: 1.5rem; }
 .aspect-video { aspect-ratio: 16 / 9; }
+
+/* Audio Player Specifically Crafted Buttons */
+.player-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: white;
+  color: var(--text-secondary);
+}
+
+.player-btn:hover {
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+}
+
+.player-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.player-btn-play {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--accent-primary);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+}
+
+.player-btn-play:hover {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: var(--accent-primary);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.2);
+  color: var(--accent-hover);
+}
 .overflow-hidden { overflow: hidden; }
 .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
 .lg\:p-16 { padding: 4rem; }

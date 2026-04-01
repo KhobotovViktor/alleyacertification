@@ -251,18 +251,19 @@ export default function ArticleViewer() {
                             {/* Content */}
                             <div className="relative z-10 flex flex-col gap-8">
                                 {/* Main Controls Cluster */}
-                                <div className="flex items-center justify-center gap-6 mb-2">
+                                <div className="flex items-center justify-center gap-6 mb-4">
                                     <button 
                                         onClick={() => skip(-10)}
-                                        className="btn btn-secondary p-0 h-14 w-14 rounded-2xl flex items-center justify-center border-none bg-slate-50 hover:bg-slate-100 transition-all active:scale-90"
+                                        className="player-btn h-14 w-14"
                                         title="Назад на 10 сек"
                                     >
-                                        <RotateCcw size={22} className="text-slate-500" />
+                                        <RotateCcw size={20} />
                                     </button>
                                     
                                     <button 
                                         onClick={togglePlay}
-                                        className="h-14 w-14 flex items-center justify-center bg-emerald-500/10 text-emerald-600 rounded-2xl border border-emerald-500/20 hover:bg-emerald-500/20 hover:scale-105 active:scale-95 transition-all shadow-sm"
+                                        className="player-btn player-btn-play h-14 w-14"
+                                        title={isPlaying ? 'Пауза' : 'Воспроизвести'}
                                     >
                                         {isPlaying ? (
                                             <Pause size={28} fill="currentColor" />
@@ -273,10 +274,10 @@ export default function ArticleViewer() {
                                     
                                     <button 
                                         onClick={() => skip(10)}
-                                        className="btn btn-secondary p-0 h-14 w-14 rounded-2xl flex items-center justify-center border-none bg-slate-50 hover:bg-slate-100 transition-all active:scale-90"
+                                        className="player-btn h-14 w-14"
                                         title="Вперед на 10 сек"
                                     >
-                                        <RotateCw size={22} className="text-slate-500" />
+                                        <RotateCw size={20} />
                                     </button>
                                 </div>
 
