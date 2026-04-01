@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { LogOut, Plus, Trash2, Edit, Play, Save, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle } from 'lucide-react';
 import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress } from '../services/db';
 import { testConnection } from '../services/bitrix';
