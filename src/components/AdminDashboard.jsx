@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Trash2, Edit, Play, Save, CheckCircle, FileText, BookOpen, Clock, Users } from 'lucide-react';
+import { LogOut, Plus, Trash2, Edit, Play, Save, CheckCircle, FileText, BookOpen, Clock, Users, Send } from 'lucide-react';
 import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress } from '../services/db';
+import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
 
 export default function AdminDashboard() {
@@ -12,6 +13,7 @@ export default function AdminDashboard() {
     const [employees, setEmployees] = useState([]);
     const [activeTab, setActiveTab] = useState('tests');
     const [isLoading, setIsLoading] = useState(true);
+    const [bitrixTestStatus, setBitrixTestStatus] = useState('idle'); // idle, loading, success, error
 
     useEffect(() => {
         loadData();
@@ -74,6 +76,20 @@ export default function AdminDashboard() {
 
     const getEmployeeTestResults = (employeeId, testId) => {
         return results.filter(r => r.userId === employeeId && r.testId === testId);
+    };
+
+    const handleTestBitrix = async () => {
+        setBitrixTestStatus('loading');
+        try {
+            await testConnection();
+            setBitrixTestStatus('success');
+            setTimeout(() => setBitrixTestStatus('idle'), 3000);
+        } catch (err) {
+            console.error('Bitrix test failed:', err);
+            setBitrixTestStatus('error');
+            alert(`Ошибка теста: ${err.message}`);
+            setTimeout(() => setBitrixTestStatus('idle'), 5000);
+        }
     };
 
     if (isLoading) {
@@ -144,6 +160,21 @@ export default function AdminDashboard() {
                     </div>
                     <div className="text-4xl font-black text-primary leading-none mb-1">{results.length}</div>
                     <div className="text-[11px] text-secondary opacity-60">Всего попыток тестирования</div>
+                </div>
+
+                {/* Diagnostic Action: Test Bitrix */}
+                <div 
+                    onClick={bitrixTestStatus === 'idle' ? handleTestBitrix : null} 
+                    className={`bento-card group transition-all cursor-pointer ${bitrixTestStatus === 'error' ? 'bg-red-50' : (bitrixTestStatus === 'success' ? 'bg-emerald-50' : 'hover:shadow-md')}`}
+                    style={{ border: bitrixTestStatus === 'success' ? '2px solid #10b981' : (bitrixTestStatus === 'error' ? '2px solid #ef4444' : '1px solid var(--border-color)') }}
+                >
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2.5 transition-all ${bitrixTestStatus === 'loading' ? 'animate-spin' : ''} ${bitrixTestStatus === 'success' ? 'bg-emerald-500 text-white' : (bitrixTestStatus === 'error' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-600')}`}>
+                        {bitrixTestStatus === 'success' ? <CheckCircle size={18} /> : (bitrixTestStatus === 'error' ? <AlertCircle size={18} /> : <Send size={18} />)}
+                    </div>
+                    <span className="text-[13px] font-bold uppercase tracking-widest text-secondary opacity-70">
+                        {bitrixTestStatus === 'loading' ? 'Проверка...' : (bitrixTestStatus === 'success' ? 'Отправлено!' : (bitrixTestStatus === 'error' ? 'Ошибка' : 'Тест Bitrix24'))}
+                    </span>
+                    <p className="text-[11px] text-secondary opacity-60 mt-1">Отправить пробное уведомление</p>
                 </div>
             </div>
 

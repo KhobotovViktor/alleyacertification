@@ -251,7 +251,7 @@ export default function ArticleViewer() {
                             {/* Content */}
                             <div className="relative z-10 flex flex-col gap-8">
                                 {/* Main Controls Cluster */}
-                                <div className="flex items-center justify-center gap-8 mb-6">
+                                <div className="flex items-center justify-center gap-25px mb-6">
                                     <button 
                                         onClick={() => skip(-10)}
                                         className="player-btn"
