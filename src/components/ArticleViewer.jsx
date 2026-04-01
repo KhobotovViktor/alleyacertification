@@ -155,77 +155,81 @@ export default function ArticleViewer() {
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto flex-col gap-6 pb-12">
-            {/* Header info */}
-            <div 
-                className="glass-panel py-7 flex items-center justify-between sticky z-50 bg-[rgba(255,255,255,0.85)] backdrop-blur shadow-sm mb-6 border-b-0 animate-fade-in"
-                style={{ paddingLeft: '2.25rem', paddingRight: '2.25rem', top: '6.8rem' }}
-            >
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={goBack}
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            padding: '0.5rem', background: 'white', border: '1px solid #e2e8f0',
-                            borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)',
-                            transition: 'all 0.2s', flexShrink: 0
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--accent-primary)';
-                            e.currentTarget.style.color = 'white';
-                            e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'white';
-                            e.currentTarget.style.color = 'var(--text-secondary)';
-                            e.currentTarget.style.borderColor = '#e2e8f0';
-                        }}
-                        title="Вернуться назад"
-                    >
-                        <ArrowLeft size={18} />
-                    </button>
-                    <div>
-                        <h3 className="flex items-center gap-2 text-primary m-0">
-                            <BookOpen size={20} className="text-accent-primary" />
-                            {article.title}
-                        </h3>
+        <div className="max-w-4xl mx-auto flex flex-col gap-6 pb-12 animate-fade-in relative">
+            
+            {/* Unified Article Card */}
+            <div className="bento-card p-0 bg-white shadow-2xl border border-white/20 rounded-[2.5rem] relative">
+                
+                {/* Integrated Header (Sticky within Card) */}
+                <div 
+                    className="sticky z-30 flex items-center justify-between bg-white/90 backdrop-blur-md border-b border-slate-100 px-8 py-7 md:px-10 rounded-t-[2.5rem]"
+                    style={{ top: '4.5rem' }}
+                >
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={goBack}
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                padding: '0.6rem', background: 'white', border: '1px solid #e2e8f0',
+                                borderRadius: '1rem', cursor: 'pointer', color: 'var(--text-secondary)',
+                                transition: 'all 0.2s', flexShrink: 0
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'var(--accent-primary)';
+                                e.currentTarget.style.color = 'white';
+                                e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'white';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                                e.currentTarget.style.borderColor = '#e2e8f0';
+                            }}
+                            title="Вернуться назад"
+                        >
+                            <ArrowLeft size={18} />
+                        </button>
+                        <div className="min-w-0">
+                            <h3 className="flex items-center gap-2 text-primary m-0 truncate">
+                                <BookOpen size={20} className="text-accent-primary flex-shrink-0" />
+                                <span className="truncate">{article.title}</span>
+                            </h3>
+                        </div>
                     </div>
+
+                    {/* Timer Area */}
+                    {article.minTimeMinutes > 0 && user?.role === 'employee' && (
+                        <div className="flex items-center gap-3">
+                            {!canFinish ? (
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                    padding: '0.5rem 0.75rem', borderRadius: '0.8rem',
+                                    fontFamily: 'monospace', fontSize: '1rem', fontWeight: 700,
+                                    border: '1px solid', borderColor: timeLeft < 60 ? 'rgba(239,68,68,0.3)' : '#e2e8f0',
+                                    background: timeLeft < 60 ? 'rgba(239,68,68,0.08)' : 'white',
+                                    color: timeLeft < 60 ? '#ef4444' : 'var(--text-primary)',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                                }}>
+                                    <Clock size={18} style={{ color: timeLeft < 60 ? '#ef4444' : 'var(--accent-primary)' }} className={timeLeft < 60 ? 'animate-pulse' : ''} />
+                                    {formatTime(timeLeft)}
+                                </div>
+                            ) : (
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                    padding: '0.5rem 0.75rem', borderRadius: '0.8rem',
+                                    background: 'white', border: '1px solid #e2e8f0',
+                                    color: 'var(--success)', fontWeight: 700, fontSize: '0.9rem',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                    animation: 'bounce 1s infinite'
+                                }}>
+                                    <CheckCircle size={18} /> Готово
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                {/* Timer Area */}
-                {article.minTimeMinutes > 0 && user?.role === 'employee' && (
-                    <div className="flex items-center gap-3">
-                        {!canFinish ? (
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                padding: '0.5rem 0.75rem', borderRadius: '0.75rem',
-                                fontFamily: 'monospace', fontSize: '1rem', fontWeight: 700,
-                                border: '1px solid', borderColor: timeLeft < 60 ? 'rgba(239,68,68,0.3)' : '#e2e8f0',
-                                background: timeLeft < 60 ? 'rgba(239,68,68,0.08)' : 'white',
-                                color: timeLeft < 60 ? '#ef4444' : 'var(--text-primary)',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                            }}>
-                                <Clock size={18} style={{ color: timeLeft < 60 ? '#ef4444' : 'var(--accent-primary)' }} className={timeLeft < 60 ? 'animate-pulse' : ''} />
-                                {formatTime(timeLeft)}
-                            </div>
-                        ) : (
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                padding: '0.5rem 0.75rem', borderRadius: '0.75rem',
-                                background: 'white', border: '1px solid #e2e8f0',
-                                color: 'var(--success)', fontWeight: 700, fontSize: '0.9rem',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                                animation: 'bounce 1s infinite'
-                            }}>
-                                <CheckCircle size={18} /> Готово
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Content Range */}
-            <div className="card flex-col gap-10 shadow-2xl p-5 md:p-8 lg:p-16 bg-white min-h-[60vh] border border-white mt-4 relative z-10 rounded-3xl animate-fade-in">
+                {/* Content area within card */}
+                <div className="p-8 md:p-12 lg:p-16 flex flex-col gap-10">
 
                 {/* Video Embed */}
                 {article.videoUrl && getEmbedUrl(article.videoUrl) && (
@@ -362,6 +366,10 @@ export default function ArticleViewer() {
                 .quill-content tr { border-bottom: 1px solid var(--border-color); }
                 .quill-content td, .quill-content th { padding: 0.5rem; text-align: left; }
             `}</style>
+            </div>
+
+            {/* Float Bottom Spacer */}
+            <div className="h-4"></div>
         </div>
     );
 }
