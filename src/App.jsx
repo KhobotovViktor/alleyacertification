@@ -111,22 +111,12 @@ function App() {
             <Route path="/admin/article/:id" element={<ArticleEditor />} />
           </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
-            <Route path="/employee" element={<EmployeeDashboard />} />
-          </Route>
-          
-          {/* Fallback inside layout if needed */}
-          <Route path="/not-found" element={<div className="p-8 text-center">Страница не найдена.</div>} />
-        </Route>
+          <Route path="/test/:id" element={<TestRunner />} />
+          <Route path="/article/:id" element={<ArticleViewer />} />
 
-        {/* Full-screen pages without global layout constraints */}
-        <Route element={<ProtectedRoute />}>
-           <Route path="/test/:id" element={<TestRunner />} />
-           <Route path="/article/:id" element={<ArticleViewer />} />
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
-
-        {/* Global Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -156,33 +156,8 @@ export default function ArticleViewer() {
 
     return (
         <div className="max-w-[1200px] mx-auto px-4 md:px-0">
-            {/* Top Navigation Bar */}
-            <div className="top-nav-bar animate-fade-in">
-                <div className="flex items-center gap-4">
-                    <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
-                    <span className="font-bold text-[#10b981] hidden md:block">Тестирование сотрудников «Аллея Мебели»</span>
-                </div>
-                
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-[#10b981] text-white flex items-center justify-center font-bold text-sm">
-                            {user?.name?.charAt(0) || 'T'}
-                        </div>
-                        <span className="font-medium text-slate-700 hidden sm:block">{user?.name || 'Тестовый сотрудник'}</span>
-                    </div>
-                    
-                    <button 
-                        onClick={goBack}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all text-sm font-bold"
-                    >
-                        <LogOut size={16} className="rotate-180" />
-                        Выйти
-                    </button>
-                </div>
-            </div>
-
             {/* Main Content Area */}
-            <div className="card flex-col gap-8 shadow-2xl p-6 md:p-12 bg-white min-h-[80vh] border border-white mt-4 relative z-10 rounded-[2.5rem] animate-fade-in overflow-hidden">
+            <div className="card flex-col gap-8 shadow-2xl p-6 md:p-12 bg-white min-h-[80vh] border border-white mt-12 relative z-10 rounded-[2.5rem] animate-fade-in overflow-hidden">
                 
                 {/* Article Header with Back Button & Title & Timer */}
                 <div className="flex items-start justify-between gap-6 mb-4">
