@@ -110,6 +110,9 @@ function App() {
             <Route path="/admin/article/new" element={<ArticleEditor />} />
             <Route path="/admin/article/:id" element={<ArticleEditor />} />
           </Route>
+          <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
+            <Route path="/employee" element={<EmployeeDashboard />} />
+          </Route>
 
           <Route path="/test/:id" element={<TestRunner />} />
           <Route path="/article/:id" element={<ArticleViewer />} />
