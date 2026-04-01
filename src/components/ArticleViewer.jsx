@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Clock, CheckCircle, Headphones, Play, Pause, RotateCcw, RotateCw, Volume2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, CheckCircle, Headphones, Play, Pause, RotateCcw, RotateCw, Volume2, LogOut } from 'lucide-react';
 import { getArticleById, getCurrentUser, saveArticleProgress } from '../services/db';
 import { RunnerSkeleton } from './SkeletonLoader';
 import { useRef } from 'react';
@@ -155,152 +155,191 @@ export default function ArticleViewer() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto flex flex-col pb-12 animate-fade-in relative">
-            
-            {/* Unified Article Container */}
-            <div className="bg-white shadow-2xl border border-white/10 rounded-[2.5rem] overflow-hidden relative">
+        <div className="max-w-[1200px] mx-auto px-4 md:px-0">
+            {/* Top Navigation Bar */}
+            <div className="top-nav-bar animate-fade-in">
+                <div className="flex items-center gap-4">
+                    <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+                    <span className="font-bold text-[#10b981] hidden md:block">Тестирование сотрудников «Аллея Мебели»</span>
+                </div>
                 
-                {/* Integrated Header (Sticky) */}
-                <div 
-                    className="sticky z-40 bg-white/95 backdrop-blur-xl border-b border-slate-100 px-6 md:px-12 py-5 md:py-7 flex items-center justify-between transition-all"
-                    style={{ top: '4.5rem' }}
-                >
-                    <div className="flex items-center gap-4 min-w-0">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-[#10b981] text-white flex items-center justify-center font-bold text-sm">
+                            {user?.name?.charAt(0) || 'T'}
+                        </div>
+                        <span className="font-medium text-slate-700 hidden sm:block">{user?.name || 'Тестовый сотрудник'}</span>
+                    </div>
+                    
+                    <button 
+                        onClick={goBack}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all text-sm font-bold"
+                    >
+                        <LogOut size={16} className="rotate-180" />
+                        Выйти
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="card flex-col gap-8 shadow-2xl p-6 md:p-12 bg-white min-h-[80vh] border border-white mt-4 relative z-10 rounded-[2.5rem] animate-fade-in overflow-hidden">
+                
+                {/* Article Header with Back Button & Title & Timer */}
+                <div className="flex items-start justify-between gap-6 mb-4">
+                    <div className="flex items-start gap-6">
                         <button
                             onClick={goBack}
-                            style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                width: '2.75rem', height: '2.75rem', background: 'white', border: '1px solid #e2e8f0',
-                                borderRadius: '1rem', cursor: 'pointer', color: 'var(--text-secondary)',
-                                transition: 'all 0.2s', flexShrink: 0
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'var(--accent-primary)';
-                                e.currentTarget.style.color = 'white';
-                                e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                                e.currentTarget.style.transform = 'translateX(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'white';
-                                e.currentTarget.style.color = 'var(--text-secondary)';
-                                e.currentTarget.style.borderColor = '#e2e8f0';
-                                e.currentTarget.style.transform = 'none';
-                            }}
+                            className="w-12 h-12 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all shadow-sm flex-shrink-0 mt-1"
+                            title="Назад"
                         >
-                            <ArrowLeft size={20} />
+                            <ArrowLeft size={24} />
                         </button>
-                        <div className="min-w-0">
-                            <h2 className="flex items-center gap-2.5 text-primary m-0 text-lg md:text-xl font-bold truncate">
-                                <BookOpen size={22} className="text-accent-primary flex-shrink-0" />
-                                <span className="truncate">{article.title}</span>
-                            </h2>
+                        
+                        <div className="flex items-center gap-4">
+                            <BookOpen size={48} className="text-slate-800" strokeWidth={1.5} />
+                            <h1 className="text-5xl font-extrabold text-slate-900 m-0 tracking-tight">
+                                {article.title}
+                            </h1>
                         </div>
                     </div>
 
-                    {/* Timer / Badge Area */}
+                    {/* Timer Badge (Top Right) */}
                     {article.minTimeMinutes > 0 && user?.role === 'employee' && (
-                        <div className="flex-shrink-0">
-                            {!canFinish ? (
-                                <div className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-mono text-base font-black border transition-all ${timeLeft < 60 ? 'bg-red-50 border-red-200 text-red-500 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-700'}`}>
-                                    <Clock size={18} className={timeLeft < 60 ? 'animate-pulse' : 'text-accent-primary'} />
-                                    {formatTime(timeLeft)}
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-50 text-emerald-600 font-bold text-sm border border-emerald-100 animate-bounce shadow-sm">
-                                    <CheckCircle size={18} /> Готово
-                                </div>
-                            )}
+                        <div className="timer-badge">
+                            <Clock size={22} className="text-[#10b981]" />
+                            <span>{formatTime(timeLeft)}</span>
                         </div>
                     )}
                 </div>
 
-                {/* Integrated Audio Player Section */}
+                {/* Video Embed */}
+                {article.videoUrl && getEmbedUrl(article.videoUrl) && (
+                    <div className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-xl border-8 border-slate-50">
+                        <iframe
+                            src={getEmbedUrl(article.videoUrl)}
+                            className="absolute top-0 left-0 w-full h-full"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        ></iframe>
+                    </div>
+                )}
+
+                {/* Audio Player Component */}
                 {article.audioUrl && (
-                    <div className="bg-slate-50/50 border-b border-slate-100 px-6 md:px-12 py-12 md:py-16 flex flex-col items-center">
-                        <div className="w-full max-w-2xl flex flex-col gap-8 relative">
-                            {/* Player Controls */}
+                    <div className="w-full max-w-4xl mx-auto my-6 bento-card p-10 border-slate-100 bg-slate-50/30">
+                        <div className="flex flex-col gap-10">
+                            {/* Controls */}
                             <div className="flex items-center justify-center gap-10">
-                                <button onClick={() => skip(-10)} className="player-btn scale-110" title="Назад на 10 сек">
-                                    <RotateCcw size={32} />
+                                <button 
+                                    onClick={() => skip(-10)}
+                                    className="player-btn"
+                                    title="Назад на 10 сек"
+                                >
+                                    <RotateCcw size={28} />
                                 </button>
-                                <button onClick={togglePlay} className="player-btn player-btn-play scale-125 mx-2" title={isPlaying ? 'Пауза' : 'Воспроизвести'}>
-                                    {isPlaying ? <Pause size={38} fill="currentColor" /> : <Play size={38} fill="currentColor" className="ml-1" />}
+                                
+                                <button 
+                                    onClick={togglePlay}
+                                    className="player-btn player-btn-play"
+                                    title={isPlaying ? 'Пауза' : 'Воспроизвести'}
+                                >
+                                    {isPlaying ? (
+                                        <Pause size={32} fill="currentColor" />
+                                    ) : (
+                                        <Play size={32} fill="currentColor" className="ml-1" />
+                                    )}
                                 </button>
-                                <button onClick={() => skip(10)} className="player-btn scale-110" title="Вперед на 10 сек">
-                                    <RotateCw size={32} />
+                                
+                                <button 
+                                    onClick={() => skip(10)}
+                                    className="player-btn"
+                                    title="Вперед на 10 сек"
+                                >
+                                    <RotateCw size={28} />
                                 </button>
                             </div>
-                            
-                            {/* Seek Bar */}
+
+                            {/* Timeline */}
                             <div className="flex flex-col gap-3">
                                 <input 
-                                    type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek}
-                                    className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer accent-accent-primary"
-                                    style={{ background: `linear-gradient(to right, var(--accent-primary) 0%, var(--accent-primary) ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 100%)` }}
+                                    type="range"
+                                    min="0"
+                                    max={duration || 0}
+                                    value={currentTime}
+                                    onChange={handleSeek}
+                                    className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-[#10b981]"
+                                    style={{
+                                        background: `linear-gradient(to right, #10b981 0%, #10b981 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 100%)`
+                                    }}
                                 />
-                                <div className="flex justify-between text-xs font-bold text-slate-400 font-mono">
+                                <div className="flex justify-between text-sm font-bold text-slate-400">
                                     <span>{formatTime(currentTime)}</span>
                                     <span>{formatTime(duration)}</span>
                                 </div>
                             </div>
-
-                            <audio ref={audioRef} src={article.audioUrl} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata} onEnded={() => setIsPlaying(false)} className="hidden" />
                         </div>
+                        
+                        <audio 
+                            ref={audioRef}
+                            src={article.audioUrl}
+                            onTimeUpdate={handleTimeUpdate}
+                            onLoadedMetadata={handleLoadedMetadata}
+                            onEnded={() => setIsPlaying(false)}
+                            className="hidden"
+                        />
                     </div>
                 )}
 
-                {/* Main Content Area */}
-                <div className="px-6 md:px-16 py-12 md:py-20 flex flex-col gap-12">
-                    {/* Video Embed */}
-                    {article.videoUrl && getEmbedUrl(article.videoUrl) && (
-                        <div className="w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-50">
-                            <iframe src={getEmbedUrl(article.videoUrl)} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
-                        </div>
+                {/* Main Content (Rich Text) */}
+                <div
+                    className="text-primary leading-relaxed quill-content mt-10 mb-8 max-w-4xl"
+                    dangerouslySetInnerHTML={{ 
+                        __html: article.content ? article.content.replace(/&nbsp;|\u00A0/g, ' ') : '' 
+                    }}
+                />
+
+                {/* Bottom Status Bar */}
+                <div className="mt-auto pt-10 border-t border-slate-100 flex flex-col items-center">
+                    {user?.role === 'admin' ? (
+                        <button className="btn btn-secondary px-10 py-3 rounded-2xl" onClick={goBack}>
+                            Вернуться в панель Админа
+                        </button>
+                    ) : (
+                        <button
+                            className={`btn ${canFinish ? 'btn-primary' : 'btn-secondary opacity-50 cursor-not-allowed'} px-16 py-4 rounded-2xl transition-all shadow-lg text-lg font-bold`}
+                            onClick={handleFinish}
+                            disabled={!canFinish}
+                        >
+                            Изучил материал
+                        </button>
                     )}
 
-                    {/* Rich Text Content */}
-                    <div
-                        className="quill-content text-lg leading-loose text-slate-700"
-                        dangerouslySetInnerHTML={{ 
-                            __html: article.content ? article.content.replace(/&nbsp;|\u00A0/g, ' ') : '' 
-                        }}
-                    />
-
-                    {/* Finish Action */}
-                    <div className="pt-12 flex flex-col items-center border-t border-slate-100">
-                        {user?.role === 'admin' ? (
-                            <button className="btn btn-secondary px-10 py-3 rounded-2xl" onClick={goBack}>
-                                Вернуться в панель Админа
-                            </button>
-                        ) : (
-                            <div className="flex flex-col items-center gap-4 w-full max-w-sm">
-                                <button
-                                    className={`btn w-full py-4 rounded-2xl text-lg font-bold shadow-xl transition-all ${canFinish ? 'btn-primary scale-105 active:scale-95' : 'btn-secondary opacity-40 cursor-not-allowed'}`}
-                                    onClick={handleFinish}
-                                    disabled={!canFinish}
-                                >
-                                    {canFinish ? 'Изучил материал ✅' : 'Осталось дочитать...'}
-                                </button>
-                                {!canFinish && (
-                                    <p className="text-secondary text-sm font-medium animate-pulse">Кнопка станет активна через {formatTime(timeLeft)}</p>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    {!canFinish && user?.role === 'employee' && (
+                        <p className="text-slate-400 text-sm mt-4 font-medium animate-pulse">Кнопка станет активна через {formatTime(timeLeft)}</p>
+                    )}
                 </div>
             </div>
 
-            {/* Support Styles */}
+            {/* Quick styles to handle Quill's default HTML output nicely */}
             <style>{`
-                .quill-content { font-family: inherit; }
-                .quill-content p { margin-bottom: 2em; }
-                .quill-content h1, .quill-content h2, .quill-content h3 { color: #0f172a; margin-top: 2em; margin-bottom: 1em; font-weight: 800; }
-                .quill-content img { border-radius: 1.5rem; margin: 3em 0; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); }
-                .quill-content ul, .quill-content ol { margin-bottom: 2em; padding-left: 1.5em; }
-                .quill-content li { margin-bottom: 0.75em; }
+                .quill-content { font-size: var(--font-size-base); line-height: 1.8; color: #334155; white-space: pre-wrap; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+                .quill-content * { word-break: normal !important; overflow-wrap: break-word !important; hyphens: none !important; }
+                .quill-content p { margin-bottom: 1.5em; }
+                .quill-content h1 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+                .quill-content h2 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
+                .quill-content h3 { font-size: var(--font-size-h); margin-bottom: 0.8em; font-weight: 600; color: #1e293b; }
+                .quill-content ul { list-style-type: disc; padding-left: 2em; margin-bottom: 1.5em; }
+                .quill-content ol { list-style-type: decimal; padding-left: 2em; margin-bottom: 1.5em; }
+                .quill-content a { color: var(--accent-primary); text-decoration: none; font-weight: 500; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+                .quill-content a:hover { border-bottom-color: var(--accent-primary); }
+                .quill-content blockquote { border-left: 4px solid var(--accent-primary); padding-left: 1.5em; color: #64748b; font-style: italic; background: #f8fafc; padding: 1em 1.5em; border-radius: 0 0.5rem 0.5rem 0; margin-bottom: 1.5em; }
+                .quill-content img { border-radius: 0.75rem; box-shadow: var(--shadow-md); margin-bottom: 1.5em; max-width: 100%; height: auto; display: block; }
+                .quill-content iframe { max-width: 100%; border-radius: 0.75rem; }
+                .quill-content table { width: 100% !important; border-collapse: collapse; margin-bottom: 1.5em; display: block; overflow-x: auto; }
+                .quill-content tr { border-bottom: 1px solid var(--border-color); }
+                .quill-content td, .quill-content th { padding: 0.5rem; text-align: left; }
             `}</style>
-            
-            <div className="h-4"></div>
         </div>
     );
 }
