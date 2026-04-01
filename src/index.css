@@ -469,15 +469,37 @@ textarea.form-control {
 .gap-10 { gap: 2.5rem; }
 
 .max-w-4xl { max-width: 56rem; }
+.max-w-[1200px] { max-width: 1200px; }
 .mx-auto { margin-left: auto; margin-right: auto; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+.py-7 { padding-top: 1.75rem; padding-bottom: 1.75rem; }
 .relative { position: relative; }
 .sticky { position: sticky; }
 .z-10 { z-index: 10; }
 .z-40 { z-index: 40; }
+.z-50 { z-index: 50; }
+.top-0 { top: 0; }
+.top-1rem { top: 1rem; }
 .top-\[4\.5rem\] { top: 4.5rem; }
+.w-8 { width: 2rem; }
+.h-8 { height: 2rem; }
+.w-9 { width: 2.25rem; }
+.h-9 { height: 2.25rem; }
+.w-12 { width: 3rem; }
+.h-12 { height: 3rem; }
+.w-48 { width: 12rem; }
+.h-48 { height: 12rem; }
+.rounded-xl { border-radius: 0.75rem; }
 .rounded-2xl { border-radius: 1rem; }
 .rounded-3xl { border-radius: 1.5rem; }
+.rounded-full { border-radius: 9999px; }
 .aspect-video { aspect-ratio: 16 / 9; }
+.object-contain { object-fit: contain; }
+.hidden { display: none; }
+@media (min-width: 640px) { .sm\:block { display: block; } }
+@media (min-width: 768px) { .md\:block { display: block; } .md\:px-0 { padding-left: 0; padding-right: 0; } .md\:p-12 { padding: 3rem; } }
 
 /* Audio Player Specifically Crafted Buttons */
 .player-btn {

@@ -98,6 +98,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Pages with global layout (Header + Sidebar effects) */}
         <Route element={<Layout />}>
           <Route path="/" element={<IndexRoute />} />
           <Route path="/login" element={<Login />} />
@@ -113,13 +114,19 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
             <Route path="/employee" element={<EmployeeDashboard />} />
           </Route>
-
-          <Route path="/test/:id" element={<TestRunner />} />
-          <Route path="/article/:id" element={<ArticleViewer />} />
-
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          
+          {/* Fallback inside layout if needed */}
+          <Route path="/not-found" element={<div className="p-8 text-center">Страница не найдена.</div>} />
         </Route>
+
+        {/* Full-screen pages without global layout constraints */}
+        <Route element={<ProtectedRoute />}>
+           <Route path="/test/:id" element={<TestRunner />} />
+           <Route path="/article/:id" element={<ArticleViewer />} />
+        </Route>
+
+        {/* Global Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
