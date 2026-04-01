@@ -251,33 +251,32 @@ export default function ArticleViewer() {
                             {/* Content */}
                             <div className="relative z-10 flex flex-col gap-8">
                                 {/* Main Controls Cluster */}
-                                <div className="flex items-center justify-center gap-10">
+                                <div className="flex items-center justify-center gap-6 mb-2">
                                     <button 
                                         onClick={() => skip(-10)}
-                                        className="btn btn-secondary p-4 h-14 w-14 rounded-2xl flex items-center justify-center border-none bg-slate-100 hover:bg-slate-200 transition-all active:scale-90"
+                                        className="btn btn-secondary p-0 h-14 w-14 rounded-2xl flex items-center justify-center border-none bg-slate-50 hover:bg-slate-100 transition-all active:scale-90"
                                         title="Назад на 10 сек"
                                     >
-                                        <RotateCcw size={24} className="text-slate-600" />
+                                        <RotateCcw size={22} className="text-slate-500" />
                                     </button>
                                     
                                     <button 
                                         onClick={togglePlay}
-                                        className="w-24 h-24 flex items-center justify-center bg-accent-primary text-white rounded-[2rem] shadow-glow hover:scale-110 active:scale-95 transition-all"
-                                        style={{ background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%)' }}
+                                        className="h-14 w-14 flex items-center justify-center bg-emerald-500/10 text-emerald-600 rounded-2xl border border-emerald-500/20 hover:bg-emerald-500/20 hover:scale-105 active:scale-95 transition-all shadow-sm"
                                     >
                                         {isPlaying ? (
-                                            <Pause size={42} fill="currentColor" />
+                                            <Pause size={28} fill="currentColor" />
                                         ) : (
-                                            <Play size={42} fill="currentColor" className="ml-1" />
+                                            <Play size={28} fill="currentColor" className="ml-1" />
                                         )}
                                     </button>
                                     
                                     <button 
                                         onClick={() => skip(10)}
-                                        className="btn btn-secondary p-4 h-14 w-14 rounded-2xl flex items-center justify-center border-none bg-slate-100 hover:bg-slate-200 transition-all active:scale-90"
+                                        className="btn btn-secondary p-0 h-14 w-14 rounded-2xl flex items-center justify-center border-none bg-slate-50 hover:bg-slate-100 transition-all active:scale-90"
                                         title="Вперед на 10 сек"
                                     >
-                                        <RotateCw size={24} className="text-slate-600" />
+                                        <RotateCw size={22} className="text-slate-500" />
                                     </button>
                                 </div>
 
