@@ -160,28 +160,25 @@ export default function ArticleViewer() {
             <div className="card flex-col gap-8 shadow-2xl p-6 md:p-12 bg-white min-h-[80vh] border border-white mt-12 relative z-10 rounded-[2.5rem] animate-fade-in overflow-hidden">
                 
                 {/* Article Header with Back Button & Title & Timer */}
-                <div className="flex items-start justify-between gap-6 mb-4">
-                    <div className="flex items-start gap-6">
+                <div className="flex items-center justify-between gap-6 mb-4">
+                    <div className="flex items-center gap-6">
                         <button
                             onClick={goBack}
-                            className="w-12 h-12 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all shadow-sm flex-shrink-0 mt-1"
+                            className="player-btn scale-90"
                             title="Назад"
                         >
                             <ArrowLeft size={24} />
                         </button>
                         
-                        <div className="flex items-center gap-4">
-                            <BookOpen size={48} className="text-slate-800" strokeWidth={1.5} />
-                            <h1 className="text-5xl font-extrabold text-slate-900 m-0 tracking-tight">
-                                {article.title}
-                            </h1>
-                        </div>
+                        <h1 className="text-5xl font-extrabold text-slate-900 m-0 tracking-tight">
+                            {article.title}
+                        </h1>
                     </div>
 
                     {/* Timer Badge (Top Right) */}
                     {article.minTimeMinutes > 0 && user?.role === 'employee' && (
                         <div className="timer-badge">
-                            <Clock size={22} className="text-[#10b981]" />
+                            <Clock size={18} className="text-[#10b981]" />
                             <span>{formatTime(timeLeft)}</span>
                         </div>
                     )}
@@ -189,7 +186,7 @@ export default function ArticleViewer() {
 
                 {/* Video Embed */}
                 {article.videoUrl && getEmbedUrl(article.videoUrl) && (
-                    <div className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-xl border-8 border-slate-50">
+                    <div className="relative w-full aspect-video rounded-[3rem] overflow-hidden shadow-xl border-8 border-slate-50">
                         <iframe
                             src={getEmbedUrl(article.videoUrl)}
                             className="absolute top-0 left-0 w-full h-full"
@@ -202,7 +199,7 @@ export default function ArticleViewer() {
 
                 {/* Audio Player Component */}
                 {article.audioUrl && (
-                    <div className="w-full max-w-4xl mx-auto my-6 bento-card p-10 border-slate-100 bg-slate-50/30">
+                    <div className="w-full max-w-none mx-auto my-6 bento-card p-12 border-slate-100 bg-slate-50/40">
                         <div className="flex flex-col gap-10">
                             {/* Controls */}
                             <div className="flex items-center justify-center gap-10">
