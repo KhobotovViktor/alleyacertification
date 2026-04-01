@@ -17,34 +17,39 @@ export const sendTestResultToBitrix = async (data) => {
 
     const { userName, testTitle, score, total, passed } = data;
     
-    const message = `🚀 *Результат теста*\n\n` +
-                    `👤 *Сотрудник:* ${userName}\n` +
-                    `📝 *Название теста:* ${testTitle}\n` +
-                    `✅ *Правильных ответов:* ${score} из ${total}\n` +
-                    `🏁 *Тест пройден:* ${passed ? 'Да ✅' : 'Нет ❌'}`;
+    // Formatting the message for Bitrix24
+    const message = `🚀 Результат теста\n\n` +
+                    `👤 Сотрудник: ${userName}\n` +
+                    `📝 Название теста: ${testTitle}\n` +
+                    `✅ Правильных ответов: ${score} из ${total}\n` +
+                    `🏁 Тест пройден: ${passed ? 'Да ✅' : 'Нет ❌'}`;
 
     try {
         const promises = CHAT_IDS.map(chatId => {
-            const url = `${webhookUrl.replace(/\/$/, '')}/im.message.add.json`;
+            // Ensure URL ends with a slash before adding method
+            const baseUrl = webhookUrl.endsWith('/') ? webhookUrl : `${webhookUrl}/`;
+            const url = `${baseUrl}im.message.add`;
+            
+            // Using URLSearchParams and mode: 'no-cors' to bypass CORS preflight blocks
+            const params = new URLSearchParams();
+            params.append('DIALOG_ID', `chat${chatId}`);
+            params.append('MESSAGE', message);
+
             return fetch(url, {
                 method: 'POST',
+                mode: 'no-cors', // Critical for browser-side webhooks
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/x-www-form-urlencoded'
                 },
-                body: JSON.stringify({
-                    DIALOG_ID: `chat${chatId}`,
-                    MESSAGE: message
-                })
+                body: params
             });
         });
 
-        const results = await Promise.all(promises);
-        results.forEach(async (res, idx) => {
-            if (!res.ok) {
-                const err = await res.json();
-                console.error(`Failed to send to Bitrix Chat ${CHAT_IDS[idx]}:`, err);
-            }
-        });
+        // Promise.all will resolve even with mode: 'no-cors' 
+        // (but response will be opaque, status 0)
+        await Promise.all(promises);
+        console.log('Bitrix24 notification requests sent (opaque mode).');
+        
     } catch (err) {
         console.error('Bitrix24 integration error:', err);
     }

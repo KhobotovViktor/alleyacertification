@@ -242,57 +242,59 @@ export default function ArticleViewer() {
 
                 {/* Audio Player Component */}
                 {article.audioUrl && (
-                    <div className="w-full max-w-2xl mx-auto mt-8 group">
-                        <div className="relative overflow-hidden bg-white/40 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-6 md:p-8">
-                            {/* Animated Background Accent */}
-                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-accent-primary/10 rounded-full blur-3xl animate-pulse" />
-                            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+                    <div className="w-full max-w-2xl mx-auto mt-8">
+                        <div className="bento-card p-8 md:p-10 border-white/40 shadow-glass relative">
+                            {/* Static Decorative Accents (Optimized for performance) */}
+                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-accent-primary/5 rounded-full blur-3xl pointer-events-none" />
+                            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-                            <div className="relative z-10 flex flex-col gap-6">
+                            {/* Content */}
+                            <div className="relative z-10 flex flex-col gap-8">
                                 {/* Main Controls Cluster */}
-                                <div className="flex items-center justify-center gap-8">
+                                <div className="flex items-center justify-center gap-10">
                                     <button 
                                         onClick={() => skip(-10)}
-                                        className="p-3 text-slate-400 hover:text-accent-primary hover:bg-accent-primary/10 rounded-2xl transition-all active:scale-90"
+                                        className="btn btn-secondary p-4 h-14 w-14 rounded-2xl flex items-center justify-center border-none bg-slate-100 hover:bg-slate-200 transition-all active:scale-90"
                                         title="Назад на 10 сек"
                                     >
-                                        <RotateCcw size={28} />
+                                        <RotateCcw size={24} className="text-slate-600" />
                                     </button>
                                     
                                     <button 
                                         onClick={togglePlay}
-                                        className="w-20 h-20 flex items-center justify-center bg-accent-primary text-white rounded-[2rem] shadow-[0_15px_30px_rgba(var(--accent-primary-rgb),0.3)] hover:scale-110 active:scale-95 transition-all group-hover:shadow-[0_20px_40px_rgba(var(--accent-primary-rgb),0.4)]"
+                                        className="w-24 h-24 flex items-center justify-center bg-accent-primary text-white rounded-[2rem] shadow-glow hover:scale-110 active:scale-95 transition-all"
+                                        style={{ background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%)' }}
                                     >
                                         {isPlaying ? (
-                                            <Pause size={36} fill="currentColor" />
+                                            <Pause size={42} fill="currentColor" />
                                         ) : (
-                                            <Play size={36} fill="currentColor" className="ml-1" />
+                                            <Play size={42} fill="currentColor" className="ml-1" />
                                         )}
                                     </button>
                                     
                                     <button 
                                         onClick={() => skip(10)}
-                                        className="p-3 text-slate-400 hover:text-accent-primary hover:bg-accent-primary/10 rounded-2xl transition-all active:scale-90"
+                                        className="btn btn-secondary p-4 h-14 w-14 rounded-2xl flex items-center justify-center border-none bg-slate-100 hover:bg-slate-200 transition-all active:scale-90"
                                         title="Вперед на 10 сек"
                                     >
-                                        <RotateCw size={28} />
+                                        <RotateCw size={24} className="text-slate-600" />
                                     </button>
                                 </div>
 
                                 {/* Progress Section */}
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-4">
                                     <input 
                                         type="range"
                                         min="0"
                                         max={duration || 0}
                                         value={currentTime}
                                         onChange={handleSeek}
-                                        className="w-full h-2 bg-slate-200/50 rounded-full appearance-none cursor-pointer accent-accent-primary hover:h-3 transition-all"
+                                        className="w-full h-2.5 bg-slate-100 rounded-full appearance-none cursor-pointer accent-accent-primary transition-all"
                                         style={{
-                                            background: `linear-gradient(to right, var(--accent-primary) 0%, var(--accent-primary) ${(currentTime / (duration || 1)) * 100}%, rgba(0,0,0,0.05) ${(currentTime / (duration || 1)) * 100}%, rgba(0,0,0,0.05) 100%)`
+                                            background: `linear-gradient(to right, var(--accent-primary) 0%, var(--accent-primary) ${(currentTime / (duration || 1)) * 100}%, #f1f5f9 ${(currentTime / (duration || 1)) * 100}%, #f1f5f9 100%)`
                                         }}
                                     />
-                                    <div className="flex justify-between text-[13px] font-bold text-slate-500/80 font-mono tracking-tighter">
+                                    <div className="flex justify-between text-[14px] font-bold text-slate-400 font-mono tracking-normal">
                                         <span className={isPlaying ? 'text-accent-primary' : ''}>{formatTime(currentTime)}</span>
                                         <span>{formatTime(duration)}</span>
                                     </div>
