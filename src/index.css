@@ -483,12 +483,15 @@ textarea.form-control {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 1rem;
+  width: 75px;
+  height: 75px;
+  border-radius: 1.25rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   border: 1px solid var(--border-color);
   background: white;
   color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 .player-btn:hover {
