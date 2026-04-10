@@ -173,15 +173,6 @@ export default function TestRunner() {
                 answeredQuestionIds: activeQuestions.map(q => q.id)
             });
 
-            // Send notification to Bitrix24
-            await sendTestResultToBitrix({
-                userName: user.name,
-                testTitle: test.title,
-                score,
-                total: activeQuestions.length,
-                passed
-            });
-
             setIsFinished(true);
         } catch (err) {
             alert('Ошибка при сохранении результата');

@@ -241,14 +241,26 @@ export const saveResult = async (result) => {
         answeredQuestionIds: result.answeredQuestionIds || []
     };
 
-    const { data, error } = await supabase
-        .from('results')
-        .upsert([resultToSave])
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
+    // If id exists — update, otherwise — insert (let DB generate the id)
+    if (resultToSave.id) {
+        const { data, error } = await supabase
+            .from('results')
+            .update(resultToSave)
+            .eq('id', resultToSave.id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    } else {
+        const { id, ...insertData } = resultToSave;
+        const { data, error } = await supabase
+            .from('results')
+            .insert([insertData])
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    }
 };
 
 export const getAlreadyAnsweredQuestionIds = async (userId, testId) => {

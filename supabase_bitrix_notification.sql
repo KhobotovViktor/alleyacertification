@@ -27,6 +27,12 @@ BEGIN
                  '✅ Правильных ответов: ' || NEW.score || ' из ' || NEW.total || CHR(10) ||
                  '🏁 Тест пройден: ' || CASE WHEN NEW.passed THEN 'Да ✅' ELSE 'Нет ❌' END;
 
+    -- CRITICAL CHECK: Only notify if the test is actually finished (answeredQuestionIds is not empty)
+    -- This prevents "ghost" notifications with 0/10 results at the start of the test.
+    IF NEW."answeredQuestionIds" IS NULL OR array_length(NEW."answeredQuestionIds", 1) = 0 THEN
+        RETURN NEW;
+    END IF;
+
     -- Send notifications to each chat ID
     FOREACH v_chat_id IN ARRAY v_chat_ids
     LOOP
@@ -47,7 +53,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 3. Create the trigger
 DROP TRIGGER IF EXISTS on_result_inserted ON public.results;
 CREATE TRIGGER on_result_inserted
-    AFTER INSERT ON public.results
+    AFTER INSERT OR UPDATE ON public.results
     FOR EACH ROW
     EXECUTE FUNCTION public.notify_bitrix_on_result();
 
