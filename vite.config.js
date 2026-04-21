@@ -7,7 +7,7 @@ export default defineConfig({
   base: '/',
   build: {
     target: 'es2015',
-    minify: false, // Disabling minification to check if it's a content-filtering issue
+    minify: 'esbuild',
     cssMinify: true,
     modulePreload: false,
     emptyOutDir: true,
