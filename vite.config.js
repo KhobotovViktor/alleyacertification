@@ -9,7 +9,7 @@ export default defineConfig({
     target: 'es2015',
     minify: 'esbuild',
     cssMinify: true,
-    modulePreload: false,
+    modulePreload: true,
     emptyOutDir: true,
     assetsDir: 'assets',
     rollupOptions: {
