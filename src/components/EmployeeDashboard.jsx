@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen, Users } from 'lucide-react';
-import { 
-    getTests, 
-    getCurrentUser, 
-    getTestAttemptsCount, 
-    getUserResults, 
-    getArticles, 
-    getArticleProgress 
+import {
+    getTests,
+    getCurrentUser,
+    getUserResults,
+    getArticles,
+    getArticleProgress
 } from '../services/db';
 import { DashboardSkeleton } from './SkeletonLoader';
 
@@ -41,23 +40,20 @@ export default function EmployeeDashboard() {
             const filteredArticles = allArticles.filter(a => !a.allowedUsers || a.allowedUsers.length === 0 || a.allowedUsers.includes(user.id));
             const userArticleProgress = articleProg.filter(p => p.userId === user.id);
 
-            // Fetch attempt counts in parallel for filtered tests
-            const testsWithStatsPromises = filteredTests.map(async (t) => {
-                const attemptsCount = await getTestAttemptsCount(user.id, t.id);
-                
-                // Identify if required article is completed from pre-fetched articleProg
+            // Compute attempt counts from already-loaded results — no extra DB calls
+            const testsWithStats = filteredTests.map((t) => {
+                const testResults = userRes.filter(r => r.testId === t.id);
+                const attemptsCount = testResults.length;
                 const isArticleCompleted = !t.requiredArticleId || userArticleProgress.some(p => p.articleId === t.requiredArticleId);
 
                 return {
                     ...t,
                     attemptsCount,
-                    bestResult: userRes.filter(r => r.testId === t.id).sort((a, b) => b.score - a.score)[0] || null,
+                    bestResult: testResults.sort((a, b) => b.score - a.score)[0] || null,
                     articleCompleted: isArticleCompleted,
                     requiredArticle: t.requiredArticleId ? allArticles.find(a => a.id === t.requiredArticleId) : null
                 };
             });
-
-            const testsWithStats = await Promise.all(testsWithStatsPromises);
 
             setTests(testsWithStats);
             setArticles(filteredArticles);
