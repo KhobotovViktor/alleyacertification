@@ -1,17 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, BookOpen, ShieldCheck } from 'lucide-react';
 import { getCurrentUser, logout } from './services/db';
 
+// Pages — lazy loaded for route-based code splitting
+const Login = lazy(() => import('./components/Login'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const TestEditor = lazy(() => import('./components/TestEditor'));
+const ArticleEditor = lazy(() => import('./components/ArticleEditor'));
+const EmployeeDashboard = lazy(() => import('./components/EmployeeDashboard'));
+const TestRunner = lazy(() => import('./components/TestRunner'));
+const ArticleViewer = lazy(() => import('./components/ArticleViewer'));
 
-// Pages
-import Login from './components/Login';
-import AdminDashboard from './components/AdminDashboard';
-import TestEditor from './components/TestEditor';
-import ArticleEditor from './components/ArticleEditor';
-import EmployeeDashboard from './components/EmployeeDashboard';
-import TestRunner from './components/TestRunner';
-import ArticleViewer from './components/ArticleViewer';
+const PageLoader = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+    <div style={{ width: '2rem', height: '2rem', border: '3px solid var(--border-color)', borderTopColor: 'var(--accent-primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+  </div>
+);
 
 const Layout = () => {
   const navigate = useNavigate();
@@ -103,6 +108,7 @@ const IndexRoute = () => {
 function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Pages with global layout (Header + Sidebar effects) */}
         <Route element={<Layout />}>
@@ -127,6 +133,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

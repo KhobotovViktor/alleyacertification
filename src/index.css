@@ -1080,3 +1080,4 @@ tr:hover td {
   background: rgba(16, 185, 129, 0.1);
   color: var(--accent-primary);
 }
+@keyframes spin { to { transform: rotate(360deg); } }
