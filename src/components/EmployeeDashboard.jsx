@@ -29,16 +29,15 @@ export default function EmployeeDashboard() {
     const loadDashboardData = async () => {
         setIsLoading(true);
         try {
-            const [allTests, allArticles, userRes, articleProg] = await Promise.all([
+            const [allTests, allArticles, userRes, userArticleProgress] = await Promise.all([
                 getTests(),
                 getArticles(),
                 getUserResults(user.id),
-                getArticleProgress()
+                getArticleProgress(user.id)  // фильтруем на стороне БД
             ]);
 
             const filteredTests = allTests.filter(t => !t.allowedUsers || t.allowedUsers.length === 0 || t.allowedUsers.includes(user.id));
             const filteredArticles = allArticles.filter(a => !a.allowedUsers || a.allowedUsers.length === 0 || a.allowedUsers.includes(user.id));
-            const userArticleProgress = articleProg.filter(p => p.userId === user.id);
 
             // Compute attempt counts from already-loaded results — no extra DB calls
             const testsWithStats = filteredTests.map((t) => {

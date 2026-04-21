@@ -174,11 +174,14 @@ export const uploadAudioFile = async (file) => {
 };
 
 // --- Article Progress ---
-export const getArticleProgress = async () => {
-    const { data, error } = await supabase
+export const getArticleProgress = async (userId = null) => {
+    let query = supabase
         .from('article_progress')
         .select('*')
         .order('lastReadAt', { ascending: false });
+    if (userId) query = query.eq('userId', userId);
+    const { data, error } = await query;
+    if (error) throw error;
     return data || [];
 };
 
