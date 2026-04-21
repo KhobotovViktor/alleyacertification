@@ -22,20 +22,26 @@ const Layout = () => {
     setUser(getCurrentUser());
   }, [location.pathname]);
 
-  // Mouse Tracking Glow Effect
+  // Mouse Tracking Glow Effect (throttled via requestAnimationFrame)
   useEffect(() => {
+    let rafId = null;
     const handleMouseMove = (e) => {
-      const el = e.target.closest('.bento-card, .btn');
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        el.style.setProperty('--mouse-x', `${x}px`);
-        el.style.setProperty('--mouse-y', `${y}px`);
-      }
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        const el = e.target.closest('.bento-card, .btn');
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          el.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+          el.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+        }
+        rafId = null;
+      });
     };
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const handleLogout = () => {
