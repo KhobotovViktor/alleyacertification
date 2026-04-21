@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useNavigate } from 'react-router-dom';
 import { LogOut, BookOpen, ShieldCheck } from 'lucide-react';
 import { getCurrentUser, logout } from './services/db';
 
@@ -20,12 +20,7 @@ const PageLoader = () => (
 
 const Layout = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    setUser(getCurrentUser());
-  }, [location.pathname]);
+  const [user, setUser] = useState(() => getCurrentUser());
 
   // Mouse Tracking Glow Effect (throttled via requestAnimationFrame)
   useEffect(() => {
