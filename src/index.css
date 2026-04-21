@@ -152,21 +152,13 @@ body {
   background-image:
     radial-gradient(at 20% 20%, rgba(16, 185, 129, 0.12) 0px, transparent 50%),
     radial-gradient(at 80% 80%, rgba(52, 211, 153, 0.12) 0px, transparent 50%);
-  background-attachment: fixed;
-  background-size: 150% 150%;
-  animation: meshGradient 40s ease infinite alternate;
+  background-attachment: scroll;
+  background-size: cover;
   overflow-x: hidden;
 }
 
-@keyframes meshGradient {
-  0% {
-    background-position: 0% 0%;
-  }
-
-  100% {
-    background-position: 100% 100%;
-  }
-}
+/* meshGradient animation removed — background-attachment: fixed
+   disabled GPU compositing of scroll on mobile/many browsers. */
 
 #root {
   display: flex;
