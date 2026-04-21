@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen, Users } from 'lucide-react';
 import {
-    getTests,
+    getTestsSummary,
     getCurrentUser,
     getUserResults,
     getArticles,
@@ -30,7 +30,7 @@ export default function EmployeeDashboard() {
         setIsLoading(true);
         try {
             const [allTests, allArticles, userRes, userArticleProgress] = await Promise.all([
-                getTests(),
+                getTestsSummary(),
                 getArticles(),
                 getUserResults(user.id),
                 getArticleProgress(user.id)  // фильтруем на стороне БД

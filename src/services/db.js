@@ -30,7 +30,7 @@ export const getCurrentUser = () => {
 export const getAllUsers = async () => {
     const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role')
         .order('id');
     if (error) throw error;
     return data || [];
@@ -39,17 +39,28 @@ export const getAllUsers = async () => {
 export const getAllEmployees = async () => {
     const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role')
         .eq('role', 'employee');
     if (error) throw error;
     return data || [];
 };
 
 // --- Tests ---
+// Full data (with questions JSON) — used by AdminDashboard for question count
 export const getTests = async () => {
     const { data, error } = await supabase
         .from('tests')
         .select('*')
+        .order('createdAt', { ascending: false });
+    if (error) throw error;
+    return data || [];
+};
+
+// Lightweight — no questions JSON, used by EmployeeDashboard
+export const getTestsSummary = async () => {
+    const { data, error } = await supabase
+        .from('tests')
+        .select('id, title, timeLimit, passingScore, maxAttempts, allowedUsers, requiredArticleId, shuffleQuestions, noRepeatQuestions, questionsLimit, showFeedback, createdAt')
         .order('createdAt', { ascending: false });
     if (error) throw error;
     return data || [];
@@ -99,10 +110,12 @@ export const deleteTest = async (id) => {
 };
 
 // --- Articles ---
+// No content field — dashboards only need metadata (title, allowedUsers, etc.)
+// Full content is fetched via getArticleById() when opening an article
 export const getArticles = async () => {
     const { data, error } = await supabase
         .from('articles')
-        .select('*')
+        .select('id, title, allowedUsers, createdAt, videoUrl, audioUrl, minTimeMinutes')
         .order('createdAt', { ascending: false });
     if (error) throw error;
     return data || [];
