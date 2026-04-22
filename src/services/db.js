@@ -13,6 +13,7 @@ export const login = async (userId, password) => {
 
     if (user && !error) {
         localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
+        window.dispatchEvent(new CustomEvent('user-session-change'));
         return user;
     }
     return null;
@@ -20,6 +21,7 @@ export const login = async (userId, password) => {
 
 export const logout = () => {
     localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+    window.dispatchEvent(new CustomEvent('user-session-change'));
 };
 
 export const getCurrentUser = () => {

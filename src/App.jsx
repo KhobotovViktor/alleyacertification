@@ -22,6 +22,13 @@ const Layout = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(() => getCurrentUser());
 
+  // Sync user state when login/logout fires (db.js dispatches 'user-session-change')
+  useEffect(() => {
+    const handler = () => setUser(getCurrentUser());
+    window.addEventListener('user-session-change', handler);
+    return () => window.removeEventListener('user-session-change', handler);
+  }, []);
+
   // Mouse Tracking Glow Effect (throttled via requestAnimationFrame)
   useEffect(() => {
     let rafId = null;
