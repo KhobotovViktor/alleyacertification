@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Plus, Trash2, Edit, Play, Save, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X } from 'lucide-react';
 import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress } from '../services/db';
 import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
@@ -15,6 +15,7 @@ export default function AdminDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [bitrixTestStatus, setBitrixTestStatus] = useState('idle'); // idle, loading, success, error
     const [clearConfirm, setClearConfirm] = useState(false);
+    const [selectedResult, setSelectedResult] = useState(null);
 
     useEffect(() => {
         loadData();
@@ -79,6 +80,29 @@ export default function AdminDashboard() {
         return results.filter(r => r.userId === employeeId && r.testId === testId);
     };
 
+    // Returns the questions that were shown in a specific result attempt
+    const getQuestionsForResult = (result) => {
+        const test = tests.find(t => t.id === result.testId);
+        if (!test || !Array.isArray(test.questions)) return null;
+        if (result.answeredQuestionIds && result.answeredQuestionIds.length > 0) {
+            const idSet = new Set(result.answeredQuestionIds);
+            return test.questions.filter(q => idSet.has(q.id));
+        }
+        return test.questions;
+    };
+
+    // Check if a single question answer is correct (mirrors TestRunner logic)
+    const isAnswerCorrect = (question, userAns) => {
+        if (!userAns || userAns.length === 0) return false;
+        const correctAns = question.correctAnswers || [];
+        if (question.type === 'text') {
+            const uVal = userAns[0]?.toString().trim().toLowerCase() || '';
+            const cVal = correctAns[0]?.toString().trim().toLowerCase() || '';
+            return uVal === cVal && uVal !== '';
+        }
+        return userAns.length === correctAns.length && userAns.every(v => correctAns.includes(v));
+    };
+
     const handleTestBitrix = async () => {
         setBitrixTestStatus('loading');
         try {
@@ -97,7 +121,208 @@ export default function AdminDashboard() {
         return <DashboardSkeleton />;
     }
 
+    // ---- Result Detail Modal ----
+    const ResultDetailModal = () => {
+        if (!selectedResult) return null;
+
+        const questions = getQuestionsForResult(selectedResult);
+        const hasAnswers = selectedResult.userAnswers && Object.keys(selectedResult.userAnswers).length > 0;
+        const correctCount = questions
+            ? questions.filter(q => isAnswerCorrect(q, selectedResult.userAnswers?.[q.id])).length
+            : selectedResult.score;
+
+        return (
+            <div
+                onClick={() => setSelectedResult(null)}
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 1000,
+                    background: 'rgba(15, 23, 42, 0.55)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '1rem',
+                    animation: 'fadeIn 0.15s ease',
+                }}
+            >
+                <div
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                        background: 'white', borderRadius: '1.5rem',
+                        width: '100%', maxWidth: '680px',
+                        maxHeight: '88vh',
+                        display: 'flex', flexDirection: 'column',
+                        boxShadow: '0 25px 60px rgba(0,0,0,0.2)',
+                        overflow: 'hidden',
+                    }}
+                >
+                    {/* Modal header */}
+                    <div style={{
+                        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                        padding: '1.5rem 1.75rem 1.25rem',
+                        borderBottom: '1px solid #e2e8f0',
+                        flexShrink: 0,
+                    }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                                Детальный разбор
+                            </div>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {getEmpName(selectedResult.userId)}
+                            </h3>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {getTestName(selectedResult.testId)} • {new Date(selectedResult.date).toLocaleString()}
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: '1rem' }}>
+                            {/* Score chip */}
+                            <div style={{
+                                padding: '0.4rem 0.9rem', borderRadius: '2rem', fontWeight: 700,
+                                fontSize: '0.85rem',
+                                background: selectedResult.passed ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                                color: selectedResult.passed ? 'var(--success)' : 'var(--danger)',
+                                border: `1px solid ${selectedResult.passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                            }}>
+                                {selectedResult.score} / {selectedResult.total} баллов
+                            </div>
+                            <button
+                                onClick={() => setSelectedResult(null)}
+                                style={{
+                                    width: '2rem', height: '2rem', borderRadius: '0.5rem',
+                                    border: '1px solid #e2e8f0', background: '#f8fafc',
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: 'var(--text-secondary)', transition: 'all 0.15s',
+                                    flexShrink: 0,
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#ef4444'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                            >
+                                <X size={14} style={{ pointerEvents: 'none' }} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Scrollable body */}
+                    <div style={{ overflowY: 'auto', padding: '1.25rem 1.75rem 1.75rem', flex: 1 }} className="custom-scrollbar">
+                        {!questions ? (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                <AlertCircle size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
+                                <div>Тест был удалён — вопросы недоступны</div>
+                            </div>
+                        ) : !hasAnswers ? (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                <AlertCircle size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
+                                <div>Подробные ответы не сохранены</div>
+                                <div style={{ fontSize: '0.78rem', marginTop: '0.5rem', opacity: 0.6 }}>Детали доступны для прохождений после обновления системы</div>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Summary bar */}
+                                <div style={{
+                                    display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap',
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--success)', background: 'rgba(16,185,129,0.08)', padding: '0.35rem 0.75rem', borderRadius: '2rem', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                        <CheckCircle size={13} /> {correctCount} правильно
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--danger)', background: 'rgba(239,68,68,0.08)', padding: '0.35rem 0.75rem', borderRadius: '2rem', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                        <AlertCircle size={13} /> {questions.length - correctCount} ошибок
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', background: '#f1f5f9', padding: '0.35rem 0.75rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
+                                        {questions.length} вопросов
+                                    </div>
+                                </div>
+
+                                {/* Questions list */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                                    {questions.map((q, idx) => {
+                                        const userAns = selectedResult.userAnswers?.[q.id] || [];
+                                        const correct = isAnswerCorrect(q, userAns);
+                                        const correctAns = q.correctAnswers || [];
+
+                                        return (
+                                            <div
+                                                key={q.id}
+                                                style={{
+                                                    borderRadius: '1rem',
+                                                    border: `1.5px solid ${correct ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                                                    background: correct ? 'rgba(16,185,129,0.03)' : 'rgba(239,68,68,0.03)',
+                                                    overflow: 'hidden',
+                                                }}
+                                            >
+                                                {/* Question header */}
+                                                <div style={{
+                                                    display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+                                                    padding: '0.875rem 1rem',
+                                                    borderBottom: `1px solid ${correct ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}`,
+                                                    background: correct ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
+                                                }}>
+                                                    <div style={{
+                                                        width: '1.5rem', height: '1.5rem', borderRadius: '50%', flexShrink: 0,
+                                                        background: correct ? 'var(--success)' : 'var(--danger)',
+                                                        color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: '0.7rem', fontWeight: 800, marginTop: '0.1rem',
+                                                    }}>
+                                                        {correct ? <CheckCircle size={12} /> : <X size={12} />}
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: correct ? 'var(--success)' : 'var(--danger)', marginBottom: '0.2rem' }}>
+                                                            Вопрос {idx + 1}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: 1.45, fontWeight: 500 }}>
+                                                            {q.text}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Answers */}
+                                                <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    {q.type === 'text' ? (
+                                                        <>
+                                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                                                                <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', flexShrink: 0 }}>Ответил:</span>
+                                                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: correct ? 'var(--success)' : 'var(--danger)', wordBreak: 'break-word' }}>
+                                                                    {userAns[0] || <em style={{ opacity: 0.5 }}>нет ответа</em>}
+                                                                </span>
+                                                            </div>
+                                                            {!correct && (
+                                                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                                                                    <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', flexShrink: 0 }}>Верно:</span>
+                                                                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--success)', wordBreak: 'break-word' }}>{correctAns[0]}</span>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        q.options.map((opt, oIdx) => {
+                                                            const wasChosen = userAns.includes(opt);
+                                                            const isRight = correctAns.includes(opt);
+                                                            let chipStyle = { background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0' };
+                                                            if (wasChosen && isRight) chipStyle = { background: 'rgba(16,185,129,0.12)', color: 'var(--success)', border: '1.5px solid rgba(16,185,129,0.35)' };
+                                                            else if (wasChosen && !isRight) chipStyle = { background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1.5px solid rgba(239,68,68,0.3)' };
+                                                            else if (!wasChosen && isRight) chipStyle = { background: 'rgba(16,185,129,0.07)', color: 'var(--success)', border: '1.5px dashed rgba(16,185,129,0.4)' };
+
+                                                            return (
+                                                                <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.75rem', borderRadius: '0.625rem', fontSize: '0.85rem', fontWeight: wasChosen || isRight ? 600 : 400, ...chipStyle }}>
+                                                                    {wasChosen && isRight && <CheckCircle size={13} style={{ flexShrink: 0 }} />}
+                                                                    {wasChosen && !isRight && <X size={13} style={{ flexShrink: 0 }} />}
+                                                                    {!wasChosen && isRight && <span style={{ fontSize: '0.65rem', fontWeight: 800, flexShrink: 0 }}>✓ верно</span>}
+                                                                    {opt}
+                                                                </div>
+                                                            );
+                                                        })
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
+        <>
         <div className="flex-col gap-6">
             {/* Bento Header Section */}
             <div className="bento-grid mb-8">
@@ -347,13 +572,32 @@ export default function AdminDashboard() {
                         ) : (
                             <div className="flex-col gap-3">
                                 {results.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50).map((result, index) => (
-                                    <div key={result.id} className={`flex items-center justify-between p-4 bg-white rounded-xl border border-[var(--border-color)] hover:shadow-md transition-all animate-fade-in stagger-${(index % 5) + 1} hover:-translate-y-1`}>
-                                        <div>
+                                    <div key={result.id} className={`flex items-center justify-between p-4 bg-white rounded-xl border border-[var(--border-color)] hover:shadow-md transition-all animate-fade-in stagger-${(index % 5) + 1}`} style={{ gap: '0.75rem' }}>
+                                        <div style={{ minWidth: 0, flex: 1 }}>
                                             <div className="font-medium text-primary">{getEmpName(result.userId)}</div>
                                             <div className="text-xs text-secondary mt-1">{getTestName(result.testId)} • {new Date(result.date).toLocaleString()}</div>
                                         </div>
-                                        <div className={`badge ${result.passed ? 'bg-success/10 text-success border-success/30' : 'bg-danger/10 text-danger border-danger/30'}`}>
-                                            {result.score} / {result.total} баллов
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                            <div className={`badge ${result.passed ? 'bg-success/10 text-success border-success/30' : 'bg-danger/10 text-danger border-danger/30'}`}>
+                                                {result.score} / {result.total}
+                                            </div>
+                                            <button
+                                                onClick={() => setSelectedResult(result)}
+                                                title="Посмотреть ответы"
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '0.35rem',
+                                                    padding: '0.4rem 0.75rem', borderRadius: '0.625rem',
+                                                    border: '1px solid #e2e8f0', background: '#f8fafc',
+                                                    color: 'var(--text-secondary)', cursor: 'pointer',
+                                                    fontSize: '0.75rem', fontWeight: 600,
+                                                    transition: 'all 0.15s',
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                                            >
+                                                <Eye size={13} style={{ pointerEvents: 'none' }} />
+                                                <span className="mobile-hide">Детали</span>
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -402,5 +646,9 @@ export default function AdminDashboard() {
 
             </div>
         </div>
+
+        {/* Result detail modal */}
+        <ResultDetailModal />
+        </>
     );
 }

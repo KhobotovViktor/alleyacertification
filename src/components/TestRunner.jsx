@@ -161,7 +161,8 @@ export default function TestRunner() {
                 score,
                 total: activeQuestions.length,
                 passed,
-                answeredQuestionIds: activeQuestions.map(q => q.id)
+                answeredQuestionIds: activeQuestions.map(q => q.id),
+                userAnswers: answers
             });
 
             sendTestResultToBitrix({
