@@ -10,6 +10,7 @@ export default function TestRunner() {
     const navigate = useNavigate();
     const user = getCurrentUser();
     const timerRef = useRef(null);
+    const isSubmittingRef = useRef(false); // guards against duplicate handleSubmit calls
 
 
     const [test, setTest] = useState(null);
@@ -86,23 +87,30 @@ export default function TestRunner() {
         initTest();
     }, [id, user?.id, navigate]);
 
+    // Timer: created once when test starts; counts down internally and clears itself at 0.
+    // timeLeft is intentionally NOT in deps — functional updater always reads latest value.
     useEffect(() => {
-        if (test && !isFinished && timeLeft > 0) {
-            timerRef.current = setInterval(() => {
-                setTimeLeft(prev => prev - 1);
-            }, 1000);
-        }
+        if (!test || isFinished || timeLeft <= 0) return;
 
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-        };
-    }, [test, isFinished, timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
 
+        return () => clearInterval(timerRef.current);
+    }, [test, isFinished]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Auto-submit when timer hits 0
     useEffect(() => {
         if (test && !isFinished && timeLeft === 0) {
             handleSubmit(true);
         }
-    }, [timeLeft, test, isFinished]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleAnswerChange = (qId, type, value, checked) => {
         if (showQuestionFeedback) return; // disable change if feedback is shown
@@ -149,8 +157,12 @@ export default function TestRunner() {
     };
 
     const handleSubmit = async (isTimeout = false) => {
+        // Prevent duplicate submissions (double-click, timer race, StrictMode, etc.)
+        if (isSubmittingRef.current) return;
+        isSubmittingRef.current = true;
+
         if (timerRef.current) clearInterval(timerRef.current);
-        
+
         setIsLoading(true);
         const { score, passed } = evaluateScore();
         try {
@@ -165,7 +177,7 @@ export default function TestRunner() {
                 userAnswers: answers
             });
 
-            sendTestResultToBitrix({
+            await sendTestResultToBitrix({
                 userName: user.name,
                 testTitle: test.title,
                 score,
@@ -177,6 +189,7 @@ export default function TestRunner() {
         } catch (err) {
             alert('Ошибка при сохранении результата');
             console.error(err);
+            isSubmittingRef.current = false; // allow retry on error
         } finally {
             setIsLoading(false);
         }
