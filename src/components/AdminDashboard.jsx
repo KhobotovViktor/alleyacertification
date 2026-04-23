@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X, BarChart2 } from 'lucide-react';
+import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X, BarChart2, Download } from 'lucide-react';
 import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment } from '../services/db';
 import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
@@ -103,6 +103,30 @@ export default function AdminDashboard() {
             return (uVal === cVal && uVal !== '') || synonyms.includes(uVal);
         }
         return userAns.length === correctAns.length && userAns.every(v => correctAns.includes(v));
+    };
+
+    // ── CSV export ──
+    const exportResultsCSV = () => {
+        const headers = ['Сотрудник', 'Тест', 'Дата', 'Баллы', 'Итого', 'Процент', 'Статус'];
+        const rows = results.map(r => [
+            getEmpName(r.userId),
+            getTestName(r.testId),
+            new Date(r.date).toLocaleString('ru-RU'),
+            r.score,
+            r.total,
+            Math.round((r.score / r.total) * 100) + '%',
+            r.passed ? 'Сдано' : 'Не сдано',
+        ]);
+        const csv = [headers, ...rows]
+            .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `results_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     // ── Department management ──
@@ -569,26 +593,34 @@ export default function AdminDashboard() {
                 {/* Results List */}
                 {activeTab === 'results' && (
                     <div className="card w-full lg:col-span-2">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                             <h3 className="flex items-center gap-2 m-0">
                                 <Users size={20} /> Последние результаты тестирования
                             </h3>
                             {results.length > 0 && (
-                                <button
-                                    onClick={async () => {
-                                        if (clearConfirm) {
-                                            setClearConfirm(false);
-                                            await clearResults();
-                                            await loadData();
-                                        } else {
-                                            setClearConfirm(true);
-                                            setTimeout(() => setClearConfirm(false), 3000);
-                                        }
-                                    }}
-                                    className={`btn ${clearConfirm ? 'btn-danger' : 'btn-secondary'} text-xs py-1 px-3 transition-colors`}
-                                >
-                                    {clearConfirm ? 'Точно очистить?' : 'Очистить историю'}
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <button
+                                        onClick={exportResultsCSV}
+                                        className="btn btn-secondary text-xs py-1 px-3 flex items-center gap-1.5"
+                                    >
+                                        <Download size={13} /> Скачать CSV
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (clearConfirm) {
+                                                setClearConfirm(false);
+                                                await clearResults();
+                                                await loadData();
+                                            } else {
+                                                setClearConfirm(true);
+                                                setTimeout(() => setClearConfirm(false), 3000);
+                                            }
+                                        }}
+                                        className={`btn ${clearConfirm ? 'btn-danger' : 'btn-secondary'} text-xs py-1 px-3 transition-colors`}
+                                    >
+                                        {clearConfirm ? 'Точно очистить?' : 'Очистить историю'}
+                                    </button>
+                                </div>
                             )}
                         </div>
                         {results.length === 0 ? (
