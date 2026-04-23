@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X } from 'lucide-react';
+import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X, BarChart2 } from 'lucide-react';
 import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress } from '../services/db';
 import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
@@ -16,6 +16,7 @@ export default function AdminDashboard() {
     const [bitrixTestStatus, setBitrixTestStatus] = useState('idle'); // idle, loading, success, error
     const [clearConfirm, setClearConfirm] = useState(false);
     const [selectedResult, setSelectedResult] = useState(null);
+    const [analyticsTestId, setAnalyticsTestId] = useState('');
 
     useEffect(() => {
         loadData();
@@ -101,6 +102,19 @@ export default function AdminDashboard() {
             return uVal === cVal && uVal !== '';
         }
         return userAns.length === correctAns.length && userAns.every(v => correctAns.includes(v));
+    };
+
+    // ── Question analytics ──
+    const getQuestionAnalytics = (testId) => {
+        const test = tests.find(t => t.id === testId);
+        if (!test?.questions) return [];
+        const testResults = results.filter(r => r.testId === testId && r.userAnswers);
+        return test.questions.map(q => {
+            const appearances = testResults.filter(r => (r.answeredQuestionIds || []).includes(q.id));
+            const correct = appearances.filter(r => isAnswerCorrect(q, r.userAnswers?.[q.id]));
+            const rate = appearances.length > 0 ? Math.round((correct.length / appearances.length) * 100) : null;
+            return { question: q, total: appearances.length, correct: correct.length, rate };
+        });
     };
 
     const handleTestBitrix = async () => {
@@ -409,6 +423,7 @@ export default function AdminDashboard() {
                     {[
                         { key: 'tests', icon: <BookOpen size={16} />, label: 'Тесты' },
                         { key: 'results', icon: <CheckCircle size={16} />, label: 'Результаты' },
+                        { key: 'analytics', icon: <BarChart2 size={16} />, label: 'Аналитика' },
                         { key: 'articles', icon: <FileText size={16} />, label: 'Материалы' },
                         { key: 'trainingStats', icon: <Clock size={16} />, label: 'Обучение' }
                     ].map(tab => (
@@ -603,6 +618,57 @@ export default function AdminDashboard() {
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* ── Analytics ── */}
+                {activeTab === 'analytics' && (
+                    <div className="card w-full lg:col-span-2 animate-fade-in">
+                        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <h3 className="flex items-center gap-2 m-0"><BarChart2 size={20} className="text-accent-primary" /> Аналитика по вопросам</h3>
+                            <select className="form-control" style={{ maxWidth: '260px', borderRadius: '0.75rem', padding: '0.4rem 0.75rem' }}
+                                value={analyticsTestId}
+                                onChange={e => setAnalyticsTestId(e.target.value)}>
+                                <option value="">— Выберите тест —</option>
+                                {tests.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                            </select>
+                        </div>
+                        {!analyticsTestId ? (
+                            <div className="text-secondary p-6 text-center border border-dashed border-[var(--border-color)] rounded-xl">Выберите тест выше</div>
+                        ) : (() => {
+                            const analytics = getQuestionAnalytics(analyticsTestId);
+                            const testResultsCount = results.filter(r => r.testId === analyticsTestId).length;
+                            return (
+                                <div className="flex-col gap-3">
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                        Всего попыток: <strong>{testResultsCount}</strong>
+                                    </div>
+                                    {analytics.map((item, idx) => (
+                                        <div key={item.question.id} style={{ padding: '1rem', background: 'white', borderRadius: '0.875rem', border: '1px solid #e2e8f0' }}>
+                                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Вопрос {idx + 1}</div>
+                                                    <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{item.question.text}</div>
+                                                </div>
+                                                {item.rate !== null ? (
+                                                    <div style={{ flexShrink: 0, textAlign: 'center' }}>
+                                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: item.rate >= 70 ? 'var(--success)' : item.rate >= 40 ? '#f59e0b' : 'var(--danger)' }}>{item.rate}%</div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{item.correct}/{item.total}</div>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '0.25rem 0.5rem', background: '#f1f5f9', borderRadius: '0.5rem' }}>нет данных</div>
+                                                )}
+                                            </div>
+                                            {item.rate !== null && (
+                                                <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                                                    <div style={{ height: '100%', width: `${item.rate}%`, background: item.rate >= 70 ? 'var(--success)' : item.rate >= 40 ? '#f59e0b' : 'var(--danger)', borderRadius: '3px', transition: 'width 0.5s ease' }} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
 
