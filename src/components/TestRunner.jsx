@@ -141,7 +141,8 @@ export default function TestRunner() {
             if (q.type === 'text') {
                 const uVal = userAns[0]?.toString().trim().toLowerCase() || '';
                 const cVal = correctAns[0]?.toString().trim().toLowerCase() || '';
-                if (uVal === cVal && uVal !== '') score++;
+                const synonyms = (q.synonyms || []).map(s => s.trim().toLowerCase());
+                if ((uVal === cVal && uVal !== '') || synonyms.includes(uVal)) score++;
             } else {
                 // Must match exactly: same length and all elements present
                 if (userAns.length === correctAns.length && userAns.every(v => correctAns.includes(v))) {

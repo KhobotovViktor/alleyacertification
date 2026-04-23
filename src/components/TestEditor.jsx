@@ -85,7 +85,8 @@ export default function TestEditor() {
             type: 'single',
             text: '',
             options: ['Вариант 1', 'Вариант 2'],
-            correctAnswers: ['Вариант 1']
+            correctAnswers: ['Вариант 1'],
+            synonyms: [],
         };
         setTest(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }));
         setActiveTab('questions');
@@ -530,16 +531,32 @@ export default function TestEditor() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-white/30 p-6 rounded-2xl border border-white/50 shadow-sm">
-                                        <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Правильный ответ</label>
-                                        <input
-                                            type="text"
-                                            className="form-control h-12 px-5"
-                                            style={{ borderRadius: '1rem', background: 'white' }}
-                                            value={q.correctAnswers[0] || ''}
-                                            onChange={e => updateQuestion(q.id, { correctAnswers: [e.target.value] })}
-                                            placeholder="Введите эталонный ответ..."
-                                        />
+                                    <div className="bg-white/30 p-6 rounded-2xl border border-white/50 shadow-sm flex-col gap-4">
+                                        <div>
+                                            <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Правильный ответ</label>
+                                            <input
+                                                type="text"
+                                                className="form-control h-12 px-5"
+                                                style={{ borderRadius: '1rem', background: 'white' }}
+                                                value={q.correctAnswers[0] || ''}
+                                                onChange={e => updateQuestion(q.id, { correctAnswers: [e.target.value] })}
+                                                placeholder="Введите эталонный ответ..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Синонимы (через запятую)</label>
+                                            <input
+                                                type="text"
+                                                className="form-control h-11 px-5"
+                                                style={{ borderRadius: '1rem', background: 'white' }}
+                                                value={(q.synonyms || []).join(', ')}
+                                                onChange={e => updateQuestion(q.id, { synonyms: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                                                placeholder="диван, кресло, диваны..."
+                                            />
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                                Все перечисленные варианты будут считаться правильными
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>

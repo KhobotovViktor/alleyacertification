@@ -99,7 +99,8 @@ export default function AdminDashboard() {
         if (question.type === 'text') {
             const uVal = userAns[0]?.toString().trim().toLowerCase() || '';
             const cVal = correctAns[0]?.toString().trim().toLowerCase() || '';
-            return uVal === cVal && uVal !== '';
+            const synonyms = (question.synonyms || []).map(s => s.trim().toLowerCase());
+            return (uVal === cVal && uVal !== '') || synonyms.includes(uVal);
         }
         return userAns.length === correctAns.length && userAns.every(v => correctAns.includes(v));
     };
