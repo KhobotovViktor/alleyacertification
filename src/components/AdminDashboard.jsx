@@ -17,6 +17,8 @@ export default function AdminDashboard() {
     const [clearConfirm, setClearConfirm] = useState(false);
     const [selectedResult, setSelectedResult] = useState(null);
     const [analyticsTestId, setAnalyticsTestId] = useState('');
+    const [departments, setDepartments] = useState([]);
+    const [newDeptInput, setNewDeptInput] = useState('');
 
     useEffect(() => {
         loadData();
@@ -38,6 +40,9 @@ export default function AdminDashboard() {
             setResults(resultsData || []);
             setArticleProgress(progressData || []);
             setEmployees(employeesData || []);
+            // Derive department list from actual Supabase data
+            const existingDepts = [...new Set((employeesData || []).map(e => e.department).filter(Boolean))];
+            setDepartments(prev => [...new Set([...existingDepts, ...prev])]);
         } catch (err) {
             console.error('Failed to load admin data:', err);
         } finally {
@@ -130,12 +135,18 @@ export default function AdminDashboard() {
     };
 
     // ── Department management ──
-    const DEPARTMENTS = ['Продажи', 'Склад', 'Доставка', 'Администрация', 'Сервис'];
     const handleDeptChange = async (userId, dept) => {
         try {
             await updateUserDepartment(userId, dept);
             setEmployees(prev => prev.map(e => e.id === userId ? { ...e, department: dept } : e));
         } catch (err) { alert('Ошибка обновления отдела'); }
+    };
+
+    const handleAddDepartment = () => {
+        const name = newDeptInput.trim();
+        if (!name) return;
+        setDepartments(prev => prev.includes(name) ? prev : [...prev, name]);
+        setNewDeptInput('');
     };
 
     // ── Question analytics ──
@@ -761,22 +772,56 @@ export default function AdminDashboard() {
                             <h3 className="m-0">Сотрудники и отделы</h3>
                         </div>
                         <p className="text-sm text-secondary mb-4">Назначьте сотрудников по отделам — это позволит быстро выбирать аудиторию при назначении тестов.</p>
+
+                        {/* Add new department */}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                            <input
+                                type="text"
+                                className="form-control"
+                                style={{ borderRadius: '0.75rem', flex: 1 }}
+                                placeholder="Название нового отдела..."
+                                value={newDeptInput}
+                                onChange={e => setNewDeptInput(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleAddDepartment()}
+                            />
+                            <button
+                                onClick={handleAddDepartment}
+                                className="btn btn-primary"
+                                style={{ borderRadius: '0.75rem', padding: '0 1rem', whiteSpace: 'nowrap' }}
+                            >
+                                <Plus size={15} style={{ marginRight: '0.3rem' }} /> Добавить
+                            </button>
+                        </div>
+
+                        {/* Department chips */}
+                        {departments.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
+                                {departments.map(d => (
+                                    <span key={d} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: '2rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' }}>{d}</span>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="flex-col gap-2">
                             {employees.length === 0 && (
                                 <div className="py-8 text-center text-secondary">Нет сотрудников.</div>
                             )}
-                            {employees.map(emp => (
-                                <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', background: 'white', borderRadius: '0.875rem', border: '1px solid #e2e8f0', gap: '1rem' }}>
-                                    <div style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1 }}>{emp.name}</div>
-                                    <select
-                                        value={emp.department || ''}
-                                        onChange={e => handleDeptChange(emp.id, e.target.value)}
-                                        style={{ padding: '0.35rem 0.75rem', borderRadius: '0.625rem', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                                        <option value="">— Без отдела —</option>
-                                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                                    </select>
-                                </div>
-                            ))}
+                            {employees.map(emp => {
+                                // Merge global list with employee's current value so it's always selectable
+                                const opts = [...new Set([...departments, emp.department].filter(Boolean))];
+                                return (
+                                    <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', background: 'white', borderRadius: '0.875rem', border: '1px solid #e2e8f0', gap: '1rem' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1 }}>{emp.name}</div>
+                                        <select
+                                            value={emp.department || ''}
+                                            onChange={e => handleDeptChange(emp.id, e.target.value)}
+                                            style={{ padding: '0.35rem 0.75rem', borderRadius: '0.625rem', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                            <option value="">— Без отдела —</option>
+                                            {opts.map(d => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
