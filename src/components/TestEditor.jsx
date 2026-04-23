@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle } from 'lucide-react';
-import { getTestById, saveTest, getAllEmployees, getArticles } from '../services/db';
+import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, BookMarked, X, Calendar } from 'lucide-react';
+import { getTestById, saveTest, getAllEmployees, getArticles, getQuestionBank } from '../services/db';
+import { sendTestAssignedToBitrix } from '../services/bitrix';
 import { EditorSkeleton } from './SkeletonLoader';
+
+// Returns the last day of the current month as YYYY-MM-DD
+const getLastDayOfMonth = () => {
+    const now = new Date();
+    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return last.toISOString().slice(0, 10);
+};
 
 export default function TestEditor() {
     const { id } = useParams();
@@ -11,34 +19,44 @@ export default function TestEditor() {
 
     const [employees, setEmployees] = useState([]);
     const [articles, setArticles] = useState([]);
+    const [questionBank, setQuestionBank] = useState([]);
     const [test, setTest] = useState({
         id: isNew ? '' : id,
         title: '',
-        timeLimit: 600, // 10 minutes in seconds
+        timeLimit: 600,
         passingScore: 1,
         maxAttempts: 1,
-        allowedUsers: [], // Empty means everyone
-        requiredArticleId: '', // Optional article to read before passing
+        allowedUsers: [],
+        requiredArticleId: '',
         shuffleQuestions: false,
         noRepeatQuestions: false,
-        questionsLimit: 0, // 0 = all
-        showFeedback: false, // immediate feedback
-        questions: []
+        questionsLimit: 0,
+        showFeedback: false,
+        questions: [],
+        // New fields
+        deadline: '',
+        retryIntervalHours: 0,
+        status: 'published',
     });
 
     const [activeTab, setActiveTab] = useState('settings');
     const [isLoading, setIsLoading] = useState(true);
+    const [showBankModal, setShowBankModal] = useState(false);
+    const [bankSelected, setBankSelected] = useState(new Set());
+    const [bankFilter, setBankFilter] = useState('');
 
     useEffect(() => {
         const loadInitialData = async () => {
             setIsLoading(true);
             try {
-                const [employeesData, articlesData] = await Promise.all([
+                const [employeesData, articlesData, bankData] = await Promise.all([
                     getAllEmployees(),
-                    getArticles()
+                    getArticles(),
+                    getQuestionBank(),
                 ]);
                 setEmployees(employeesData || []);
                 setArticles(articlesData || []);
+                setQuestionBank(bankData || []);
 
                 if (!isNew && id) {
                     const existingTest = await getTestById(id);
@@ -54,22 +72,24 @@ export default function TestEditor() {
                 setIsLoading(false);
             }
         };
-
         loadInitialData();
     }, [id, isNew, navigate]);
 
     const handleSave = async () => {
-        if (!test.title.trim()) {
-            alert('Введите название теста');
-            return;
-        }
-        if (test.questions.length === 0) {
-            alert('Добавьте хотя бы один вопрос');
-            return;
-        }
+        if (!test.title.trim()) { alert('Введите название теста'); return; }
+        if (test.questions.length === 0) { alert('Добавьте хотя бы один вопрос'); return; }
         setIsLoading(true);
         try {
+            const wasNew = isNew;
             await saveTest(test);
+            // Send Bitrix notification when publishing a test with a deadline
+            if (test.status === 'published' && test.deadline) {
+                sendTestAssignedToBitrix({
+                    testTitle: test.title,
+                    deadline: test.deadline,
+                    assignedCount: test.allowedUsers?.length ?? 0,
+                });
+            }
             navigate('/admin');
         } catch (err) {
             alert('Ошибка при сохранении теста');
@@ -85,7 +105,8 @@ export default function TestEditor() {
             type: 'single',
             text: '',
             options: ['Вариант 1', 'Вариант 2'],
-            correctAnswers: ['Вариант 1']
+            correctAnswers: ['Вариант 1'],
+            synonyms: [],
         };
         setTest(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }));
         setActiveTab('questions');
@@ -99,28 +120,20 @@ export default function TestEditor() {
     };
 
     const removeQuestion = (qId) => {
-        setTest(prev => ({
-            ...prev,
-            questions: prev.questions.filter(q => q.id !== qId)
-        }));
+        setTest(prev => ({ ...prev, questions: prev.questions.filter(q => q.id !== qId) }));
     };
 
     const updateOption = (qId, optionIndex, newValue) => {
         setTest(prev => ({
             ...prev,
             questions: prev.questions.map(q => {
-                if (q.id === qId) {
-                    const newOptions = [...q.options];
-                    const oldVal = newOptions[optionIndex];
-                    newOptions[optionIndex] = newValue;
-
-                    let newCorrect = [...q.correctAnswers];
-                    if (newCorrect.includes(oldVal)) {
-                        newCorrect = newCorrect.map(c => c === oldVal ? newValue : c);
-                    }
-                    return { ...q, options: newOptions, correctAnswers: newCorrect };
-                }
-                return q;
+                if (q.id !== qId) return q;
+                const newOptions = [...q.options];
+                const oldVal = newOptions[optionIndex];
+                newOptions[optionIndex] = newValue;
+                let newCorrect = [...q.correctAnswers];
+                if (newCorrect.includes(oldVal)) newCorrect = newCorrect.map(c => c === oldVal ? newValue : c);
+                return { ...q, options: newOptions, correctAnswers: newCorrect };
             })
         }));
     };
@@ -136,13 +149,13 @@ export default function TestEditor() {
         setTest(prev => ({
             ...prev,
             questions: prev.questions.map(q => {
-                if (q.id === qId) {
-                    const valToRemove = q.options[optionIndex];
-                    const newOptions = q.options.filter((_, idx) => idx !== optionIndex);
-                    const newCorrect = q.correctAnswers.filter(c => c !== valToRemove);
-                    return { ...q, options: newOptions, correctAnswers: newCorrect };
-                }
-                return q;
+                if (q.id !== qId) return q;
+                const valToRemove = q.options[optionIndex];
+                return {
+                    ...q,
+                    options: q.options.filter((_, idx) => idx !== optionIndex),
+                    correctAnswers: q.correctAnswers.filter(c => c !== valToRemove),
+                };
             })
         }));
     };
@@ -151,115 +164,241 @@ export default function TestEditor() {
         setTest(prev => ({
             ...prev,
             questions: prev.questions.map(q => {
-                if (q.id === qId) {
-                    if (type === 'single') {
-                        return { ...q, correctAnswers: [optionValue] };
-                    } else {
-                        const isCorrect = q.correctAnswers.includes(optionValue);
-                        return {
-                            ...q,
-                            correctAnswers: isCorrect
-                                ? q.correctAnswers.filter(c => c !== optionValue)
-                                : [...q.correctAnswers, optionValue]
-                        };
-                    }
-                }
-                return q;
+                if (q.id !== qId) return q;
+                if (type === 'single') return { ...q, correctAnswers: [optionValue] };
+                const isCorrect = q.correctAnswers.includes(optionValue);
+                return { ...q, correctAnswers: isCorrect ? q.correctAnswers.filter(c => c !== optionValue) : [...q.correctAnswers, optionValue] };
             })
         }));
     };
 
-    if (isLoading) {
-        return <EditorSkeleton />;
-    }
+    // Import selected questions from bank
+    const handleImportFromBank = () => {
+        const toImport = questionBank
+            .filter(q => bankSelected.has(q.id))
+            .map(q => ({
+                id: Date.now().toString() + Math.random().toString(36).slice(2),
+                type: q.type,
+                text: q.text,
+                options: q.options || [],
+                correctAnswers: q.correctAnswers || [],
+                synonyms: q.synonyms || [],
+            }));
+        setTest(prev => ({ ...prev, questions: [...prev.questions, ...toImport] }));
+        setBankSelected(new Set());
+        setShowBankModal(false);
+        setActiveTab('questions');
+    };
+
+    // Department quick-select
+    const departments = [...new Set(employees.map(e => e.department).filter(Boolean))];
+    const selectDepartment = (dept) => {
+        const deptIds = employees.filter(e => e.department === dept).map(e => e.id);
+        const current = test.allowedUsers || [];
+        const allSelected = deptIds.every(id => current.includes(id));
+        if (allSelected) {
+            setTest(prev => ({ ...prev, allowedUsers: current.filter(id => !deptIds.includes(id)) }));
+        } else {
+            const merged = [...new Set([...current, ...deptIds])];
+            setTest(prev => ({ ...prev, allowedUsers: merged }));
+        }
+    };
+
+    if (isLoading) return <EditorSkeleton />;
+
+    const filteredBank = questionBank.filter(q =>
+        !bankFilter || q.text.toLowerCase().includes(bankFilter.toLowerCase()) || (q.category || '').toLowerCase().includes(bankFilter.toLowerCase())
+    );
 
     return (
         <div className="flex-col gap-6 max-w-4xl mx-auto">
+            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button onClick={() => navigate('/admin')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                    >
+                    <button onClick={() => navigate('/admin')}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
                         <ArrowLeft size={16} />
                     </button>
-                    <h2 style={{ margin: 0 }}>{isNew ? 'Создание нового теста' : 'Редактирование теста'}</h2>
+                    <div>
+                        <h2 style={{ margin: 0 }}>{isNew ? 'Создание нового теста' : 'Редактирование теста'}</h2>
+                        {test.status === 'draft' && (
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, background: '#f59e0b', color: 'white', padding: '0.15rem 0.5rem', borderRadius: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Черновик</span>
+                        )}
+                    </div>
                 </div>
-                <button onClick={handleSave} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', borderRadius: '0.75rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                    <Save size={16} /> Сохранить
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => setTest(p => ({ ...p, status: p.status === 'draft' ? 'published' : 'draft' }))}
+                        style={{ padding: '0.625rem 1rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0', background: test.status === 'draft' ? '#fef3c7' : '#f8fafc', color: test.status === 'draft' ? '#92400e' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
+                        {test.status === 'draft' ? '📝 Черновик' : '✅ Опубликован'}
+                    </button>
+                    <button onClick={handleSave} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', borderRadius: '0.75rem' }}>
+                        <Save size={16} /> Сохранить
+                    </button>
+                </div>
             </div>
 
-            <div style={{ marginBottom: '0.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            {/* Tabs */}
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <div style={{ display: 'inline-flex', gap: '0.25rem', padding: '0.375rem', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', whiteSpace: 'nowrap' }}>
                     {[
                         { key: 'settings', icon: <Settings size={16} />, label: 'Настройки' },
                         { key: 'questions', icon: <FileQuestion size={16} />, label: `Вопросы (${test.questions.length})` },
-                        { key: 'access', icon: <List size={16} />, label: 'Доступ и обучение' }
+                        { key: 'access', icon: <List size={16} />, label: 'Доступ и обучение' },
                     ].map(tab => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                padding: '0.5rem 1.25rem', borderRadius: '0.75rem',
-                                border: 'none',
-                                cursor: 'pointer', transition: 'all 0.2s',
-                                background: activeTab === tab.key ? 'white' : 'transparent',
-                                color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                            }}
-                        >
+                        <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.25rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === tab.key ? 'white' : 'transparent', color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)', boxShadow: activeTab === tab.key ? '0 2px 8px rgba(0,0,0,0.08)' : 'none' }}>
                             {tab.icon} {tab.label}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {activeTab === 'access' && (
-                <div className="card max-w-2xl animate-fade-in flex-col gap-6">
-                    <div>
-                        <h3 className="text-lg">Обучение перед тестированием</h3>
-                        <p className="text-sm text-secondary mb-3">
-                            Тест будет заблокирован для сотрудника до тех пор, пока он изучит выбранный материал.
-                        </p>
-                        <div className="form-group mb-0">
-                            <label className="form-label">Обязательный учебный материал</label>
-                            <select
-                                className="form-control bg-accent-primary/10 border-accent-primary/30 text-primary"
-                                value={test.requiredArticleId || ''}
-                                onChange={(e) => setTest({ ...test, requiredArticleId: e.target.value })}
-                            >
-                                <option value="">Опционально (не требуется)</option>
-                                {articles.map(article => (
-                                    <option key={article.id} value={article.id}>{article.title}</option>
-                                ))}
-                            </select>
+            {/* ── Settings tab ── */}
+            {activeTab === 'settings' && (
+                <div className="card max-w-2xl animate-fade-in">
+                    <div className="form-group">
+                        <label className="form-label">Название теста</label>
+                        <input type="text" className="form-control" value={test.title}
+                            onChange={e => setTest({ ...test, title: e.target.value })}
+                            placeholder="Например: Основы работы с клиентами" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="form-group">
+                            <label className="form-label">Время на прохождение (мин)</label>
+                            <input type="number" className="form-control" min="1"
+                                value={test.timeLimit / 60}
+                                onChange={e => setTest({ ...test, timeLimit: parseInt(e.target.value) * 60 })} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Попыток (0 = безлимит)</label>
+                            <input type="number" className="form-control" min="0"
+                                value={test.maxAttempts}
+                                onChange={e => setTest({ ...test, maxAttempts: parseInt(e.target.value) })} />
+                        </div>
+                        <div className="form-group col-span-2">
+                            <label className="form-label">Проходной балл (правильных ответов)</label>
+                            <input type="number" className="form-control" min="1"
+                                max={test.questionsLimit > 0 ? test.questionsLimit : (test.questions.length || 1)}
+                                value={test.passingScore}
+                                onChange={e => setTest({ ...test, passingScore: parseInt(e.target.value) })} />
                         </div>
                     </div>
 
+                    {/* Deadline & retry interval */}
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[var(--border-color)]">
+                        <div className="form-group">
+                            <label className="form-label flex items-center gap-1.5"><Calendar size={14} /> Дедлайн</label>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <input type="date" className="form-control flex-1"
+                                    value={test.deadline ? test.deadline.slice(0, 10) : ''}
+                                    onChange={e => setTest({ ...test, deadline: e.target.value || '' })} />
+                                <button onClick={() => setTest({ ...test, deadline: getLastDayOfMonth() })}
+                                    title="Установить конец месяца"
+                                    style={{ padding: '0.5rem 0.6rem', borderRadius: '0.625rem', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+                                    Конец месяца
+                                </button>
+                            </div>
+                            {test.deadline && (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                    Срок: {new Date(test.deadline).toLocaleDateString('ru-RU')}
+                                </div>
+                            )}
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Интервал между попытками (ч)</label>
+                            <input type="number" className="form-control" min="0"
+                                value={test.retryIntervalHours || 0}
+                                onChange={e => setTest({ ...test, retryIntervalHours: parseInt(e.target.value) || 0 })}
+                                placeholder="0 = без ограничений" />
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                0 — можно проходить повторно сразу
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Extra settings */}
+                    <div className="form-group col-span-2 pt-4 border-t border-[var(--border-color)]">
+                        <h4 className="mb-4 text-base">Дополнительные настройки</h4>
+                        <label className="flex items-center gap-3 mb-3 cursor-pointer">
+                            <input type="checkbox" className="w-5 h-5 accent-accent-primary"
+                                checked={test.shuffleQuestions || false}
+                                onChange={e => setTest({ ...test, shuffleQuestions: e.target.checked })} />
+                            <span>Показывать вопросы в случайном порядке</span>
+                        </label>
+                        <label className="flex items-center gap-3 mb-3 cursor-pointer">
+                            <input type="checkbox" className="w-5 h-5 accent-accent-primary"
+                                checked={test.showFeedback || false}
+                                onChange={e => setTest({ ...test, showFeedback: e.target.checked })} />
+                            <span>Показывать правильный ответ сразу</span>
+                        </label>
+                        <label className="flex items-center gap-3 mb-3 cursor-pointer">
+                            <input type="checkbox" className="w-5 h-5 accent-accent-primary"
+                                checked={test.noRepeatQuestions || false}
+                                onChange={e => setTest({ ...test, noRepeatQuestions: e.target.checked })} />
+                            <span>Исключать вопросы, на которые отвечали ранее</span>
+                        </label>
+                        <div className="mt-4">
+                            <label className="form-label">Вопросов в билете (0 = все {test.questions.length || 0})</label>
+                            <input type="number" className="form-control" min="0"
+                                max={test.questions.length || 0}
+                                value={test.questionsLimit || 0}
+                                onChange={e => setTest({ ...test, questionsLimit: parseInt(e.target.value) || 0 })} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Access tab ── */}
+            {activeTab === 'access' && (
+                <div className="card max-w-2xl animate-fade-in flex-col gap-6">
+                    <div>
+                        <h3 className="text-lg">Обязательный материал</h3>
+                        <p className="text-sm text-secondary mb-3">Тест заблокирован, пока сотрудник не изучит материал.</p>
+                        <select className="form-control"
+                            value={test.requiredArticleId || ''}
+                            onChange={e => setTest({ ...test, requiredArticleId: e.target.value })}>
+                            <option value="">Не требуется</option>
+                            {articles.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}
+                        </select>
+                    </div>
+
                     <div className="border-t border-[var(--border-color)] pt-6">
-                        <h3 className="text-lg">Назначение тестирования</h3>
-                        <p className="text-sm text-secondary mb-4">
-                            Выберите сотрудников, которым будет доступен этот тест. Оставьте поле пустым, чтобы тест был доступен всем.
-                        </p>
+                        <h3 className="text-lg">Кому доступен тест</h3>
+                        <p className="text-sm text-secondary mb-4">Оставьте пустым — доступен всем сотрудникам.</p>
+
+                        {/* Quick select by department */}
+                        {departments.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', alignSelf: 'center' }}>Отдел:</span>
+                                {departments.map(dept => {
+                                    const deptIds = employees.filter(e => e.department === dept).map(e => e.id);
+                                    const allChecked = deptIds.every(id => (test.allowedUsers || []).includes(id));
+                                    return (
+                                        <button key={dept} onClick={() => selectDepartment(dept)}
+                                            style={{ padding: '0.25rem 0.75rem', borderRadius: '2rem', fontSize: '0.78rem', fontWeight: 600, border: '1.5px solid', borderColor: allChecked ? 'var(--accent-primary)' : '#e2e8f0', background: allChecked ? 'rgba(16,185,129,0.1)' : '#f8fafc', color: allChecked ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer' }}>
+                                            {dept}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                         <div className="flex-col gap-1 max-h-[400px] overflow-y-auto pr-2">
                             {employees.map(emp => (
                                 <label key={emp.id} className="flex items-center p-2.5 rounded-xl hover:bg-black/5 cursor-pointer transition-all group">
-                                    <input
-                                        type="checkbox"
-                                        className="w-5 h-5 accent-accent-primary mr-3 flex-shrink-0"
+                                    <input type="checkbox" className="w-5 h-5 accent-accent-primary mr-3 flex-shrink-0"
                                         checked={(test.allowedUsers || []).includes(emp.id)}
-                                        onChange={(e) => {
+                                        onChange={e => {
                                             const current = test.allowedUsers || [];
-                                            if (e.target.checked) {
-                                                setTest({ ...test, allowedUsers: [...current, emp.id] });
-                                            } else {
-                                                setTest({ ...test, allowedUsers: current.filter(userId => userId !== emp.id) });
-                                            }
-                                        }}
-                                    />
+                                            setTest({ ...test, allowedUsers: e.target.checked ? [...current, emp.id] : current.filter(uid => uid !== emp.id) });
+                                        }} />
                                     <span className="text-sm font-medium text-slate-700 group-hover:text-primary transition-colors">{emp.name}</span>
+                                    {emp.department && (
+                                        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-secondary)', background: '#f1f5f9', padding: '0.1rem 0.4rem', borderRadius: '0.375rem' }}>{emp.department}</span>
+                                    )}
                                 </label>
                             ))}
                         </div>
@@ -267,169 +406,47 @@ export default function TestEditor() {
                 </div>
             )}
 
-            {activeTab === 'settings' && (
-                <div className="card max-w-2xl animate-fade-in">
-                    <div className="form-group">
-                        <label className="form-label">Название теста</label>
-                        <input
-                            type="text"
-                            className="form-control"
-                            value={test.title}
-                            onChange={e => setTest({ ...test, title: e.target.value })}
-                            placeholder="Например: Основы кибербезопасности"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="form-group">
-                            <label className="form-label">Время на прохождение (в минутах)</label>
-                            <input
-                                type="number"
-                                className="form-control"
-                                min="1"
-                                value={test.timeLimit / 60}
-                                onChange={e => setTest({ ...test, timeLimit: parseInt(e.target.value) * 60 })}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Попыток (0 = безлимит)</label>
-                            <input
-                                type="number"
-                                className="form-control"
-                                min="0"
-                                value={test.maxAttempts}
-                                onChange={e => setTest({ ...test, maxAttempts: parseInt(e.target.value) })}
-                            />
-                        </div>
-
-                        <div className="form-group col-span-2">
-                            <label className="form-label">Проходной балл (количество правильных ответов)</label>
-                            <input
-                                type="number"
-                                className="form-control"
-                                min="1"
-                                max={test.questionsLimit > 0 ? test.questionsLimit : (test.questions.length || 1)}
-                                value={test.passingScore}
-                                onChange={e => setTest({ ...test, passingScore: parseInt(e.target.value) })}
-                            />
-                        </div>
-
-                        <div className="form-group col-span-2 pt-4 border-t border-[var(--border-color)]">
-                            <h4 className="mb-4 text-base">Дополнительные настройки тестирования</h4>
-
-                            <label className="flex items-center gap-3 mb-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="w-5 h-5 accent-accent-primary"
-                                    checked={test.shuffleQuestions || false}
-                                    onChange={e => setTest({ ...test, shuffleQuestions: e.target.checked })}
-                                />
-                                <span>Показывать вопросы в случайном порядке</span>
-                            </label>
-
-                            <label className="flex items-center gap-3 mb-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="w-5 h-5 accent-accent-primary"
-                                    checked={test.showFeedback || false}
-                                    onChange={e => setTest({ ...test, showFeedback: e.target.checked })}
-                                />
-                                <span>Показывать правильный ответ сразу (подсветка при ответе)</span>
-                            </label>
-
-                            <label className="flex items-center gap-3 mb-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="w-5 h-5 accent-accent-primary"
-                                    checked={test.noRepeatQuestions || false}
-                                    onChange={e => setTest({ ...test, noRepeatQuestions: e.target.checked })}
-                                />
-                                <span>Исключать вопросы, на которые сотрудник отвечал ранее</span>
-                            </label>
-
-                            <div className="mt-4">
-                                <label className="form-label">Количество вопросов в билете (выбираются случайно)</label>
-                                <div className="text-xs text-secondary mb-2">Введите 0, если сотрудники должны отвечать на все {test.questions.length || 0} вопросов.</div>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    min="0"
-                                    max={test.questions.length || 0}
-                                    value={test.questionsLimit || 0}
-                                    onChange={e => setTest({ ...test, questionsLimit: parseInt(e.target.value) || 0 })}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
+            {/* ── Questions tab ── */}
             {activeTab === 'questions' && (
                 <div className="flex-col gap-6 animate-fade-in">
                     {test.questions.map((q, qIndex) => (
-                        <div key={q.id} className="card relative border-l-4 border-l-accent-primary animate-fade-in" style={{ padding: '2rem', background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(12px)', borderRadius: '1.5rem' }}>
-                            {/* Question Delete Button */}
-                            <button
-                                onClick={() => removeQuestion(q.id)}
-                                title="Удалить вопрос"
-                                style={{
-                                    position: 'absolute', top: '1rem', right: '1rem',
-                                    width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                                    border: '1px solid rgba(239, 68, 68, 0.15)', cursor: 'pointer',
-                                    transition: 'all 0.25s', zIndex: 10
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.transform = 'scale(1)'; }}
-                            >
+                        <div key={q.id} className="card relative border-l-4 border-l-accent-primary animate-fade-in"
+                            style={{ padding: '2rem', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(12px)', borderRadius: '1.5rem' }}>
+                            <button onClick={() => removeQuestion(q.id)} title="Удалить вопрос"
+                                style={{ position: 'absolute', top: '1rem', right: '1rem', width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)', cursor: 'pointer', transition: 'all 0.25s', zIndex: 10 }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#ef4444'; }}>
                                 <Trash2 size={18} />
                             </button>
 
                             <div className="flex-col gap-6">
-                                {/* Header: Number, Input, Type */}
                                 <div className="flex-col gap-4">
-                                    {/* Row 1: Question Number Badge */}
                                     <div className="flex items-center">
-                                        <div className="bg-accent-primary text-white px-4 h-10 flex items-center justify-center rounded-xl font-bold flex-shrink-0 shadow-[0_4px_12px_rgba(var(--accent-primary-rgb),0.3)] text-sm">
+                                        <div className="bg-accent-primary text-white px-4 h-10 flex items-center justify-center rounded-xl font-bold flex-shrink-0 text-sm shadow-[0_4px_12px_rgba(var(--accent-primary-rgb),0.3)]">
                                             Вопрос №{qIndex + 1}
                                         </div>
                                     </div>
-
-                                    {/* Row 2: Widened Question Input aligned with Answer Inputs' right edge */}
                                     <div className="flex items-center gap-4">
-                                        <input
-                                            type="text"
-                                            className="form-control flex-grow h-11 px-5"
-                                            style={{ borderRadius: '1rem', background: 'white', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+                                        <input type="text" className="form-control flex-grow h-11 px-5"
+                                            style={{ borderRadius: '1rem', background: 'white', border: '1px solid #f1f5f9' }}
                                             value={q.text}
                                             onChange={e => updateQuestion(q.id, { text: e.target.value })}
-                                            placeholder="Введите текст вопроса..."
-                                        />
-                                        <div className="w-11 shrink-0"></div> {/* Spacer to align right edge with answer inputs */}
+                                            placeholder="Введите текст вопроса..." />
+                                        <div className="w-11 shrink-0" />
                                     </div>
-
-                                    {/* Row 3: Type Selector aligned with width */}
                                     <div className="flex items-center gap-4">
                                         <div className="flex flex-col gap-1 w-fit">
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-50 ml-1">Тип ответа</span>
-                                            <select
-                                                className="form-control"
+                                            <select className="form-control"
                                                 style={{ height: '3rem', minWidth: '220px', borderRadius: '1rem', background: 'rgba(255,255,255,0.8)', border: '1.5px solid #e2e8f0' }}
                                                 value={q.type}
-                                                onChange={e => updateQuestion(q.id, {
-                                                    type: e.target.value,
-                                                    correctAnswers: e.target.value === 'single' && q.options.length ? [q.options[0]] : []
-                                                })}
-                                            >
+                                                onChange={e => updateQuestion(q.id, { type: e.target.value, correctAnswers: e.target.value === 'single' && q.options.length ? [q.options[0]] : [] })}>
                                                 <option value="single">Один правильный</option>
                                                 <option value="multiple">Несколько ответов</option>
                                                 <option value="text">Текстовый ответ</option>
                                             </select>
                                         </div>
-                                        <div className="flex-grow"></div>
-                                        <div className="w-11 shrink-0"></div>
+                                        <div className="flex-grow" /><div className="w-11 shrink-0" />
                                     </div>
                                 </div>
 
@@ -439,91 +456,142 @@ export default function TestEditor() {
                                         <div className="flex-col gap-3">
                                             {q.options.map((opt, optIdx) => (
                                                 <div key={optIdx} className="flex items-center gap-4">
-                                                    {/* Correct Answer Toggle */}
                                                     <div className="relative flex items-center justify-center group/check h-11 w-11 shrink-0">
-                                                        <input
-                                                            type={q.type === 'single' ? 'radio' : 'checkbox'}
+                                                        <input type={q.type === 'single' ? 'radio' : 'checkbox'}
                                                             name={`correct-${q.id}`}
                                                             checked={q.correctAnswers.includes(opt)}
                                                             onChange={() => toggleCorrectAnswer(q.id, opt, q.type)}
-                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                        />
-                                                        <div className={`w-9 h-9 flex items-center justify-center transition-all duration-300 ${q.type === 'single' ? 'rounded-full' : 'rounded-lg'} ${q.correctAnswers.includes(opt) ? 'bg-success shadow-[0_4px_12px_rgba(34,197,94,0.4)] scale-100' : 'bg-white/80 border-2 border-slate-200 scale-95 group-hover/check:border-success/30'}`}>
-                                                            {q.correctAnswers.includes(opt) && (
-                                                                <div className={`w-3 h-3 bg-white ${q.type === 'single' ? 'rounded-full' : 'rounded-sm'} animate-scale-up`}></div>
-                                                            )}
+                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                                        <div className={`w-9 h-9 flex items-center justify-center transition-all duration-300 ${q.type === 'single' ? 'rounded-full' : 'rounded-lg'} ${q.correctAnswers.includes(opt) ? 'bg-success shadow-[0_4px_12px_rgba(34,197,94,0.4)]' : 'bg-white/80 border-2 border-slate-200 group-hover/check:border-success/30'}`}>
+                                                            {q.correctAnswers.includes(opt) && <div className={`w-3 h-3 bg-white ${q.type === 'single' ? 'rounded-full' : 'rounded-sm'}`} />}
                                                         </div>
                                                     </div>
-                                                    
-                                                    {/* Option Input */}
-                                                    <input
-                                                        type="text"
-                                                        className="form-control flex-grow h-11 px-5"
-                                                        style={{ borderRadius: '1rem', background: 'white', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+                                                    <input type="text" className="form-control flex-grow h-11 px-5"
+                                                        style={{ borderRadius: '1rem', background: 'white', border: '1px solid #f1f5f9' }}
                                                         value={opt}
-                                                        onChange={e => updateOption(q.id, optIdx, e.target.value)}
-                                                    />
-                                                    
-                                                    {/* Option Delete Button */}
-                                                    <button 
-                                                        onClick={() => removeOption(q.id, optIdx)}
-                                                        style={{
-                                                            width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444',
-                                                            border: '1px solid rgba(239, 68, 68, 0.1)', cursor: 'pointer',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
-                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; e.currentTarget.style.color = '#ef4444'; }}
-                                                        title="Удалить вариант"
-                                                    >
+                                                        onChange={e => updateOption(q.id, optIdx, e.target.value)} />
+                                                    <button onClick={() => removeOption(q.id, optIdx)}
+                                                        style={{ width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.05)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.1)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                        onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
+                                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; e.currentTarget.style.color = '#ef4444'; }}
+                                                        title="Удалить вариант">
                                                         <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             ))}
                                         </div>
-                                        {/* Add Option Button - Matches Option Input Width */}
                                         <div className="flex items-center gap-4">
-                                            <div className="w-11 h-11 shrink-0"></div>
-                                            <button 
-                                                onClick={() => addOption(q.id)} 
+                                            <div className="w-11 h-11 shrink-0" />
+                                            <button onClick={() => addOption(q.id)}
                                                 className="btn btn-secondary flex items-center justify-center gap-2 h-11 flex-grow bg-white/60 hover:bg-white border-dashed text-accent-primary"
-                                                style={{ borderRadius: '1rem' }}
-                                            >
+                                                style={{ borderRadius: '1rem' }}>
                                                 <Plus size={18} /> Добавить вариант
                                             </button>
-                                            <div className="w-[2.75rem] h-[2.75rem] shrink-0"></div>
+                                            <div className="w-[2.75rem] h-[2.75rem] shrink-0" />
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-white/30 p-6 rounded-2xl border border-white/50 shadow-sm">
-                                        <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Правильный ответ</label>
-                                        <input
-                                            type="text"
-                                            className="form-control h-12 px-5"
-                                            style={{ borderRadius: '1rem', background: 'white' }}
-                                            value={q.correctAnswers[0] || ''}
-                                            onChange={e => updateQuestion(q.id, { correctAnswers: [e.target.value] })}
-                                            placeholder="Введите эталонный ответ..."
-                                        />
+                                    <div className="bg-white/30 p-6 rounded-2xl border border-white/50 shadow-sm flex-col gap-4">
+                                        <div>
+                                            <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Правильный ответ</label>
+                                            <input type="text" className="form-control h-12 px-5"
+                                                style={{ borderRadius: '1rem', background: 'white' }}
+                                                value={q.correctAnswers[0] || ''}
+                                                onChange={e => updateQuestion(q.id, { correctAnswers: [e.target.value] })}
+                                                placeholder="Введите эталонный ответ..." />
+                                        </div>
+                                        <div>
+                                            <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Синонимы (через запятую)</label>
+                                            <input type="text" className="form-control h-11 px-5"
+                                                style={{ borderRadius: '1rem', background: 'white' }}
+                                                value={(q.synonyms || []).join(', ')}
+                                                onChange={e => updateQuestion(q.id, { synonyms: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                                                placeholder="диван, кресло, диваны..." />
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                                Все перечисленные варианты будут считаться правильными
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         </div>
                     ))}
 
-                    <div className="flex items-center gap-4 mt-2">
-                        <div className="w-14 shrink-0"></div> {/* Align with Q# + space */}
-                        <button 
-                            onClick={addQuestion} 
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-3 mt-2">
+                        <button onClick={addQuestion}
                             className="btn btn-secondary border-dashed p-5 text-center justify-center flex-grow bg-white/40 hover:bg-white hover:text-accent-primary hover:border-accent-primary shadow-sm group"
-                            style={{ borderRadius: '1.25rem', transition: 'all 0.3s' }}
-                        >
-                            <Plus size={22} className="mr-2 group-hover:scale-110 transition-transform" /> 
-                            <span className="font-bold text-base">Добавить следующий вопрос</span>
+                            style={{ borderRadius: '1.25rem', transition: 'all 0.3s' }}>
+                            <Plus size={22} className="mr-2 group-hover:scale-110 transition-transform" />
+                            <span className="font-bold text-base">Добавить вопрос</span>
                         </button>
-                        <div className="w-[44px] shrink-0"></div> {/* Align with delete button wrapper */}
+                        {questionBank.length > 0 && (
+                            <button onClick={() => setShowBankModal(true)}
+                                className="btn btn-secondary flex items-center gap-2"
+                                style={{ padding: '1.25rem 1.5rem', borderRadius: '1.25rem', whiteSpace: 'nowrap', background: 'rgba(59,130,246,0.05)', borderColor: 'rgba(59,130,246,0.2)', color: '#3b82f6' }}>
+                                <BookMarked size={18} /> Из банка
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Question Bank Import Modal ── */}
+            {showBankModal && (
+                <div onClick={() => setShowBankModal(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div onClick={e => e.stopPropagation()}
+                        style={{ background: 'white', borderRadius: '1.5rem', width: '100%', maxWidth: '640px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+                        {/* Modal header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0' }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Добавить из банка вопросов</h3>
+                            <button onClick={() => setShowBankModal(false)}
+                                style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <X size={14} />
+                            </button>
+                        </div>
+                        {/* Search */}
+                        <div style={{ padding: '0.75rem 1.5rem', borderBottom: '1px solid #e2e8f0' }}>
+                            <input type="text" className="form-control" placeholder="Поиск по тексту или категории..."
+                                value={bankFilter} onChange={e => setBankFilter(e.target.value)}
+                                style={{ borderRadius: '0.75rem' }} />
+                        </div>
+                        {/* List */}
+                        <div style={{ overflowY: 'auto', flex: 1, padding: '0.75rem 1.5rem' }} className="custom-scrollbar">
+                            {filteredBank.length === 0 ? (
+                                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Нет вопросов в банке</div>
+                            ) : filteredBank.map(q => (
+                                <label key={q.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.75rem', cursor: 'pointer', marginBottom: '0.5rem', background: bankSelected.has(q.id) ? 'rgba(16,185,129,0.06)' : 'transparent', border: `1px solid ${bankSelected.has(q.id) ? 'rgba(16,185,129,0.3)' : 'transparent'}`, transition: 'all 0.15s' }}>
+                                    <input type="checkbox" className="w-4 h-4 accent-accent-primary mt-1 flex-shrink-0"
+                                        checked={bankSelected.has(q.id)}
+                                        onChange={e => {
+                                            const s = new Set(bankSelected);
+                                            e.target.checked ? s.add(q.id) : s.delete(q.id);
+                                            setBankSelected(s);
+                                        }} />
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>{q.text}</div>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <span style={{ fontSize: '0.7rem', background: '#f1f5f9', padding: '0.1rem 0.4rem', borderRadius: '0.375rem', color: 'var(--text-secondary)' }}>
+                                                {q.type === 'single' ? 'Один ответ' : q.type === 'multiple' ? 'Несколько' : 'Текст'}
+                                            </span>
+                                            {q.category && <span style={{ fontSize: '0.7rem', background: 'rgba(59,130,246,0.1)', padding: '0.1rem 0.4rem', borderRadius: '0.375rem', color: '#3b82f6' }}>{q.category}</span>}
+                                        </div>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                        {/* Footer */}
+                        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Выбрано: {bankSelected.size}</span>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button onClick={() => setShowBankModal(false)} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', borderRadius: '0.625rem' }}>Отмена</button>
+                                <button onClick={handleImportFromBank} disabled={bankSelected.size === 0}
+                                    className="btn btn-primary" style={{ padding: '0.5rem 1rem', borderRadius: '0.625rem', opacity: bankSelected.size === 0 ? 0.5 : 1 }}>
+                                    Добавить ({bankSelected.size})
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

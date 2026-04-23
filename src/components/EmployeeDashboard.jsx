@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen, Users } from 'lucide-react';
+import { Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen, Users, Calendar } from 'lucide-react';
 import {
     getTestsSummary,
     getCurrentUser,
     getUserResults,
     getArticles,
-    getArticleProgress
+    getArticleProgress,
+    getLastAttemptDate
 } from '../services/db';
 import { DashboardSkeleton } from './SkeletonLoader';
 
@@ -36,23 +37,38 @@ export default function EmployeeDashboard() {
                 getArticleProgress(user.id)  // фильтруем на стороне БД
             ]);
 
-            const filteredTests = allTests.filter(t => !t.allowedUsers || t.allowedUsers.length === 0 || t.allowedUsers.includes(user.id));
+            const filteredTests = allTests.filter(t =>
+                t.status !== 'draft' &&
+                (!t.allowedUsers || t.allowedUsers.length === 0 || t.allowedUsers.includes(user.id))
+            );
             const filteredArticles = allArticles.filter(a => !a.allowedUsers || a.allowedUsers.length === 0 || a.allowedUsers.includes(user.id));
 
-            // Compute attempt counts from already-loaded results — no extra DB calls
-            const testsWithStats = filteredTests.map((t) => {
+            // Compute attempt counts from already-loaded results; fetch last attempt dates for retry interval
+            const testsWithStats = await Promise.all(filteredTests.map(async (t) => {
                 const testResults = userRes.filter(r => r.testId === t.id);
                 const attemptsCount = testResults.length;
                 const isArticleCompleted = !t.requiredArticleId || userArticleProgress.some(p => p.articleId === t.requiredArticleId);
+
+                let retryHoursLeft = 0;
+                if (t.retryIntervalHours > 0 && attemptsCount > 0) {
+                    const lastDate = await getLastAttemptDate(user.id, t.id);
+                    if (lastDate) {
+                        const elapsed = (Date.now() - new Date(lastDate).getTime()) / 3600000;
+                        if (elapsed < t.retryIntervalHours) {
+                            retryHoursLeft = Math.ceil(t.retryIntervalHours - elapsed);
+                        }
+                    }
+                }
 
                 return {
                     ...t,
                     attemptsCount,
                     bestResult: testResults.sort((a, b) => b.score - a.score)[0] || null,
                     articleCompleted: isArticleCompleted,
-                    requiredArticle: t.requiredArticleId ? allArticles.find(a => a.id === t.requiredArticleId) : null
+                    requiredArticle: t.requiredArticleId ? allArticles.find(a => a.id === t.requiredArticleId) : null,
+                    retryHoursLeft,
                 };
-            });
+            }));
 
             setTests(testsWithStats);
             setArticles(filteredArticles);
@@ -156,12 +172,21 @@ export default function EmployeeDashboard() {
                     {tests.map((test, index) => {
                         const isBlocked = test.maxAttempts > 0 && test.attemptsCount >= test.maxAttempts;
                         const hasPassed = test.bestResult?.passed;
+                        const isOnCooldown = test.retryHoursLeft > 0;
+                        const isDeadlinePassed = test.deadline && new Date(test.deadline) < new Date();
 
                         return (
                             <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`}>
 
                                 <div className="flex-col gap-1 mb-4 pr-6">
                                     <h3 className="text-lg font-bold text-primary leading-tight">{test.title}</h3>
+                                    {test.deadline && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 600, color: isDeadlinePassed ? 'var(--danger)' : '#f59e0b', marginTop: '0.25rem' }}>
+                                            <Calendar size={12} />
+                                            {isDeadlinePassed ? 'Дедлайн истёк: ' : 'Срок до: '}
+                                            {new Date(test.deadline).toLocaleDateString('ru-RU')}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex-col gap-2.5 mb-6">
@@ -198,6 +223,10 @@ export default function EmployeeDashboard() {
                                     ) : isBlocked ? (
                                         <button className="btn w-full btn-secondary text-sm opacity-50" disabled style={{ padding: '0.875rem' }}>
                                             Попытки исчерпаны
+                                        </button>
+                                    ) : isOnCooldown ? (
+                                        <button className="btn w-full btn-secondary text-sm opacity-60" disabled style={{ padding: '0.875rem' }}>
+                                            <Clock size={14} style={{ marginRight: '0.4rem' }} /> Доступно через {test.retryHoursLeft} ч.
                                         </button>
                                     ) : (
                                         <button

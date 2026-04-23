@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
-import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds } from '../services/db';
+import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds, getLastAttemptDate } from '../services/db';
 import { sendTestResultToBitrix } from '../services/bitrix';
 import { RunnerSkeleton } from './SkeletonLoader';
 
@@ -35,11 +35,32 @@ export default function TestRunner() {
                         return;
                     }
 
+                    // Block if draft
+                    if (dbTest.status === 'draft') {
+                        alert('Этот тест ещё не опубликован.');
+                        navigate('/employee');
+                        return;
+                    }
+
                     const attempts = await getTestAttemptsCount(user.id, dbTest.id);
                     if (dbTest.maxAttempts > 0 && attempts >= dbTest.maxAttempts) {
                         alert('Лимит попыток исчерпан!');
                         navigate('/employee');
                         return;
+                    }
+
+                    // Enforce retry interval
+                    if (dbTest.retryIntervalHours > 0 && attempts > 0) {
+                        const lastDate = await getLastAttemptDate(user.id, dbTest.id);
+                        if (lastDate) {
+                            const elapsed = (Date.now() - new Date(lastDate).getTime()) / 3600000;
+                            if (elapsed < dbTest.retryIntervalHours) {
+                                const hoursLeft = Math.ceil(dbTest.retryIntervalHours - elapsed);
+                                alert(`Повторное прохождение будет доступно через ${hoursLeft} ч.`);
+                                navigate('/employee');
+                                return;
+                            }
+                        }
                     }
 
                     let questionsToUse = [...dbTest.questions];
@@ -141,7 +162,8 @@ export default function TestRunner() {
             if (q.type === 'text') {
                 const uVal = userAns[0]?.toString().trim().toLowerCase() || '';
                 const cVal = correctAns[0]?.toString().trim().toLowerCase() || '';
-                if (uVal === cVal && uVal !== '') score++;
+                const synonyms = (q.synonyms || []).map(s => s.trim().toLowerCase());
+                if ((uVal === cVal && uVal !== '') || synonyms.includes(uVal)) score++;
             } else {
                 // Must match exactly: same length and all elements present
                 if (userAns.length === correctAns.length && userAns.every(v => correctAns.includes(v))) {

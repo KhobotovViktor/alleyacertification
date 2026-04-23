@@ -32,7 +32,7 @@ export const getCurrentUser = () => {
 export const getAllUsers = async () => {
     const { data, error } = await supabase
         .from('users')
-        .select('id, name, role')
+        .select('id, name, role, department')
         .order('id');
     if (error) throw error;
     return data || [];
@@ -41,10 +41,18 @@ export const getAllUsers = async () => {
 export const getAllEmployees = async () => {
     const { data, error } = await supabase
         .from('users')
-        .select('id, name, role')
+        .select('id, name, role, department')
         .eq('role', 'employee');
     if (error) throw error;
     return data || [];
+};
+
+export const updateUserDepartment = async (userId, department) => {
+    const { error } = await supabase
+        .from('users')
+        .update({ department })
+        .eq('id', userId);
+    if (error) throw error;
 };
 
 // --- Tests ---
@@ -62,7 +70,7 @@ export const getTests = async () => {
 export const getTestsSummary = async () => {
     const { data, error } = await supabase
         .from('tests')
-        .select('id, title, timeLimit, passingScore, maxAttempts, allowedUsers, requiredArticleId, shuffleQuestions, noRepeatQuestions, questionsLimit, showFeedback, createdAt')
+        .select('id, title, timeLimit, passingScore, maxAttempts, allowedUsers, requiredArticleId, shuffleQuestions, noRepeatQuestions, questionsLimit, showFeedback, deadline, retryIntervalHours, status, createdAt')
         .order('createdAt', { ascending: false });
     if (error) throw error;
     return data || [];
@@ -83,8 +91,11 @@ export const saveTest = async (test) => {
         ...test,
         allowedUsers: test.allowedUsers || [],
         questions: test.questions || [],
-        requiredArticleId: test.requiredArticleId || null, // Ensure empty string becomes null for FK
-        noRepeatQuestions: !!test.noRepeatQuestions
+        requiredArticleId: test.requiredArticleId || null,
+        noRepeatQuestions: !!test.noRepeatQuestions,
+        deadline: test.deadline || null,
+        retryIntervalHours: parseInt(test.retryIntervalHours) || 0,
+        status: test.status || 'published',
     };
 
     if (test.id) {
@@ -107,13 +118,10 @@ export const deleteTest = async (id) => {
         .from('tests')
         .delete()
         .eq('id', id);
-    
     if (error) throw error;
 };
 
 // --- Articles ---
-// No content field — dashboards only need metadata (title, allowedUsers, etc.)
-// Full content is fetched via getArticleById() when opening an article
 export const getArticles = async () => {
     const { data, error } = await supabase
         .from('articles')
@@ -162,15 +170,12 @@ export const deleteArticle = async (id) => {
         .from('articles')
         .delete()
         .eq('id', id);
-    
     if (error) throw error;
 };
 
 // --- Storage ---
 export const uploadAudioFile = async (file) => {
-    // Basic validation
     if (!file) return null;
-    
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
@@ -178,13 +183,11 @@ export const uploadAudioFile = async (file) => {
     const { data, error } = await supabase.storage
         .from('podcasts')
         .upload(filePath, file);
-
     if (error) throw error;
 
     const { data: { publicUrl } } = supabase.storage
         .from('podcasts')
         .getPublicUrl(filePath);
-
     return publicUrl;
 };
 
@@ -267,7 +270,6 @@ export const saveResult = async (result) => {
         answeredQuestionIds: result.answeredQuestionIds || []
     };
 
-    // If id exists — update, otherwise — insert (let DB generate the id)
     if (resultToSave.id) {
         const { data, error } = await supabase
             .from('results')
@@ -295,16 +297,12 @@ export const getAlreadyAnsweredQuestionIds = async (userId, testId) => {
         .select('answeredQuestionIds')
         .eq('userId', userId)
         .eq('testId', testId);
-    
+
     if (error || !data) return [];
-    
-    // Flatten the array of arrays of IDs
     const allIds = data.reduce((acc, row) => {
         const ids = Array.isArray(row.answeredQuestionIds) ? row.answeredQuestionIds : [];
         return [...acc, ...ids];
     }, []);
-    
-    // Return unique IDs
     return [...new Set(allIds)];
 };
 
@@ -312,7 +310,7 @@ export const clearResults = async () => {
     const { error } = await supabase
         .from('results')
         .delete()
-        .neq('id', '0'); // Delete all
+        .neq('id', '0');
     if (error) throw error;
 };
 
@@ -323,4 +321,59 @@ export const getTestAttemptsCount = async (userId, testId) => {
         .eq('userId', userId)
         .eq('testId', testId);
     return count || 0;
+};
+
+// Returns the date of the most recent attempt for a user+test pair
+export const getLastAttemptDate = async (userId, testId) => {
+    const { data, error } = await supabase
+        .from('results')
+        .select('date')
+        .eq('userId', userId)
+        .eq('testId', testId)
+        .order('date', { ascending: false })
+        .limit(1);
+    if (error || !data || data.length === 0) return null;
+    return data[0].date;
+};
+
+// --- Question Bank ---
+export const getQuestionBank = async () => {
+    const { data, error } = await supabase
+        .from('question_bank')
+        .select('*')
+        .order('createdAt', { ascending: false });
+    if (error) throw error;
+    return data || [];
+};
+
+export const saveQuestionBankItem = async (item) => {
+    const itemToSave = {
+        text: item.text || '',
+        type: item.type || 'single',
+        options: item.options || [],
+        correctAnswers: item.correctAnswers || [],
+        synonyms: item.synonyms || [],
+        category: item.category || '',
+    };
+
+    if (item.id) {
+        const { error } = await supabase
+            .from('question_bank')
+            .update(itemToSave)
+            .eq('id', item.id);
+        if (error) throw error;
+    } else {
+        const { error } = await supabase
+            .from('question_bank')
+            .insert([itemToSave]);
+        if (error) throw error;
+    }
+};
+
+export const deleteQuestionBankItem = async (id) => {
+    const { error } = await supabase
+        .from('question_bank')
+        .delete()
+        .eq('id', id);
+    if (error) throw error;
 };
