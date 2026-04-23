@@ -4,6 +4,7 @@ import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send
 import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment } from '../services/db';
 import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
+import CustomSelect from './ui/CustomSelect';
 
 export default function AdminDashboard() {
     const [tests, setTests] = useState([]);
@@ -680,12 +681,13 @@ export default function AdminDashboard() {
                     <div className="card w-full lg:col-span-2 animate-fade-in">
                         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                             <h3 className="flex items-center gap-2 m-0"><BarChart2 size={20} className="text-accent-primary" /> Аналитика по вопросам</h3>
-                            <select className="form-control" style={{ maxWidth: '260px', borderRadius: '0.75rem', padding: '0.4rem 0.75rem' }}
+                            <CustomSelect
+                                style={{ maxWidth: '260px' }}
                                 value={analyticsTestId}
-                                onChange={e => setAnalyticsTestId(e.target.value)}>
-                                <option value="">— Выберите тест —</option>
-                                {tests.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                            </select>
+                                onChange={v => setAnalyticsTestId(v)}
+                                placeholder="— Выберите тест —"
+                                options={tests.map(t => ({ value: t.id, label: t.title }))}
+                            />
                         </div>
                         {!analyticsTestId ? (
                             <div className="text-secondary p-6 text-center border border-dashed border-[var(--border-color)] rounded-xl">Выберите тест выше</div>
@@ -812,13 +814,17 @@ export default function AdminDashboard() {
                                 return (
                                     <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', background: 'white', borderRadius: '0.875rem', border: '1px solid #e2e8f0', gap: '1rem' }}>
                                         <div style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1 }}>{emp.name}</div>
-                                        <select
+                                        <CustomSelect
+                                            size="sm"
+                                            style={{ minWidth: '160px', maxWidth: '220px' }}
                                             value={emp.department || ''}
-                                            onChange={e => handleDeptChange(emp.id, e.target.value)}
-                                            style={{ padding: '0.35rem 0.75rem', borderRadius: '0.625rem', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                                            <option value="">— Без отдела —</option>
-                                            {opts.map(d => <option key={d} value={d}>{d}</option>)}
-                                        </select>
+                                            onChange={v => handleDeptChange(emp.id, v)}
+                                            placeholder="— Без отдела —"
+                                            options={[
+                                                { value: '', label: '— Без отдела —' },
+                                                ...opts.map(d => ({ value: d, label: d }))
+                                            ]}
+                                        />
                                     </div>
                                 );
                             })}

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle } from 'lucide-react';
 import { getTestById, saveTest, getAllEmployees, getArticles } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
+import CustomSelect from './ui/CustomSelect';
 
 export default function TestEditor() {
     const { id } = useParams();
@@ -226,16 +227,15 @@ export default function TestEditor() {
                         </p>
                         <div className="form-group mb-0">
                             <label className="form-label">Обязательный учебный материал</label>
-                            <select
-                                className="form-control bg-accent-primary/10 border-accent-primary/30 text-primary"
+                            <CustomSelect
                                 value={test.requiredArticleId || ''}
-                                onChange={(e) => setTest({ ...test, requiredArticleId: e.target.value })}
-                            >
-                                <option value="">Опционально (не требуется)</option>
-                                {articles.map(article => (
-                                    <option key={article.id} value={article.id}>{article.title}</option>
-                                ))}
-                            </select>
+                                onChange={v => setTest({ ...test, requiredArticleId: v })}
+                                placeholder="Опционально (не требуется)"
+                                options={[
+                                    { value: '', label: 'Опционально (не требуется)' },
+                                    ...articles.map(a => ({ value: a.id, label: a.title }))
+                                ]}
+                            />
                         </div>
                     </div>
 
@@ -446,21 +446,21 @@ export default function TestEditor() {
 
                                     {/* Row 3: Type Selector aligned with width */}
                                     <div className="flex items-center gap-4">
-                                        <div className="flex flex-col gap-1 w-fit">
+                                        <div className="flex flex-col gap-1" style={{ minWidth: '220px' }}>
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-50 ml-1">Тип ответа</span>
-                                            <select
-                                                className="form-control"
-                                                style={{ height: '3rem', minWidth: '220px', borderRadius: '1rem', background: 'rgba(255,255,255,0.8)', border: '1.5px solid #e2e8f0' }}
+                                            <CustomSelect
+                                                style={{ borderRadius: '1rem' }}
                                                 value={q.type}
-                                                onChange={e => updateQuestion(q.id, {
-                                                    type: e.target.value,
-                                                    correctAnswers: e.target.value === 'single' && q.options.length ? [q.options[0]] : []
+                                                onChange={v => updateQuestion(q.id, {
+                                                    type: v,
+                                                    correctAnswers: v === 'single' && q.options.length ? [q.options[0]] : []
                                                 })}
-                                            >
-                                                <option value="single">Один правильный</option>
-                                                <option value="multiple">Несколько ответов</option>
-                                                <option value="text">Текстовый ответ</option>
-                                            </select>
+                                                options={[
+                                                    { value: 'single', label: 'Один правильный' },
+                                                    { value: 'multiple', label: 'Несколько ответов' },
+                                                    { value: 'text', label: 'Текстовый ответ' },
+                                                ]}
+                                            />
                                         </div>
                                         <div className="flex-grow"></div>
                                         <div className="w-11 shrink-0"></div>
