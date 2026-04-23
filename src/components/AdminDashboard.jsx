@@ -696,13 +696,33 @@ export default function AdminDashboard() {
                     <div className="card w-full lg:col-span-2 animate-fade-in">
                         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                             <h3 className="flex items-center gap-2 m-0"><BarChart2 size={20} className="text-accent-primary" /> Аналитика по вопросам</h3>
-                            <CustomSelect
-                                style={{ maxWidth: '260px' }}
-                                value={analyticsTestId}
-                                onChange={v => setAnalyticsTestId(v)}
-                                placeholder="— Выберите тест —"
-                                options={tests.map(t => ({ value: t.id, label: t.title }))}
-                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <CustomSelect
+                                    style={{ minWidth: '200px', maxWidth: '260px' }}
+                                    value={analyticsTestId}
+                                    onChange={v => setAnalyticsTestId(v)}
+                                    placeholder="— Выберите тест —"
+                                    options={tests.map(t => ({ value: t.id, label: t.title }))}
+                                />
+                                {analyticsTestId && (
+                                    <button
+                                        onClick={() => setAnalyticsTestId('')}
+                                        title="Сбросить выбор"
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            width: '2.25rem', height: '2.25rem', flexShrink: 0,
+                                            background: 'white', border: '1px solid #e2e8f0',
+                                            borderRadius: '0.625rem', cursor: 'pointer',
+                                            color: 'var(--text-secondary)',
+                                            transition: 'all 0.2s',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; e.currentTarget.style.color = '#ef4444'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         {!analyticsTestId ? (
                             <div className="text-secondary p-6 text-center border border-dashed border-[var(--border-color)] rounded-xl">Выберите тест выше</div>
