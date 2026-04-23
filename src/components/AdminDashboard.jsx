@@ -154,10 +154,23 @@ export default function AdminDashboard() {
     const getQuestionAnalytics = (testId) => {
         const test = tests.find(t => t.id === testId);
         if (!test?.questions) return [];
+        // Only count completed attempts (those with saved userAnswers)
         const testResults = results.filter(r => r.testId === testId && r.userAnswers);
         return test.questions.map(q => {
-            const appearances = testResults.filter(r => (r.answeredQuestionIds || []).includes(q.id));
-            const correct = appearances.filter(r => isAnswerCorrect(q, r.userAnswers?.[q.id]));
+            const qIdStr = String(q.id); // JSON keys are always strings after DB round-trip
+            const appearances = testResults.filter(r => {
+                const ids = r.answeredQuestionIds;
+                if (Array.isArray(ids) && ids.length > 0) {
+                    // IDs may be stored as numbers or strings — compare both
+                    return ids.some(id => String(id) === qIdStr);
+                }
+                // Fallback for legacy results without answeredQuestionIds:
+                // consider question as shown if user submitted any answer for it
+                return r.userAnswers[qIdStr] !== undefined || r.userAnswers[q.id] !== undefined;
+            });
+            const correct = appearances.filter(r =>
+                isAnswerCorrect(q, r.userAnswers?.[qIdStr] ?? r.userAnswers?.[q.id])
+            );
             const rate = appearances.length > 0 ? Math.round((correct.length / appearances.length) * 100) : null;
             return { question: q, total: appearances.length, correct: correct.length, rate };
         });
@@ -187,8 +200,10 @@ export default function AdminDashboard() {
 
         const questions = getQuestionsForResult(selectedResult);
         const hasAnswers = selectedResult.userAnswers && Object.keys(selectedResult.userAnswers).length > 0;
+        // userAnswers keys are strings after JSON round-trip; support both string and number lookup
+        const getAnswer = (ua, qId) => ua?.[String(qId)] ?? ua?.[qId] ?? [];
         const correctCount = questions
-            ? questions.filter(q => isAnswerCorrect(q, selectedResult.userAnswers?.[q.id])).length
+            ? questions.filter(q => isAnswerCorrect(q, getAnswer(selectedResult.userAnswers, q.id))).length
             : selectedResult.score;
 
         return (
@@ -293,7 +308,7 @@ export default function AdminDashboard() {
                                 {/* Questions list */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                                     {questions.map((q, idx) => {
-                                        const userAns = selectedResult.userAnswers?.[q.id] || [];
+                                        const userAns = getAnswer(selectedResult.userAnswers, q.id);
                                         const correct = isAnswerCorrect(q, userAns);
                                         const correctAns = q.correctAnswers || [];
 
@@ -693,7 +708,8 @@ export default function AdminDashboard() {
                             <div className="text-secondary p-6 text-center border border-dashed border-[var(--border-color)] rounded-xl">Выберите тест выше</div>
                         ) : (() => {
                             const analytics = getQuestionAnalytics(analyticsTestId);
-                            const testResultsCount = results.filter(r => r.testId === analyticsTestId).length;
+                            // Count only completed attempts (those with userAnswers saved) to match analytics data
+                            const testResultsCount = results.filter(r => r.testId === analyticsTestId && r.userAnswers).length;
                             return (
                                 <div className="flex-col gap-3">
                                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
