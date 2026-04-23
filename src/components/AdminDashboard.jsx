@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X, BarChart2 } from 'lucide-react';
-import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress } from '../services/db';
+import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment } from '../services/db';
 import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
 
@@ -102,6 +102,15 @@ export default function AdminDashboard() {
             return uVal === cVal && uVal !== '';
         }
         return userAns.length === correctAns.length && userAns.every(v => correctAns.includes(v));
+    };
+
+    // ── Department management ──
+    const DEPARTMENTS = ['Продажи', 'Склад', 'Доставка', 'Администрация', 'Сервис'];
+    const handleDeptChange = async (userId, dept) => {
+        try {
+            await updateUserDepartment(userId, dept);
+            setEmployees(prev => prev.map(e => e.id === userId ? { ...e, department: dept } : e));
+        } catch (err) { alert('Ошибка обновления отдела'); }
     };
 
     // ── Question analytics ──
@@ -425,7 +434,8 @@ export default function AdminDashboard() {
                         { key: 'results', icon: <CheckCircle size={16} />, label: 'Результаты' },
                         { key: 'analytics', icon: <BarChart2 size={16} />, label: 'Аналитика' },
                         { key: 'articles', icon: <FileText size={16} />, label: 'Материалы' },
-                        { key: 'trainingStats', icon: <Clock size={16} />, label: 'Обучение' }
+                        { key: 'trainingStats', icon: <Clock size={16} />, label: 'Обучение' },
+                        { key: 'employees', icon: <Users size={16} />, label: 'Сотрудники' }
                     ].map(tab => (
                         <button
                             key={tab.key}
@@ -707,6 +717,34 @@ export default function AdminDashboard() {
                                 </div>
                             </>
                         )}
+                    </div>
+                )}
+
+                {/* ── Employees ── */}
+                {activeTab === 'employees' && (
+                    <div className="card w-full lg:col-span-2 animate-fade-in">
+                        <div className="flex items-center gap-3 mb-2">
+                            <Users size={20} className="text-accent-primary" />
+                            <h3 className="m-0">Сотрудники и отделы</h3>
+                        </div>
+                        <p className="text-sm text-secondary mb-4">Назначьте сотрудников по отделам — это позволит быстро выбирать аудиторию при назначении тестов.</p>
+                        <div className="flex-col gap-2">
+                            {employees.length === 0 && (
+                                <div className="py-8 text-center text-secondary">Нет сотрудников.</div>
+                            )}
+                            {employees.map(emp => (
+                                <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', background: 'white', borderRadius: '0.875rem', border: '1px solid #e2e8f0', gap: '1rem' }}>
+                                    <div style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1 }}>{emp.name}</div>
+                                    <select
+                                        value={emp.department || ''}
+                                        onChange={e => handleDeptChange(emp.id, e.target.value)}
+                                        style={{ padding: '0.35rem 0.75rem', borderRadius: '0.625rem', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                        <option value="">— Без отдела —</option>
+                                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 

@@ -41,10 +41,18 @@ export const getAllUsers = async () => {
 export const getAllEmployees = async () => {
     const { data, error } = await supabase
         .from('users')
-        .select('id, name, role')
+        .select('id, name, role, department')
         .eq('role', 'employee');
     if (error) throw error;
     return data || [];
+};
+
+export const updateUserDepartment = async (userId, department) => {
+    const { error } = await supabase
+        .from('users')
+        .update({ department })
+        .eq('id', userId);
+    if (error) throw error;
 };
 
 // --- Tests ---

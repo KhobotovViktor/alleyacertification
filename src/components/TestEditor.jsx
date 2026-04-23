@@ -243,6 +243,36 @@ export default function TestEditor() {
                         <p className="text-sm text-secondary mb-4">
                             Выберите сотрудников, которым будет доступен этот тест. Оставьте поле пустым, чтобы тест был доступен всем.
                         </p>
+
+                        {/* Department quick-select chips */}
+                        {(() => {
+                            const departments = [...new Set(employees.map(e => e.department).filter(Boolean))];
+                            if (departments.length === 0) return null;
+                            return (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', alignSelf: 'center' }}>Отдел:</span>
+                                    {departments.map(dept => {
+                                        const deptIds = employees.filter(e => e.department === dept).map(e => e.id);
+                                        const allChecked = deptIds.every(id => (test.allowedUsers || []).includes(id));
+                                        return (
+                                            <button key={dept} type="button"
+                                                onClick={() => {
+                                                    const current = test.allowedUsers || [];
+                                                    if (allChecked) {
+                                                        setTest({ ...test, allowedUsers: current.filter(id => !deptIds.includes(id)) });
+                                                    } else {
+                                                        setTest({ ...test, allowedUsers: [...new Set([...current, ...deptIds])] });
+                                                    }
+                                                }}
+                                                style={{ padding: '0.25rem 0.75rem', borderRadius: '2rem', fontSize: '0.78rem', fontWeight: 600, border: '1.5px solid', cursor: 'pointer', transition: 'all 0.15s', borderColor: allChecked ? 'var(--accent-primary)' : '#e2e8f0', background: allChecked ? 'rgba(16,185,129,0.1)' : '#f8fafc', color: allChecked ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+                                                {dept}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
+
                         <div className="flex-col gap-1 max-h-[400px] overflow-y-auto pr-2">
                             {employees.map(emp => (
                                 <label key={emp.id} className="flex items-center p-2.5 rounded-xl hover:bg-black/5 cursor-pointer transition-all group">
@@ -260,6 +290,9 @@ export default function TestEditor() {
                                         }}
                                     />
                                     <span className="text-sm font-medium text-slate-700 group-hover:text-primary transition-colors">{emp.name}</span>
+                                    {emp.department && (
+                                        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-secondary)', background: '#f1f5f9', padding: '0.1rem 0.4rem', borderRadius: '0.375rem' }}>{emp.department}</span>
+                                    )}
                                 </label>
                             ))}
                         </div>
