@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2, Send, PenLine } from 'lucide-react';
 import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
@@ -23,8 +23,9 @@ export default function TestEditor() {
         shuffleQuestions: false,
         noRepeatQuestions: false,
         questionsLimit: 0, // 0 = all
-        showFeedback: false, // immediate feedback
+        showFeedback: false,
         isPublic: false,
+        status: 'draft',   // new tests start as drafts
         questions: []
     });
 
@@ -86,7 +87,7 @@ export default function TestEditor() {
         loadInitialData();
     }, [id, isNew, navigate]);
 
-    const handleSave = async () => {
+    const handleSave = async (targetStatus) => {
         if (!test.title.trim()) {
             alert('Введите название теста');
             return;
@@ -97,7 +98,7 @@ export default function TestEditor() {
         }
         setIsLoading(true);
         try {
-            await saveTest(test);
+            await saveTest({ ...test, status: targetStatus });
             navigate('/admin');
         } catch (err) {
             alert('Ошибка при сохранении теста');
@@ -106,6 +107,8 @@ export default function TestEditor() {
             setIsLoading(false);
         }
     };
+
+    const isDraft = (test.status || 'draft') === 'draft';
 
     const addQuestion = () => {
         const newQuestion = {
@@ -214,9 +217,40 @@ export default function TestEditor() {
                     </button>
                     <h2 style={{ margin: 0 }}>{isNew ? 'Создание нового теста' : 'Редактирование теста'}</h2>
                 </div>
-                <button onClick={handleSave} className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', borderRadius: '0.75rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                    <Save size={16} /> Сохранить
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {/* Status badge */}
+                    <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                        padding: '0.3rem 0.75rem', borderRadius: '2rem', fontSize: '0.75rem', fontWeight: 700,
+                        background: isDraft ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
+                        color: isDraft ? '#d97706' : 'var(--accent-primary)',
+                        border: `1px solid ${isDraft ? 'rgba(245,158,11,0.25)' : 'rgba(16,185,129,0.25)'}`,
+                    }}>
+                        {isDraft ? <PenLine size={12} /> : <CheckCircle size={12} />}
+                        {isDraft ? 'Черновик' : 'Опубликован'}
+                    </span>
+
+                    {/* Save as draft */}
+                    <button
+                        onClick={() => handleSave('draft')}
+                        className="btn btn-secondary"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1rem', borderRadius: '0.75rem' }}
+                        title="Сохранить без публикации"
+                    >
+                        <Save size={15} />
+                        <span className="mobile-hide">Черновик</span>
+                    </button>
+
+                    {/* Publish / Update */}
+                    <button
+                        onClick={() => handleSave('published')}
+                        className="btn btn-success"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', borderRadius: '0.75rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    >
+                        {isDraft ? <Send size={15} /> : <Save size={15} />}
+                        {isDraft ? 'Опубликовать' : 'Сохранить'}
+                    </button>
+                </div>
             </div>
 
             <div style={{ marginBottom: '0.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>

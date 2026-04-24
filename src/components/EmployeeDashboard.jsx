@@ -36,7 +36,11 @@ export default function EmployeeDashboard() {
                 getArticleProgress(user.id)  // фильтруем на стороне БД
             ]);
 
-            const filteredTests = allTests.filter(t => !t.allowedUsers || t.allowedUsers.length === 0 || t.allowedUsers.includes(user.id));
+            const filteredTests = allTests.filter(t =>
+                // Hide drafts — null/undefined status treated as published for backward compat
+                (t.status || 'published') !== 'draft' &&
+                (!t.allowedUsers || t.allowedUsers.length === 0 || t.allowedUsers.includes(user.id))
+            );
             const filteredArticles = allArticles.filter(a => !a.allowedUsers || a.allowedUsers.length === 0 || a.allowedUsers.includes(user.id));
 
             // Compute attempt counts from already-loaded results — no extra DB calls

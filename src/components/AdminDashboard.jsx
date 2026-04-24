@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X, BarChart2, Download, Link2, Copy } from 'lucide-react';
-import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment } from '../services/db';
+import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X, BarChart2, Download, Link2, Copy, PenLine } from 'lucide-react';
+import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment, updateTestStatus } from '../services/db';
 import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
@@ -20,7 +20,8 @@ export default function AdminDashboard() {
     const [analyticsTestId, setAnalyticsTestId] = useState('');
     const [departments, setDepartments] = useState([]);
     const [newDeptInput, setNewDeptInput] = useState('');
-    const [copiedTestId, setCopiedTestId] = useState(null); // id of test whose link was just copied
+    const [copiedTestId, setCopiedTestId] = useState(null);
+    const [testStatusFilter, setTestStatusFilter] = useState('all'); // 'all' | 'published' | 'draft'
 
     const copyTestLink = (testId) => {
         const url = `${window.location.origin}/test/${testId}`;
@@ -28,6 +29,16 @@ export default function AdminDashboard() {
             setCopiedTestId(testId);
             setTimeout(() => setCopiedTestId(null), 2000);
         });
+    };
+
+    const handleToggleStatus = async (test) => {
+        const next = (test.status || 'published') === 'draft' ? 'published' : 'draft';
+        try {
+            await updateTestStatus(test.id, next);
+            setTests(prev => prev.map(t => t.id === test.id ? { ...t, status: next } : t));
+        } catch (err) {
+            alert('Не удалось изменить статус теста');
+        }
     };
 
     useEffect(() => {
@@ -522,21 +533,50 @@ export default function AdminDashboard() {
                 {/* Tests List */}
                 {activeTab === 'tests' && (
                     <div className="w-full lg:col-span-2">
-                        <div className="flex items-center gap-3 mb-4 ml-1">
-                            <BookOpen size={20} className="text-accent-primary" />
-                            <h3 className="m-0">Список тестов</h3>
-                        </div>
-                        {tests.length === 0 ? (
-                            <div className="bento-card text-secondary p-8 text-center border-dashed">
-                                У вас еще нет созданных тестов. Нажмите "Создать тест" чтобы начать.
+                        <div className="flex items-center justify-between gap-3 mb-4 ml-1 flex-wrap">
+                            <div className="flex items-center gap-3">
+                                <BookOpen size={20} className="text-accent-primary" />
+                                <h3 className="m-0">Список тестов</h3>
                             </div>
-                        ) : (
+                            {/* Status filter chips */}
+                            <div style={{ display: 'flex', gap: '0.375rem', padding: '0.25rem', background: 'rgba(255,255,255,0.6)', borderRadius: '0.875rem', border: '1px solid rgba(255,255,255,0.8)' }}>
+                                {[
+                                    { key: 'all', label: 'Все' },
+                                    { key: 'published', label: 'Опубликованные' },
+                                    { key: 'draft', label: 'Черновики' },
+                                ].map(f => (
+                                    <button key={f.key} onClick={() => setTestStatusFilter(f.key)} style={{ padding: '0.3rem 0.75rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s', fontFamily: 'inherit', background: testStatusFilter === f.key ? 'white' : 'transparent', color: testStatusFilter === f.key ? 'var(--text-primary)' : 'var(--text-secondary)', boxShadow: testStatusFilter === f.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        {(() => {
+                            const visibleTests = tests.filter(t => {
+                                const s = t.status || 'published';
+                                if (testStatusFilter === 'all') return true;
+                                return s === testStatusFilter;
+                            });
+                            return visibleTests.length === 0 ? (
+                            <div className="bento-card text-secondary p-8 text-center border-dashed">
+                                {tests.length === 0 ? 'У вас еще нет созданных тестов. Нажмите "Создать тест" чтобы начать.' : 'Нет тестов с таким статусом.'}
+                            </div>
+                            ) : (
                             <div className="bento-grid">
-                                {tests.map((test, index) => (
-                                    <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`}>
+                                {visibleTests.map((test, index) => {
+                                    const isDraft = (test.status || 'published') === 'draft';
+                                    return (
+                                    <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`} style={{ opacity: isDraft ? 0.85 : 1 }}>
                                         <div className="flex-col gap-1.5 grow">
-                                            <div className="font-bold text-primary text-lg leading-tight mb-2">{test.title}</div>
-                                            
+                                            <div className="flex items-start justify-between gap-2 mb-1">
+                                                <div className="font-bold text-primary text-lg leading-tight">{test.title}</div>
+                                                {/* Status badge */}
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.6rem', borderRadius: '2rem', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0, background: isDraft ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: isDraft ? '#d97706' : 'var(--accent-primary)', border: `1px solid ${isDraft ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}` }}>
+                                                    {isDraft ? <PenLine size={10} /> : <CheckCircle size={10} />}
+                                                    {isDraft ? 'Черновик' : 'Опубликован'}
+                                                </span>
+                                            </div>
+
                                             <div className="text-secondary flex flex-wrap gap-2 mt-auto">
                                                 <span className="badge badge-primary bg-slate-100 text-slate-600 border-none" style={{ padding: '0.2rem 0.5rem', textTransform: 'none' }}>{test.questions?.length || 0} вопр.</span>
                                                 <span className="badge badge-primary bg-slate-100 text-slate-600 border-none" style={{ padding: '0.2rem 0.5rem', textTransform: 'none' }}>{test.timeLimit / 60} мин.</span>
@@ -548,6 +588,25 @@ export default function AdminDashboard() {
                                             <Link to={`/admin/test/${test.id}`} className="btn btn-secondary flex-grow text-sm py-2 px-3 hover:text-accent-primary hover:border-accent-primary transition-all flex items-center justify-center gap-2">
                                                 <Edit size={16} /> <span>Изменить</span>
                                             </Link>
+
+                                            {/* Publish / Unpublish toggle */}
+                                            <button
+                                                onClick={() => handleToggleStatus(test)}
+                                                title={isDraft ? 'Опубликовать тест' : 'Вернуть в черновики'}
+                                                style={{
+                                                    width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    background: isDraft ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)',
+                                                    color: isDraft ? 'var(--accent-primary)' : '#d97706',
+                                                    border: `1px solid ${isDraft ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                                                    cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = isDraft ? 'var(--accent-primary)' : '#f59e0b'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'transparent'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = isDraft ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)'; e.currentTarget.style.color = isDraft ? 'var(--accent-primary)' : '#d97706'; e.currentTarget.style.borderColor = isDraft ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'; }}
+                                            >
+                                                {isDraft ? <Send size={15} style={{ pointerEvents: 'none' }} /> : <PenLine size={15} style={{ pointerEvents: 'none' }} />}
+                                            </button>
+
                                             {test.isPublic && (
                                                 <button
                                                     onClick={() => copyTestLink(test.id)}
@@ -571,24 +630,23 @@ export default function AdminDashboard() {
                                                 style={{
                                                     width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444',
-                                                    border: '1px solid rgba(239, 68, 68, 0.1)', cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    position: 'relative',
-                                                    zIndex: 50,
-                                                    pointerEvents: 'auto'
+                                                    background: 'rgba(239,68,68,0.05)', color: '#ef4444',
+                                                    border: '1px solid rgba(239,68,68,0.1)', cursor: 'pointer',
+                                                    transition: 'all 0.2s', position: 'relative', zIndex: 50, pointerEvents: 'auto'
                                                 }}
-                                                onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
-                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; e.currentTarget.style.color = '#ef4444'; }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; e.currentTarget.style.color = '#ef4444'; }}
                                                 title="Удалить тест"
                                             >
                                                 <Trash2 size={16} style={{ pointerEvents: 'none' }} />
                                             </button>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
-                        )}
+                            );
+                        })()}
                     </div>
                 )}
 

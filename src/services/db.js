@@ -70,7 +70,7 @@ export const getTests = async () => {
 export const getTestsSummary = async () => {
     const { data, error } = await supabase
         .from('tests')
-        .select('id, title, timeLimit, passingScore, maxAttempts, allowedUsers, requiredArticleId, shuffleQuestions, noRepeatQuestions, questionsLimit, showFeedback, createdAt')
+        .select('id, title, timeLimit, passingScore, maxAttempts, allowedUsers, requiredArticleId, shuffleQuestions, noRepeatQuestions, questionsLimit, showFeedback, isPublic, status, createdAt')
         .order('createdAt', { ascending: false });
     if (error) throw error;
     return data || [];
@@ -91,9 +91,11 @@ export const saveTest = async (test) => {
         ...test,
         allowedUsers: test.allowedUsers || [],
         questions: test.questions || [],
-        requiredArticleId: test.requiredArticleId || null, // Ensure empty string becomes null for FK
+        requiredArticleId: test.requiredArticleId || null,
         noRepeatQuestions: !!test.noRepeatQuestions,
         isPublic: !!test.isPublic,
+        // null/undefined → 'published' for backward-compat with tests created before this field existed
+        status: test.status || 'published',
     };
 
     if (test.id) {
@@ -116,7 +118,15 @@ export const deleteTest = async (id) => {
         .from('tests')
         .delete()
         .eq('id', id);
-    
+
+    if (error) throw error;
+};
+
+export const updateTestStatus = async (id, status) => {
+    const { error } = await supabase
+        .from('tests')
+        .update({ status })
+        .eq('id', id);
     if (error) throw error;
 };
 
