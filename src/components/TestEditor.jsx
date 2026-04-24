@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe } from 'lucide-react';
-import { getTestById, saveTest, getAllEmployees, getArticles } from '../services/db';
+import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2 } from 'lucide-react';
+import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
 
@@ -29,6 +29,20 @@ export default function TestEditor() {
     });
 
     const [copiedLink, setCopiedLink] = useState(false);
+    const [uploadingQId, setUploadingQId] = useState(null); // question id currently uploading media
+
+    const handleMediaUpload = async (qId, file) => {
+        if (!file) return;
+        setUploadingQId(qId);
+        try {
+            const result = await uploadQuestionMedia(file);
+            updateQuestion(qId, { mediaUrl: result.url, mediaType: result.mediaType });
+        } catch (err) {
+            alert(`Ошибка загрузки: ${err.message}`);
+        } finally {
+            setUploadingQId(null);
+        }
+    };
 
     const testLink = !isNew && test.id ? `${window.location.origin}/test/${test.id}` : null;
 
@@ -515,6 +529,99 @@ export default function TestEditor() {
                                         <div className="flex-grow"></div>
                                         <div className="w-11 shrink-0"></div>
                                     </div>
+                                </div>
+
+                                {/* ── Media Attachment ── */}
+                                <div>
+                                    <div className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-50 ml-1 mb-2">Медиафайл к вопросу</div>
+
+                                    {q.mediaUrl ? (
+                                        /* ── Preview ── */
+                                        <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                                            {q.mediaType === 'image' && (
+                                                <img
+                                                    src={q.mediaUrl}
+                                                    alt="Медиа вопроса"
+                                                    style={{ display: 'block', width: '100%', maxHeight: '280px', objectFit: 'contain', background: '#f1f5f9' }}
+                                                />
+                                            )}
+                                            {q.mediaType === 'audio' && (
+                                                <div style={{ padding: '1rem' }}>
+                                                    <audio controls src={q.mediaUrl} style={{ width: '100%', display: 'block' }} />
+                                                </div>
+                                            )}
+                                            {q.mediaType === 'video' && (
+                                                <video
+                                                    controls
+                                                    src={q.mediaUrl}
+                                                    style={{ display: 'block', width: '100%', maxHeight: '280px', background: '#000' }}
+                                                />
+                                            )}
+                                            {/* Remove button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => updateQuestion(q.id, { mediaUrl: null, mediaType: null })}
+                                                title="Убрать медиафайл"
+                                                style={{
+                                                    position: 'absolute', top: '0.5rem', right: '0.5rem',
+                                                    display: 'flex', alignItems: 'center', gap: '0.3rem',
+                                                    padding: '0.3rem 0.65rem', borderRadius: '0.5rem',
+                                                    border: 'none', background: 'rgba(15,23,42,0.65)',
+                                                    color: 'white', fontSize: '0.75rem', fontWeight: 600,
+                                                    cursor: 'pointer', backdropFilter: 'blur(4px)',
+                                                    transition: 'background 0.2s', fontFamily: 'inherit',
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(15,23,42,0.65)'; }}
+                                            >
+                                                <X size={12} /> Убрать
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        /* ── Upload zone ── */
+                                        <label style={{ display: 'block', cursor: uploadingQId === q.id ? 'wait' : 'pointer' }}>
+                                            <input
+                                                type="file"
+                                                accept="image/*,audio/*,video/*"
+                                                style={{ display: 'none' }}
+                                                disabled={uploadingQId === q.id}
+                                                onChange={e => {
+                                                    const f = e.target.files?.[0];
+                                                    if (f) handleMediaUpload(q.id, f);
+                                                    e.target.value = '';
+                                                }}
+                                            />
+                                            <div style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                flexDirection: 'column', gap: '0.5rem',
+                                                padding: '1.25rem', borderRadius: '1rem',
+                                                border: '1.5px dashed #cbd5e1',
+                                                background: 'rgba(248,250,252,0.8)',
+                                                transition: 'all 0.2s',
+                                                color: 'var(--text-secondary)',
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.background = 'rgba(16,185,129,0.04)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'rgba(248,250,252,0.8)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                            >
+                                                {uploadingQId === q.id ? (
+                                                    <>
+                                                        <Loader2 size={20} style={{ animation: 'spin 0.8s linear infinite' }} />
+                                                        <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Загрузка...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                                            <ImageIcon size={18} />
+                                                            <Music size={18} />
+                                                            <Video size={18} />
+                                                        </div>
+                                                        <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Прикрепить изображение, аудио или видео</span>
+                                                        <span style={{ fontSize: '0.72rem', opacity: 0.6 }}>Нажмите для выбора · до 50 МБ</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </label>
+                                    )}
                                 </div>
 
                                 {q.type !== 'text' ? (

@@ -398,6 +398,32 @@ export default function TestRunner() {
 
             {/* Question Card */}
             <div className="card min-h-[400px] flex-col relative shadow-xl border-t-0 rounded-t-none" style={{ padding: 'clamp(1rem, 5vw, 2.5rem)', paddingBottom: '8rem' }}>
+
+                {/* ── Question media ── */}
+                {currentQuestion.mediaUrl && (
+                    <div style={{ marginBottom: '1.5rem', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                        {currentQuestion.mediaType === 'image' && (
+                            <img
+                                src={currentQuestion.mediaUrl}
+                                alt=""
+                                style={{ display: 'block', width: '100%', maxHeight: '360px', objectFit: 'contain', background: '#f1f5f9' }}
+                            />
+                        )}
+                        {currentQuestion.mediaType === 'audio' && (
+                            <div style={{ padding: '1rem' }}>
+                                <audio controls src={currentQuestion.mediaUrl} style={{ width: '100%', display: 'block' }} />
+                            </div>
+                        )}
+                        {currentQuestion.mediaType === 'video' && (
+                            <video
+                                controls
+                                src={currentQuestion.mediaUrl}
+                                style={{ display: 'block', width: '100%', maxHeight: '360px', background: '#000' }}
+                            />
+                        )}
+                    </div>
+                )}
+
                 <h2 style={{ marginBottom: '2rem', lineHeight: 1.4, color: 'var(--text-primary)' }}>{currentQuestion.text}</h2>
 
                 <div className="flex-col gap-3">

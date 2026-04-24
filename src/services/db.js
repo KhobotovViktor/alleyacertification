@@ -176,6 +176,34 @@ export const deleteArticle = async (id) => {
 };
 
 // --- Storage ---
+export const uploadQuestionMedia = async (file) => {
+    if (!file) return null;
+
+    const maxMB = 50;
+    if (file.size > maxMB * 1024 * 1024) {
+        throw new Error(`Файл слишком большой (максимум ${maxMB} МБ)`);
+    }
+
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+
+    const { error } = await supabase.storage
+        .from('question-media')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase.storage
+        .from('question-media')
+        .getPublicUrl(fileName);
+
+    const mediaType = file.type.startsWith('image/') ? 'image'
+        : file.type.startsWith('audio/') ? 'audio'
+        : file.type.startsWith('video/') ? 'video'
+        : 'image'; // fallback
+
+    return { url: publicUrl, mediaType };
+};
+
 export const uploadAudioFile = async (file) => {
     // Basic validation
     if (!file) return null;
