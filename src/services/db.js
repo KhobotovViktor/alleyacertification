@@ -38,6 +38,48 @@ export const getAllUsers = async () => {
     return data || [];
 };
 
+// All users including department — for admin user management
+export const getFullUsersList = async () => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('id, name, role, department')
+        .order('name');
+    if (error) throw error;
+    return data || [];
+};
+
+export const createUser = async ({ id, name, password, role, department }) => {
+    const { error } = await supabase
+        .from('users')
+        .insert([{
+            id: id.trim(),
+            name: name.trim(),
+            password,
+            role,
+            department: department?.trim() || null,
+        }]);
+    if (error) {
+        if (error.code === '23505') throw new Error('Пользователь с таким логином уже существует');
+        throw error;
+    }
+};
+
+export const deleteUser = async (userId) => {
+    const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+    if (error) throw error;
+};
+
+export const updateUserPassword = async (userId, password) => {
+    const { error } = await supabase
+        .from('users')
+        .update({ password })
+        .eq('id', userId);
+    if (error) throw error;
+};
+
 export const getAllEmployees = async () => {
     const { data, error } = await supabase
         .from('users')
@@ -370,4 +412,38 @@ export const getTestAttemptsCount = async (userId, testId) => {
         .eq('userId', userId)
         .eq('testId', testId);
     return count || 0;
+};
+
+// --- Department Leaderboard ---
+export const getDepartmentLeaderboard = async (department) => {
+    if (!department) return [];
+
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('department', department)
+        .eq('role', 'employee');
+
+    if (error || !users?.length) return [];
+
+    const userIds = users.map(u => u.id);
+
+    const { data: resultsData } = await supabase
+        .from('results')
+        .select('userId, score, total, passed')
+        .in('userId', userIds);
+
+    const allResults = resultsData || [];
+
+    return users
+        .map(u => {
+            const ur = allResults.filter(r => r.userId === u.id);
+            const passedCount = ur.filter(r => r.passed).length;
+            const totalAttempts = ur.length;
+            const avgPct = totalAttempts > 0
+                ? Math.round(ur.reduce((s, r) => s + (r.score / r.total * 100), 0) / totalAttempts)
+                : 0;
+            return { id: u.id, name: u.name, passedCount, totalAttempts, avgPct };
+        })
+        .sort((a, b) => b.passedCount - a.passedCount || b.avgPct - a.avgPct);
 };

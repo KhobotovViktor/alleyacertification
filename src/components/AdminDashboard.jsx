@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X, BarChart2, Download, Link2, Copy, PenLine } from 'lucide-react';
-import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment, updateTestStatus } from '../services/db';
+import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, EyeOff, X, BarChart2, Download, Link2, Copy, PenLine, KeyRound, ShieldCheck, UserPlus } from 'lucide-react';
+import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment, updateTestStatus, getFullUsersList, createUser, deleteUser, updateUserPassword } from '../services/db';
+import { getCurrentUser } from '../services/db';
 import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
@@ -20,6 +21,25 @@ export default function AdminDashboard() {
     const [analyticsTestId, setAnalyticsTestId] = useState('');
     const [departments, setDepartments] = useState([]);
     const [newDeptInput, setNewDeptInput] = useState('');
+    const [allUsers, setAllUsers] = useState([]);
+
+    // ── Add-user modal state ──
+    const [showAddUser, setShowAddUser] = useState(false);
+    const [newUser, setNewUser] = useState({ id: '', name: '', password: '', role: 'employee', department: '' });
+    const [newUserError, setNewUserError] = useState('');
+    const [isSavingUser, setIsSavingUser] = useState(false);
+    const [showNewPwd, setShowNewPwd] = useState(false);
+
+    // ── Per-row password change state ──
+    const [changePwdRow, setChangePwdRow] = useState(null); // userId with open pwd form
+    const [changePwdValue, setChangePwdValue] = useState('');
+    const [showChangePwd, setShowChangePwd] = useState(false);
+    const [isSavingPwd, setIsSavingPwd] = useState(false);
+
+    // ── Delete confirmation ──
+    const [deleteConfirmUserId, setDeleteConfirmUserId] = useState(null);
+
+    const currentUser = getCurrentUser();
     const [copiedTestId, setCopiedTestId] = useState(null);
     const [testStatusFilter, setTestStatusFilter] = useState('all'); // 'all' | 'published' | 'draft'
 
@@ -29,6 +49,56 @@ export default function AdminDashboard() {
             setCopiedTestId(testId);
             setTimeout(() => setCopiedTestId(null), 2000);
         });
+    };
+
+    // ── User management handlers ──
+    const handleCreateUser = async () => {
+        setNewUserError('');
+        if (!newUser.id.trim()) return setNewUserError('Введите логин');
+        if (!newUser.name.trim()) return setNewUserError('Введите имя');
+        if (!newUser.password) return setNewUserError('Введите пароль');
+        if (newUser.password.length < 4) return setNewUserError('Пароль должен быть не короче 4 символов');
+
+        setIsSavingUser(true);
+        try {
+            await createUser(newUser);
+            setShowAddUser(false);
+            setNewUser({ id: '', name: '', password: '', role: 'employee', department: '' });
+            setShowNewPwd(false);
+            await loadData();
+        } catch (err) {
+            setNewUserError(err.message || 'Ошибка при создании пользователя');
+        } finally {
+            setIsSavingUser(false);
+        }
+    };
+
+    const handleDeleteUser = async (userId) => {
+        try {
+            await deleteUser(userId);
+            setAllUsers(prev => prev.filter(u => u.id !== userId));
+            setEmployees(prev => prev.filter(u => u.id !== userId));
+            setDeleteConfirmUserId(null);
+        } catch (err) {
+            alert('Ошибка при удалении пользователя');
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (!changePwdValue || changePwdValue.length < 4) {
+            alert('Пароль должен быть не короче 4 символов');
+            return;
+        }
+        setIsSavingPwd(true);
+        try {
+            await updateUserPassword(changePwdRow, changePwdValue);
+            setChangePwdRow(null);
+            setChangePwdValue('');
+        } catch (err) {
+            alert('Ошибка при смене пароля');
+        } finally {
+            setIsSavingPwd(false);
+        }
     };
 
     const handleToggleStatus = async (test) => {
@@ -48,19 +118,21 @@ export default function AdminDashboard() {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [testsData, articlesData, resultsData, progressData, employeesData] = await Promise.all([
+            const [testsData, articlesData, resultsData, progressData, employeesData, usersData] = await Promise.all([
                 getTests(),
                 getArticles(),
                 getResults(),
                 getArticleProgress(),
-                getAllEmployees()
+                getAllEmployees(),
+                getFullUsersList(),
             ]);
-            
+
             setTests(testsData || []);
             setArticles(articlesData || []);
             setResults(resultsData || []);
             setArticleProgress(progressData || []);
             setEmployees(employeesData || []);
+            setAllUsers(usersData || []);
             // Derive department list from actual Supabase data
             const existingDepts = [...new Set((employeesData || []).map(e => e.department).filter(Boolean))];
             setDepartments(prev => [...new Set([...existingDepts, ...prev])]);
@@ -889,72 +961,320 @@ export default function AdminDashboard() {
 
                 {/* ── Employees ── */}
                 {activeTab === 'employees' && (
-                    <div className="card w-full lg:col-span-2 animate-fade-in">
-                        <div className="flex items-center gap-3 mb-2">
-                            <Users size={20} className="text-accent-primary" />
-                            <h3 className="m-0">Сотрудники и отделы</h3>
-                        </div>
-                        <p className="text-sm text-secondary mb-4">Назначьте сотрудников по отделам — это позволит быстро выбирать аудиторию при назначении тестов.</p>
+                    <div className="flex-col gap-5 w-full lg:col-span-2 animate-fade-in">
 
-                        {/* Add new department */}
-                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                            <input
-                                type="text"
-                                className="form-control"
-                                style={{ borderRadius: '0.75rem', flex: 1 }}
-                                placeholder="Название нового отдела..."
-                                value={newDeptInput}
-                                onChange={e => setNewDeptInput(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleAddDepartment()}
-                            />
-                            <button
-                                onClick={handleAddDepartment}
-                                className="btn btn-primary"
-                                style={{ borderRadius: '0.75rem', padding: '0 1rem', whiteSpace: 'nowrap' }}
-                            >
-                                <Plus size={15} style={{ marginRight: '0.3rem' }} /> Добавить
-                            </button>
-                        </div>
-
-                        {/* Department chips */}
-                        {departments.length > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
-                                {departments.map(d => (
-                                    <span key={d} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: '2rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' }}>{d}</span>
-                                ))}
+                        {/* ── User Management ── */}
+                        <div className="card">
+                            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                                <div className="flex items-center gap-3">
+                                    <Users size={20} className="text-accent-primary" />
+                                    <h3 className="m-0">Пользователи</h3>
+                                </div>
+                                <button
+                                    onClick={() => { setShowAddUser(true); setNewUserError(''); }}
+                                    className="btn btn-primary"
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderRadius: '0.75rem' }}
+                                >
+                                    <UserPlus size={15} /> Добавить
+                                </button>
                             </div>
-                        )}
 
-                        <div className="flex-col gap-2">
-                            {employees.length === 0 && (
-                                <div className="py-8 text-center text-secondary">Нет сотрудников.</div>
+                            <div className="flex-col gap-2">
+                                {allUsers.length === 0 && <div className="py-6 text-center text-secondary">Нет пользователей</div>}
+                                {allUsers.map(u => {
+                                    const isMe = u.id === currentUser?.id;
+                                    const isPwdOpen = changePwdRow === u.id;
+                                    const isDeleteOpen = deleteConfirmUserId === u.id;
+                                    return (
+                                        <div key={u.id} style={{ borderRadius: '0.875rem', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                                            {/* Main row */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'white', flexWrap: 'wrap' }}>
+                                                {/* Avatar */}
+                                                <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '50%', background: u.role === 'admin' ? 'rgba(99,102,241,0.12)' : 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700, fontSize: '0.875rem', color: u.role === 'admin' ? '#6366f1' : 'var(--accent-primary)' }}>
+                                                    {u.name.charAt(0).toUpperCase()}
+                                                </div>
+
+                                                {/* Name + login */}
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                        {u.name}
+                                                        {isMe && <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '0.375rem', background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)' }}>вы</span>}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <span style={{ fontFamily: 'monospace' }}>@{u.id}</span>
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.1rem 0.4rem', borderRadius: '0.375rem', fontSize: '0.65rem', fontWeight: 700, background: u.role === 'admin' ? 'rgba(99,102,241,0.1)' : 'rgba(16,185,129,0.08)', color: u.role === 'admin' ? '#6366f1' : 'var(--accent-primary)' }}>
+                                                            {u.role === 'admin' ? <ShieldCheck size={9} /> : <Users size={9} />}
+                                                            {u.role === 'admin' ? 'Админ' : 'Сотрудник'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
+                                                    {/* Change password */}
+                                                    <button
+                                                        onClick={() => { setChangePwdRow(isPwdOpen ? null : u.id); setChangePwdValue(''); setShowChangePwd(false); setDeleteConfirmUserId(null); }}
+                                                        title="Сменить пароль"
+                                                        style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid', borderColor: isPwdOpen ? 'rgba(99,102,241,0.4)' : '#e2e8f0', background: isPwdOpen ? 'rgba(99,102,241,0.08)' : 'white', color: isPwdOpen ? '#6366f1' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                        onMouseEnter={e => { if (!isPwdOpen) { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = '#6366f1'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; }}}
+                                                        onMouseLeave={e => { if (!isPwdOpen) { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}}
+                                                    >
+                                                        <KeyRound size={14} />
+                                                    </button>
+                                                    {/* Delete */}
+                                                    {!isMe && (
+                                                        <button
+                                                            onClick={() => { setDeleteConfirmUserId(isDeleteOpen ? null : u.id); setChangePwdRow(null); }}
+                                                            title="Удалить пользователя"
+                                                            style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid', borderColor: isDeleteOpen ? 'rgba(239,68,68,0.4)' : '#e2e8f0', background: isDeleteOpen ? 'rgba(239,68,68,0.08)' : 'white', color: isDeleteOpen ? '#ef4444' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                            onMouseEnter={e => { if (!isDeleteOpen) { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; }}}
+                                                            onMouseLeave={e => { if (!isDeleteOpen) { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Change password inline panel */}
+                                            {isPwdOpen && (
+                                                <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #f1f5f9', background: 'rgba(99,102,241,0.03)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                    <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+                                                        <input
+                                                            type={showChangePwd ? 'text' : 'password'}
+                                                            className="form-control"
+                                                            style={{ borderRadius: '0.625rem', padding: '0.4rem 2.5rem 0.4rem 0.75rem', fontSize: '0.875rem' }}
+                                                            placeholder="Новый пароль..."
+                                                            value={changePwdValue}
+                                                            onChange={e => setChangePwdValue(e.target.value)}
+                                                            onKeyDown={e => e.key === 'Enter' && handleChangePassword()}
+                                                            autoFocus
+                                                        />
+                                                        <button type="button" onClick={() => setShowChangePwd(p => !p)} style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: '0.25rem' }}>
+                                                            {showChangePwd ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                        </button>
+                                                    </div>
+                                                    <button onClick={handleChangePassword} disabled={isSavingPwd} className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', borderRadius: '0.625rem', fontSize: '0.8rem' }}>
+                                                        {isSavingPwd ? '...' : 'Сохранить'}
+                                                    </button>
+                                                    <button onClick={() => setChangePwdRow(null)} className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', borderRadius: '0.625rem', fontSize: '0.8rem' }}>
+                                                        Отмена
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Delete confirmation inline panel */}
+                                            {isDeleteOpen && (
+                                                <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #fecaca', background: 'rgba(239,68,68,0.04)', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                    <span style={{ flex: 1, fontSize: '0.8rem', color: '#ef4444', fontWeight: 600 }}>Удалить «{u.name}»? Это действие нельзя отменить.</span>
+                                                    <button onClick={() => handleDeleteUser(u.id)} className="btn" style={{ padding: '0.35rem 0.85rem', borderRadius: '0.625rem', fontSize: '0.8rem', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>Удалить</button>
+                                                    <button onClick={() => setDeleteConfirmUserId(null)} className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', borderRadius: '0.625rem', fontSize: '0.8rem' }}>Отмена</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* ── Department Management ── */}
+                        <div className="card">
+                            <div className="flex items-center gap-3 mb-2">
+                                <Users size={20} className="text-accent-primary" />
+                                <h3 className="m-0">Отделы</h3>
+                            </div>
+                            <p className="text-sm text-secondary mb-4">Назначьте сотрудников по отделам — это позволит быстро выбирать аудиторию при назначении тестов.</p>
+
+                            {/* Add new department */}
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    style={{ borderRadius: '0.75rem', flex: 1 }}
+                                    placeholder="Название нового отдела..."
+                                    value={newDeptInput}
+                                    onChange={e => setNewDeptInput(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleAddDepartment()}
+                                />
+                                <button onClick={handleAddDepartment} className="btn btn-primary" style={{ borderRadius: '0.75rem', padding: '0 1rem', whiteSpace: 'nowrap' }}>
+                                    <Plus size={15} style={{ marginRight: '0.3rem' }} /> Добавить
+                                </button>
+                            </div>
+
+                            {departments.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
+                                    {departments.map(d => (
+                                        <span key={d} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: '2rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' }}>{d}</span>
+                                    ))}
+                                </div>
                             )}
-                            {employees.map(emp => {
-                                // Merge global list with employee's current value so it's always selectable
-                                const opts = [...new Set([...departments, emp.department].filter(Boolean))];
-                                return (
-                                    <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', background: 'white', borderRadius: '0.875rem', border: '1px solid #e2e8f0', gap: '1rem' }}>
-                                        <div style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1 }}>{emp.name}</div>
-                                        <CustomSelect
-                                            size="sm"
-                                            style={{ minWidth: '160px', maxWidth: '220px' }}
-                                            value={emp.department || ''}
-                                            onChange={v => handleDeptChange(emp.id, v)}
-                                            placeholder="— Без отдела —"
-                                            options={[
-                                                { value: '', label: '— Без отдела —' },
-                                                ...opts.map(d => ({ value: d, label: d }))
-                                            ]}
-                                        />
-                                    </div>
-                                );
-                            })}
+
+                            <div className="flex-col gap-2">
+                                {employees.length === 0 && <div className="py-8 text-center text-secondary">Нет сотрудников.</div>}
+                                {employees.map(emp => {
+                                    const opts = [...new Set([...departments, emp.department].filter(Boolean))];
+                                    return (
+                                        <div key={emp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', background: 'white', borderRadius: '0.875rem', border: '1px solid #e2e8f0', gap: '1rem' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1 }}>{emp.name}</div>
+                                            <CustomSelect
+                                                size="sm"
+                                                style={{ minWidth: '160px', maxWidth: '220px' }}
+                                                value={emp.department || ''}
+                                                onChange={v => handleDeptChange(emp.id, v)}
+                                                placeholder="— Без отдела —"
+                                                options={[
+                                                    { value: '', label: '— Без отдела —' },
+                                                    ...opts.map(d => ({ value: d, label: d }))
+                                                ]}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 )}
 
             </div>
         </div>
+
+        {/* ── Add User Modal ── */}
+        {showAddUser && (
+            <div
+                onClick={() => { setShowAddUser(false); setNewUserError(''); }}
+                style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', animation: 'fadeIn 0.15s ease' }}
+            >
+                <div
+                    onClick={e => e.stopPropagation()}
+                    style={{ background: 'white', borderRadius: '1.5rem', padding: '2rem', maxWidth: '440px', width: '100%', boxShadow: '0 24px 48px -12px rgba(0,0,0,0.22)', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}
+                >
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Управление пользователями</div>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-primary)' }}>Новый пользователь</h3>
+                        </div>
+                        <button
+                            onClick={() => { setShowAddUser(false); setNewUserError(''); }}
+                            style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexShrink: 0 }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#ef4444'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                        >
+                            <X size={14} style={{ pointerEvents: 'none' }} />
+                        </button>
+                    </div>
+
+                    {/* Full name */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Имя и фамилия</label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            style={{ borderRadius: '0.75rem' }}
+                            placeholder="Иван Иванов"
+                            value={newUser.name}
+                            onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))}
+                            onKeyDown={e => e.key === 'Enter' && handleCreateUser()}
+                            autoFocus
+                        />
+                    </div>
+
+                    {/* Login */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Логин</label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            style={{ borderRadius: '0.75rem', fontFamily: 'monospace' }}
+                            placeholder="ivanov"
+                            value={newUser.id}
+                            onChange={e => setNewUser(p => ({ ...p, id: e.target.value.replace(/\s/g, '') }))}
+                            onKeyDown={e => e.key === 'Enter' && handleCreateUser()}
+                        />
+                    </div>
+
+                    {/* Password */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Пароль</label>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type={showNewPwd ? 'text' : 'password'}
+                                className="form-control"
+                                style={{ borderRadius: '0.75rem', paddingRight: '2.75rem' }}
+                                placeholder="Минимум 4 символа"
+                                value={newUser.password}
+                                onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))}
+                                onKeyDown={e => e.key === 'Enter' && handleCreateUser()}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowNewPwd(p => !p)}
+                                style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: '0.25rem' }}
+                            >
+                                {showNewPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Role */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Роль</label>
+                        <CustomSelect
+                            value={newUser.role}
+                            onChange={v => setNewUser(p => ({ ...p, role: v }))}
+                            options={[
+                                { value: 'employee', label: 'Сотрудник' },
+                                { value: 'admin', label: 'Администратор' },
+                            ]}
+                        />
+                    </div>
+
+                    {/* Department (only for employees) */}
+                    {newUser.role === 'employee' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Отдел <span style={{ fontWeight: 400, textTransform: 'none', opacity: 0.6 }}>(необязательно)</span></label>
+                            <CustomSelect
+                                value={newUser.department}
+                                onChange={v => setNewUser(p => ({ ...p, department: v }))}
+                                placeholder="— Без отдела —"
+                                options={[
+                                    { value: '', label: '— Без отдела —' },
+                                    ...departments.map(d => ({ value: d, label: d })),
+                                ]}
+                            />
+                        </div>
+                    )}
+
+                    {/* Error */}
+                    {newUserError && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.85rem', borderRadius: '0.625rem', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.82rem', fontWeight: 600 }}>
+                            <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                            {newUserError}
+                        </div>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: '0.625rem', marginTop: '0.25rem' }}>
+                        <button
+                            onClick={() => { setShowAddUser(false); setNewUserError(''); }}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, borderRadius: '0.875rem', padding: '0.625rem' }}
+                        >
+                            Отмена
+                        </button>
+                        <button
+                            onClick={handleCreateUser}
+                            disabled={isSavingUser}
+                            className="btn btn-primary"
+                            style={{ flex: 1, borderRadius: '0.875rem', padding: '0.625rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                        >
+                            <UserPlus size={15} style={{ pointerEvents: 'none' }} />
+                            {isSavingUser ? 'Создание...' : 'Создать'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Result detail modal */}
         <ResultDetailModal />
