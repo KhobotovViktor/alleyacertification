@@ -92,7 +92,8 @@ export const saveTest = async (test) => {
         allowedUsers: test.allowedUsers || [],
         questions: test.questions || [],
         requiredArticleId: test.requiredArticleId || null, // Ensure empty string becomes null for FK
-        noRepeatQuestions: !!test.noRepeatQuestions
+        noRepeatQuestions: !!test.noRepeatQuestions,
+        isPublic: !!test.isPublic,
     };
 
     if (test.id) {
