@@ -23,6 +23,7 @@ export default function TestRunner() {
     const [showQuestionFeedback, setShowQuestionFeedback] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
     const [sharedResult, setSharedResult] = useState(false);
+    const [showExitConfirm, setShowExitConfirm] = useState(false);
 
     const [isLoading, setIsLoading] = useState(true);
 
@@ -146,6 +147,23 @@ export default function TestRunner() {
             handleSubmit(true);
         }
     }, [timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Intercept browser Back button — show confirm dialog instead of navigating away
+    useEffect(() => {
+        if (!test || isFinished) return;
+
+        // Push a dummy history entry so the back button fires popstate instead of leaving
+        window.history.pushState(null, '', window.location.href);
+
+        const handlePopState = () => {
+            // Re-push to keep the current URL while showing our dialog
+            window.history.pushState(null, '', window.location.href);
+            setShowExitConfirm(true);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [test, isFinished]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleAnswerChange = (qId, type, value, checked) => {
         if (showQuestionFeedback) return; // disable change if feedback is shown
@@ -334,16 +352,17 @@ export default function TestRunner() {
     };
 
     return (
+        <>
         <div className="max-w-3xl mx-auto flex-col gap-4 animate-fade-in p-2 md:p-0">
             {/* Header info */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', padding: '1rem', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', position: 'sticky', top: '4.5rem', zIndex: 40, marginBottom: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
                     <button
-                        onClick={() => navigate('/employee')}
+                        onClick={() => setShowExitConfirm(true)}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '2.5rem', height: '2.5rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s', flexShrink: 0 }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                        title="Вернуться к списку тестов"
+                        title="Выйти из теста"
                     >
                         <ArrowLeft size={18} />
                     </button>
@@ -461,5 +480,78 @@ export default function TestRunner() {
                 </div>
             </div>
         </div>
+
+        {/* ── Exit Confirmation Modal ── */}
+        {showExitConfirm && (
+            <div
+                onClick={() => setShowExitConfirm(false)}
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 1000,
+                    background: 'rgba(15, 23, 42, 0.55)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '1rem',
+                    animation: 'fadeIn 0.15s ease',
+                }}
+            >
+                <div
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                        background: 'white', borderRadius: '1.5rem',
+                        padding: '2rem', maxWidth: '420px', width: '100%',
+                        boxShadow: '0 24px 48px -12px rgba(0,0,0,0.2)',
+                        display: 'flex', flexDirection: 'column', gap: '1.25rem',
+                        animation: 'fadeIn 0.2s cubic-bezier(0.16,1,0.3,1)',
+                    }}
+                >
+                    {/* Icon */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '3rem', height: '3rem', borderRadius: '1rem', background: 'rgba(239,68,68,0.1)', margin: '0 auto' }}>
+                        <AlertCircle size={24} style={{ color: '#ef4444' }} />
+                    </div>
+
+                    {/* Text */}
+                    <div style={{ textAlign: 'center' }}>
+                        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Выйти из теста?</h3>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.55 }}>
+                            Попытка будет засчитана как <strong style={{ color: '#ef4444' }}>неудача</strong>.
+                            Вы потратите одну из отведённых попыток, но не получите результата.
+                        </p>
+                    </div>
+
+                    {/* Buttons */}
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button
+                            onClick={() => setShowExitConfirm(false)}
+                            style={{
+                                flex: 1, padding: '0.75rem', borderRadius: '0.875rem',
+                                border: '1px solid #e2e8f0', background: 'white',
+                                color: 'var(--text-primary)', fontWeight: 600,
+                                fontSize: '0.9375rem', cursor: 'pointer',
+                                transition: 'all 0.2s', fontFamily: 'inherit',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'white'; }}
+                        >
+                            Остаться
+                        </button>
+                        <button
+                            onClick={() => navigate('/employee')}
+                            style={{
+                                flex: 1, padding: '0.75rem', borderRadius: '0.875rem',
+                                border: 'none', background: '#ef4444',
+                                color: 'white', fontWeight: 600,
+                                fontSize: '0.9375rem', cursor: 'pointer',
+                                transition: 'all 0.2s', fontFamily: 'inherit',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#ef4444'; }}
+                        >
+                            Выйти
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
