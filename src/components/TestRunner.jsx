@@ -36,14 +36,23 @@ export default function TestRunner() {
 
     const shareResult = (score, total, passed) => {
         const percent = Math.round((score / total) * 100);
+        const params = new URLSearchParams({
+            t: test?.title || '',
+            s: score,
+            n: total,
+            p: passed ? '1' : '0',
+            u: user?.name || '',
+            d: new Date().toISOString(),
+            ...(test?.isPublic ? { id } : {}),
+        });
+        const url = `${window.location.origin}/result?${params.toString()}`;
         const icon = passed ? '✅' : '❌';
         const text = `${icon} «${test?.title}»\nРезультат: ${score} из ${total} (${percent}%)\n${passed ? 'Тест сдан!' : 'Тест не сдан'}`;
-        const url = `${window.location.origin}/test/${id}`;
 
         if (navigator.share) {
             navigator.share({ title: test?.title, text, url }).catch(() => {});
         } else {
-            navigator.clipboard.writeText(`${text}\n${url}`).then(() => {
+            navigator.clipboard.writeText(url).then(() => {
                 setSharedResult(true);
                 setTimeout(() => setSharedResult(false), 2500);
             });

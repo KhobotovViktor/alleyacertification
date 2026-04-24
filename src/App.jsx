@@ -11,6 +11,7 @@ const ArticleEditor = lazy(() => import('./components/ArticleEditor'));
 const EmployeeDashboard = lazy(() => import('./components/EmployeeDashboard'));
 const TestRunner = lazy(() => import('./components/TestRunner'));
 const ArticleViewer = lazy(() => import('./components/ArticleViewer'));
+const ResultPage = lazy(() => import('./components/ResultPage'));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -129,6 +130,7 @@ function App() {
           </Route>
 
           <Route path="/test/:id" element={<TestRunner />} />
+          <Route path="/result" element={<ResultPage />} />
           <Route path="/article/:id" element={<ArticleViewer />} />
 
           {/* Fallback */}
