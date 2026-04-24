@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe } from 'lucide-react';
 import { getTestById, saveTest, getAllEmployees, getArticles } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
@@ -24,8 +24,21 @@ export default function TestEditor() {
         noRepeatQuestions: false,
         questionsLimit: 0, // 0 = all
         showFeedback: false, // immediate feedback
+        isPublic: false,
         questions: []
     });
+
+    const [copiedLink, setCopiedLink] = useState(false);
+
+    const testLink = !isNew && test.id ? `${window.location.origin}/test/${test.id}` : null;
+
+    const copyTestLink = () => {
+        if (!testLink) return;
+        navigator.clipboard.writeText(testLink).then(() => {
+            setCopiedLink(true);
+            setTimeout(() => setCopiedLink(false), 2000);
+        });
+    };
 
     const [activeTab, setActiveTab] = useState('settings');
     const [isLoading, setIsLoading] = useState(true);
@@ -394,6 +407,43 @@ export default function TestEditor() {
                                     onChange={e => setTest({ ...test, questionsLimit: parseInt(e.target.value) || 0 })}
                                 />
                             </div>
+                        </div>
+
+                        {/* ── Public / Share ── */}
+                        <div className="form-group col-span-2 pt-4 border-t border-[var(--border-color)]">
+                            <h4 className="mb-3 text-base flex items-center gap-2"><Globe size={16} /> Публичный доступ</h4>
+
+                            <label className="flex items-center gap-3 mb-4 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="w-5 h-5 accent-accent-primary"
+                                    checked={test.isPublic || false}
+                                    onChange={e => setTest({ ...test, isPublic: e.target.checked })}
+                                />
+                                <span>Публичный тест — доступна ссылка для передачи</span>
+                            </label>
+
+                            {test.isPublic && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {testLink ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 0.875rem', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '0.75rem' }}>
+                                            <Link2 size={14} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                                            <span style={{ flex: 1, fontSize: '0.8125rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{testLink}</span>
+                                            <button
+                                                type="button"
+                                                onClick={copyTestLink}
+                                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(16,185,129,0.3)', background: copiedLink ? 'var(--accent-primary)' : 'white', color: copiedLink ? 'white' : 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                                            >
+                                                <Copy size={12} />{copiedLink ? 'Скопировано!' : 'Копировать'}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', padding: '0.5rem 0.75rem', background: '#f8fafc', borderRadius: '0.625rem', border: '1px solid #e2e8f0' }}>
+                                            Сохраните тест, чтобы получить ссылку
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

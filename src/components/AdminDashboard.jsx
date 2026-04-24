@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X, BarChart2, Download } from 'lucide-react';
+import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, X, BarChart2, Download, Link2, Copy } from 'lucide-react';
 import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment } from '../services/db';
 import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
@@ -20,6 +20,15 @@ export default function AdminDashboard() {
     const [analyticsTestId, setAnalyticsTestId] = useState('');
     const [departments, setDepartments] = useState([]);
     const [newDeptInput, setNewDeptInput] = useState('');
+    const [copiedTestId, setCopiedTestId] = useState(null); // id of test whose link was just copied
+
+    const copyTestLink = (testId) => {
+        const url = `${window.location.origin}/test/${testId}`;
+        navigator.clipboard.writeText(url).then(() => {
+            setCopiedTestId(testId);
+            setTimeout(() => setCopiedTestId(null), 2000);
+        });
+    };
 
     useEffect(() => {
         loadData();
@@ -539,8 +548,26 @@ export default function AdminDashboard() {
                                             <Link to={`/admin/test/${test.id}`} className="btn btn-secondary flex-grow text-sm py-2 px-3 hover:text-accent-primary hover:border-accent-primary transition-all flex items-center justify-center gap-2">
                                                 <Edit size={16} /> <span>Изменить</span>
                                             </Link>
-                                            <button 
-                                                onClick={() => handleDeleteTest(test.id)} 
+                                            {test.isPublic && (
+                                                <button
+                                                    onClick={() => copyTestLink(test.id)}
+                                                    title="Скопировать ссылку на тест"
+                                                    style={{
+                                                        width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        background: copiedTestId === test.id ? 'var(--accent-primary)' : 'rgba(16,185,129,0.07)',
+                                                        color: copiedTestId === test.id ? 'white' : 'var(--accent-primary)',
+                                                        border: '1px solid rgba(16,185,129,0.2)', cursor: 'pointer',
+                                                        transition: 'all 0.2s', flexShrink: 0,
+                                                    }}
+                                                    onMouseEnter={e => { if (copiedTestId !== test.id) { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; }}}
+                                                    onMouseLeave={e => { if (copiedTestId !== test.id) { e.currentTarget.style.background = 'rgba(16,185,129,0.07)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}}
+                                                >
+                                                    {copiedTestId === test.id ? <Copy size={15} style={{ pointerEvents: 'none' }} /> : <Link2 size={15} style={{ pointerEvents: 'none' }} />}
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleDeleteTest(test.id)}
                                                 style={{
                                                     width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',

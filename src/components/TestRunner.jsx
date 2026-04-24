@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle, Link2, Share2 } from 'lucide-react';
 import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds } from '../services/db';
 import { sendTestResultToBitrix } from '../services/bitrix';
 import { RunnerSkeleton } from './SkeletonLoader';
@@ -21,8 +21,34 @@ export default function TestRunner() {
     const [isFinished, setIsFinished] = useState(false);
     const [resultId, setResultId] = useState(null);
     const [showQuestionFeedback, setShowQuestionFeedback] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
+    const [sharedResult, setSharedResult] = useState(false);
 
     const [isLoading, setIsLoading] = useState(true);
+
+    const copyTestLink = () => {
+        const url = `${window.location.origin}/test/${id}`;
+        navigator.clipboard.writeText(url).then(() => {
+            setCopiedLink(true);
+            setTimeout(() => setCopiedLink(false), 2000);
+        });
+    };
+
+    const shareResult = (score, total, passed) => {
+        const percent = Math.round((score / total) * 100);
+        const icon = passed ? '✅' : '❌';
+        const text = `${icon} «${test?.title}»\nРезультат: ${score} из ${total} (${percent}%)\n${passed ? 'Тест сдан!' : 'Тест не сдан'}`;
+        const url = `${window.location.origin}/test/${id}`;
+
+        if (navigator.share) {
+            navigator.share({ title: test?.title, text, url }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(`${text}\n${url}`).then(() => {
+                setSharedResult(true);
+                setTimeout(() => setSharedResult(false), 2500);
+            });
+        }
+    };
 
     useEffect(() => {
         const initTest = async () => {
@@ -244,7 +270,16 @@ export default function TestRunner() {
                         </div>
                     </div>
 
-                    <div className="mt-6">
+                    <div className="mt-6 flex flex-col gap-3">
+                        {test.isPublic && (
+                            <button
+                                onClick={() => shareResult(score, activeQuestions.length, passed)}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', padding: '0.75rem 1.25rem', borderRadius: '0.75rem', border: '1px solid', borderColor: sharedResult ? 'rgba(16,185,129,0.4)' : '#e2e8f0', background: sharedResult ? 'rgba(16,185,129,0.08)' : 'white', color: sharedResult ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: 600, fontSize: '0.9375rem', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}
+                            >
+                                <Share2 size={16} />
+                                {sharedResult ? 'Скопировано в буфер!' : 'Поделиться результатом'}
+                            </button>
+                        )}
                         <button onClick={() => navigate('/employee')} className="btn btn-primary w-full">
                             Вернуться на главную
                         </button>
@@ -311,9 +346,21 @@ export default function TestRunner() {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.75rem', fontFamily: 'monospace', fontSize: '1rem', fontWeight: 700, border: '1px solid', borderColor: timeLeft < 60 ? 'rgba(239,68,68,0.3)' : '#e2e8f0', background: timeLeft < 60 ? 'rgba(239,68,68,0.08)' : 'white', color: timeLeft < 60 ? '#ef4444' : 'var(--text-primary)' }}>
-                    <Clock size={18} style={{ color: timeLeft < 60 ? '#ef4444' : 'var(--accent-primary)' }} />
-                    {formatTime(timeLeft)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {test.isPublic && (
+                        <button
+                            onClick={copyTestLink}
+                            title={copiedLink ? 'Скопировано!' : 'Скопировать ссылку на тест'}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', borderRadius: '0.75rem', border: '1px solid', borderColor: copiedLink ? 'rgba(16,185,129,0.4)' : '#e2e8f0', background: copiedLink ? 'rgba(16,185,129,0.08)' : 'white', color: copiedLink ? 'var(--accent-primary)' : 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                        >
+                            <Link2 size={14} />
+                            <span className="mobile-hide">{copiedLink ? 'Скопировано!' : 'Поделиться'}</span>
+                        </button>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.75rem', fontFamily: 'monospace', fontSize: '1rem', fontWeight: 700, border: '1px solid', borderColor: timeLeft < 60 ? 'rgba(239,68,68,0.3)' : '#e2e8f0', background: timeLeft < 60 ? 'rgba(239,68,68,0.08)' : 'white', color: timeLeft < 60 ? '#ef4444' : 'var(--text-primary)' }}>
+                        <Clock size={18} style={{ color: timeLeft < 60 ? '#ef4444' : 'var(--accent-primary)' }} />
+                        {formatTime(timeLeft)}
+                    </div>
                 </div>
             </div>
 
