@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen,
-    Trophy, Star, Flame, Target, TrendingUp, Crown, Shield, Lock, Users, CalendarClock
+    Trophy, Star, Flame, Target, TrendingUp, Crown, Shield, Lock, Users, CalendarClock,
+    Plus, Edit, Trash2, Link2, Copy, Send, PenLine
 } from 'lucide-react';
 import {
     getTestsSummary, getCurrentUser, getUserResults,
-    getArticles, getArticleProgress, getDepartmentLeaderboard
+    getArticles, getArticleProgress, getDepartmentLeaderboard,
+    getMyTests, deleteTest, updateTestStatus
 } from '../services/db';
 import { DashboardSkeleton } from './SkeletonLoader';
 
@@ -292,8 +294,11 @@ export default function EmployeeDashboard() {
     const [articles, setArticles] = useState([]);
     const [results, setResults] = useState([]);
     const [leaderboard, setLeaderboard] = useState([]);
+    const [myTests, setMyTests] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('tests');
+    const [copiedMyTestId, setCopiedMyTestId] = useState(null);
+    const [deleteMyTestId, setDeleteMyTestId] = useState(null);
     const user = getCurrentUser();
     const navigate = useNavigate();
 
@@ -304,12 +309,13 @@ export default function EmployeeDashboard() {
     const loadDashboardData = async () => {
         setIsLoading(true);
         try {
-            const [allTests, allArticles, userRes, userArticleProgress, deptBoard] = await Promise.all([
+            const [allTests, allArticles, userRes, userArticleProgress, deptBoard, myCreatedTests] = await Promise.all([
                 getTestsSummary(),
                 getArticles(),
                 getUserResults(user.id),
                 getArticleProgress(user.id),
                 user.department ? getDepartmentLeaderboard(user.department) : Promise.resolve([]),
+                getMyTests(user.id),
             ]);
 
             const filteredTests = allTests.filter(t =>
@@ -335,6 +341,7 @@ export default function EmployeeDashboard() {
             setArticles(filteredArticles);
             setResults(userRes);
             setLeaderboard(deptBoard || []);
+            setMyTests(myCreatedTests || []);
         } catch (err) {
             console.error('Failed to load employee dashboard:', err);
         } finally {
@@ -365,8 +372,37 @@ export default function EmployeeDashboard() {
 
     const myRank = leaderboard.findIndex(u => u.id === user.id) + 1;
 
+    const handleDeleteMyTest = async (testId) => {
+        try {
+            await deleteTest(testId);
+            setMyTests(prev => prev.filter(t => t.id !== testId));
+            setDeleteMyTestId(null);
+        } catch (err) {
+            alert('Ошибка при удалении теста');
+        }
+    };
+
+    const handleToggleMyTestStatus = async (test) => {
+        const next = (test.status || 'published') === 'draft' ? 'published' : 'draft';
+        try {
+            await updateTestStatus(test.id, next);
+            setMyTests(prev => prev.map(t => t.id === test.id ? { ...t, status: next } : t));
+        } catch {
+            alert('Не удалось изменить статус теста');
+        }
+    };
+
+    const copyMyTestLink = (testId) => {
+        const url = `${window.location.origin}/test/${testId}`;
+        navigator.clipboard.writeText(url).then(() => {
+            setCopiedMyTestId(testId);
+            setTimeout(() => setCopiedMyTestId(null), 2000);
+        });
+    };
+
     const tabs = [
         { key: 'tests',         icon: <Play size={16} />,      label: 'Тесты' },
+        { key: 'mytests',       icon: <Plus size={16} />,      label: 'Мои тесты' },
         { key: 'results',       icon: <CheckCircle size={16} />, label: 'Результаты' },
         { key: 'articles',      icon: <BookOpen size={16} />,   label: 'Материалы' },
         { key: 'trainingStats', icon: <Clock size={16} />,      label: 'Статистика' },
@@ -521,6 +557,141 @@ export default function EmployeeDashboard() {
                     })}
                     {tests.length === 0 && (
                         <div className="bento-card col-span-full p-8 text-center text-secondary border-dashed">Нет доступных тестов.</div>
+                    )}
+                </div>
+            )}
+
+            {/* ── My Tests ── */}
+            {activeTab === 'mytests' && (
+                <div className="flex-col gap-5 animate-fade-in">
+                    {/* Header row */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div>
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Plus size={18} style={{ color: 'var(--accent-primary)' }} /> Мои тесты
+                            </h3>
+                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
+                                Создавайте тесты и делитесь ссылкой с кем угодно
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => navigate('/employee/test/new')}
+                            className="btn btn-primary"
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1.1rem', borderRadius: '0.875rem' }}
+                        >
+                            <Plus size={15} /> Создать тест
+                        </button>
+                    </div>
+
+                    {myTests.length === 0 ? (
+                        <div className="bento-card" style={{ textAlign: 'center', padding: '3rem 2rem', borderStyle: 'dashed' }}>
+                            <div style={{ width: 52, height: 52, borderRadius: '1rem', background: 'rgba(16,185,129,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+                                <Plus size={24} style={{ color: 'var(--accent-primary)' }} />
+                            </div>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.4rem' }}>Нет созданных тестов</div>
+                            <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
+                                Нажмите «Создать тест», составьте вопросы и поделитесь ссылкой
+                            </p>
+                            <button
+                                onClick={() => navigate('/employee/test/new')}
+                                className="btn btn-primary"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1.25rem', borderRadius: '0.875rem' }}
+                            >
+                                <Plus size={15} /> Создать первый тест
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="bento-grid">
+                            {myTests.map((test, index) => {
+                                const isDraft = (test.status || 'published') === 'draft';
+                                const testLink = `${window.location.origin}/test/${test.id}`;
+                                const isCopied = copiedMyTestId === test.id;
+                                const isConfirmDelete = deleteMyTestId === test.id;
+                                return (
+                                    <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`} style={{ opacity: isDraft ? 0.85 : 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.35, color: 'var(--text-primary)', flex: 1 }}>{test.title}</div>
+                                            {/* Status badge */}
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.55rem', borderRadius: '2rem', fontSize: '0.68rem', fontWeight: 700, flexShrink: 0, background: isDraft ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: isDraft ? '#d97706' : 'var(--accent-primary)', border: `1px solid ${isDraft ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}` }}>
+                                                {isDraft ? <PenLine size={9}/> : <CheckCircle size={9}/>}
+                                                {isDraft ? 'Черновик' : 'Опубликован'}
+                                            </span>
+                                        </div>
+
+                                        {/* Stats row */}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
+                                                {test.questions?.length || 0} вопр.
+                                            </span>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
+                                                {test.timeLimit / 60} мин.
+                                            </span>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)' }}>
+                                                Балл: {test.passingScore}
+                                            </span>
+                                        </div>
+
+                                        {/* Share link (when published) */}
+                                        {!isDraft && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.65rem', borderRadius: '0.625rem', background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)', marginBottom: '0.875rem' }}>
+                                                <Link2 size={12} style={{ color: 'var(--accent-primary)', flexShrink: 0 }}/>
+                                                <span style={{ flex: 1, fontSize: '0.72rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{testLink}</span>
+                                                <button
+                                                    onClick={() => copyMyTestLink(test.id)}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.55rem', borderRadius: '0.4rem', border: '1px solid rgba(16,185,129,0.25)', background: isCopied ? 'var(--accent-primary)' : 'white', color: isCopied ? 'white' : 'var(--accent-primary)', fontSize: '0.68rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}
+                                                >
+                                                    <Copy size={10}/>{isCopied ? 'Скопировано!' : 'Копировать'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Delete confirm banner */}
+                                        {isConfirmDelete && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.625rem', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                                                <span style={{ flex: 1, fontSize: '0.78rem', color: '#ef4444', fontWeight: 600 }}>Удалить тест? Отменить нельзя.</span>
+                                                <button onClick={() => handleDeleteMyTest(test.id)} style={{ padding: '0.3rem 0.75rem', borderRadius: '0.5rem', border: 'none', background: '#ef4444', color: 'white', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Удалить</button>
+                                                <button onClick={() => setDeleteMyTestId(null)} style={{ padding: '0.3rem 0.65rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: 'white', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary)' }}>Отмена</button>
+                                            </div>
+                                        )}
+
+                                        {/* Action buttons */}
+                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
+                                            {/* Edit */}
+                                            <button
+                                                onClick={() => navigate(`/employee/test/${test.id}`)}
+                                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0', background: 'white', color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                            >
+                                                <Edit size={14}/> Изменить
+                                            </button>
+
+                                            {/* Publish toggle */}
+                                            <button
+                                                onClick={() => handleToggleMyTestStatus(test)}
+                                                title={isDraft ? 'Опубликовать' : 'Снять с публикации'}
+                                                style={{ width: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.75rem', border: `1px solid ${isDraft ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`, background: isDraft ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)', color: isDraft ? 'var(--accent-primary)' : '#d97706', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = isDraft ? 'var(--accent-primary)' : '#f59e0b'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'transparent'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = isDraft ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)'; e.currentTarget.style.color = isDraft ? 'var(--accent-primary)' : '#d97706'; e.currentTarget.style.borderColor = isDraft ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'; }}
+                                            >
+                                                {isDraft ? <Send size={14}/> : <PenLine size={14}/>}
+                                            </button>
+
+                                            {/* Delete */}
+                                            <button
+                                                onClick={() => setDeleteMyTestId(isConfirmDelete ? null : test.id)}
+                                                title="Удалить тест"
+                                                style={{ width: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.75rem', border: `1px solid ${isConfirmDelete ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.15)'}`, background: isConfirmDelete ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'transparent'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = isConfirmDelete ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = isConfirmDelete ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.15)'; }}
+                                            >
+                                                <Trash2 size={14}/>
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             )}

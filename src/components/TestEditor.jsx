@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2, Send, PenLine, CalendarClock } from 'lucide-react';
-import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia, notifyTestPublished } from '../services/db';
+import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia, notifyTestPublished, getCurrentUser } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
 
@@ -9,6 +9,11 @@ export default function TestEditor() {
     const { id } = useParams();
     const navigate = useNavigate();
     const isNew = id === 'new';
+
+    // Detect who is editing: admins get full UI, employees get a simplified public-only view
+    const currentUser = getCurrentUser();
+    const isEmployeeMode = currentUser?.role === 'employee';
+    const backPath = isEmployeeMode ? '/employee' : '/admin';
 
     const [employees, setEmployees] = useState([]);
     const [articles, setArticles] = useState([]);
@@ -24,10 +29,11 @@ export default function TestEditor() {
         noRepeatQuestions: false,
         questionsLimit: 0, // 0 = all
         showFeedback: false,
-        isPublic: false,
+        isPublic: isEmployeeMode ? true : false,  // employee tests are always public
         status: 'draft',   // new tests start as drafts
         deadline: null,
-        questions: []
+        questions: [],
+        createdBy: isEmployeeMode && currentUser ? currentUser.id : null,
     });
 
     // Convert ISO UTC → datetime-local string (local timezone)
@@ -82,7 +88,7 @@ export default function TestEditor() {
                     if (existingTest) {
                         setTest(existingTest);
                     } else {
-                        navigate('/admin');
+                        navigate(backPath);
                     }
                 }
             } catch (err) {
@@ -106,14 +112,20 @@ export default function TestEditor() {
         }
         setIsLoading(true);
         try {
-            const testToSave = { ...test, status: targetStatus };
+            const testToSave = {
+                ...test,
+                status: targetStatus,
+                // Employees always create public tests; ensure createdBy is persisted
+                isPublic: isEmployeeMode ? true : test.isPublic,
+                createdBy: isEmployeeMode && currentUser ? currentUser.id : (test.createdBy || null),
+            };
             await saveTest(testToSave);
             // Notify users only on first publish (draft→published or new published test)
             const isFirstPublish = targetStatus === 'published' && (isDraft || !test.id);
-            if (isFirstPublish) {
+            if (isFirstPublish && !isEmployeeMode) {
                 notifyTestPublished(testToSave).catch(() => {});
             }
-            navigate('/admin');
+            navigate(backPath);
         } catch (err) {
             alert('Ошибка при сохранении теста');
             console.error(err);
@@ -223,7 +235,7 @@ export default function TestEditor() {
         <div className="flex-col gap-6 max-w-4xl mx-auto">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button onClick={() => navigate('/admin')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s' }}
+                    <button onClick={() => navigate(backPath)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s' }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                     >
@@ -272,7 +284,8 @@ export default function TestEditor() {
                     {[
                         { key: 'settings', icon: <Settings size={16} />, label: 'Настройки' },
                         { key: 'questions', icon: <FileQuestion size={16} />, label: `Вопросы (${test.questions.length})` },
-                        { key: 'access', icon: <List size={16} />, label: 'Доступ и обучение' }
+                        // Employees don't assign users — their tests are always public links
+                        ...(!isEmployeeMode ? [{ key: 'access', icon: <List size={16} />, label: 'Доступ и обучение' }] : []),
                     ].map(tab => (
                         <button
                             key={tab.key}
@@ -424,8 +437,8 @@ export default function TestEditor() {
                             />
                         </div>
 
-                        {/* ── Deadline ── */}
-                        <div className="form-group col-span-2 pt-4 border-t border-[var(--border-color)]">
+                        {/* ── Deadline (admin only) ── */}
+                        {!isEmployeeMode && <div className="form-group col-span-2 pt-4 border-t border-[var(--border-color)]">
                             <h4 className="mb-3 text-base flex items-center gap-2">
                                 <CalendarClock size={16} /> Срок сдачи
                             </h4>
@@ -457,7 +470,7 @@ export default function TestEditor() {
                                     Не задан — тест доступен бессрочно
                                 </p>
                             )}
-                        </div>
+                        </div>}
 
                         <div className="form-group col-span-2 pt-4 border-t border-[var(--border-color)]">
                             <h4 className="mb-4 text-base">Дополнительные настройки тестирования</h4>
@@ -482,15 +495,17 @@ export default function TestEditor() {
                                 <span>Показывать правильный ответ сразу (подсветка при ответе)</span>
                             </label>
 
-                            <label className="flex items-center gap-3 mb-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="w-5 h-5 accent-accent-primary"
-                                    checked={test.noRepeatQuestions || false}
-                                    onChange={e => setTest({ ...test, noRepeatQuestions: e.target.checked })}
-                                />
-                                <span>Исключать вопросы, на которые сотрудник отвечал ранее</span>
-                            </label>
+                            {!isEmployeeMode && (
+                                <label className="flex items-center gap-3 mb-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="w-5 h-5 accent-accent-primary"
+                                        checked={test.noRepeatQuestions || false}
+                                        onChange={e => setTest({ ...test, noRepeatQuestions: e.target.checked })}
+                                    />
+                                    <span>Исключать вопросы, на которые сотрудник отвечал ранее</span>
+                                </label>
+                            )}
 
                             <div className="mt-4">
                                 <label className="form-label">Количество вопросов в билете (выбираются случайно)</label>
@@ -508,19 +523,29 @@ export default function TestEditor() {
 
                         {/* ── Public / Share ── */}
                         <div className="form-group col-span-2 pt-4 border-t border-[var(--border-color)]">
-                            <h4 className="mb-3 text-base flex items-center gap-2"><Globe size={16} /> Публичный доступ</h4>
+                            <h4 className="mb-3 text-base flex items-center gap-2"><Globe size={16} /> {isEmployeeMode ? 'Ссылка для прохождения' : 'Публичный доступ'}</h4>
 
-                            <label className="flex items-center gap-3 mb-4 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="w-5 h-5 accent-accent-primary"
-                                    checked={test.isPublic || false}
-                                    onChange={e => setTest({ ...test, isPublic: e.target.checked })}
-                                />
-                                <span>Публичный тест — доступна ссылка для передачи</span>
-                            </label>
+                            {/* Admin: checkbox toggle */}
+                            {!isEmployeeMode && (
+                                <label className="flex items-center gap-3 mb-4 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="w-5 h-5 accent-accent-primary"
+                                        checked={test.isPublic || false}
+                                        onChange={e => setTest({ ...test, isPublic: e.target.checked })}
+                                    />
+                                    <span>Публичный тест — доступна ссылка для передачи</span>
+                                </label>
+                            )}
 
-                            {test.isPublic && (
+                            {/* Employee: always public notice */}
+                            {isEmployeeMode && (
+                                <p className="text-xs text-secondary mb-3" style={{ opacity: 0.7 }}>
+                                    Тест будет доступен по ссылке любому, у кого она есть. Поделитесь ссылкой после сохранения.
+                                </p>
+                            )}
+
+                            {(test.isPublic || isEmployeeMode) && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {testLink ? (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 0.875rem', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '0.75rem' }}>

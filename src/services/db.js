@@ -112,7 +112,18 @@ export const getTests = async () => {
 export const getTestsSummary = async () => {
     const { data, error } = await supabase
         .from('tests')
-        .select('id, title, timeLimit, passingScore, maxAttempts, allowedUsers, requiredArticleId, shuffleQuestions, noRepeatQuestions, questionsLimit, showFeedback, isPublic, status, deadline, createdAt')
+        .select('id, title, timeLimit, passingScore, maxAttempts, allowedUsers, requiredArticleId, shuffleQuestions, noRepeatQuestions, questionsLimit, showFeedback, isPublic, status, deadline, createdAt, createdBy')
+        .order('createdAt', { ascending: false });
+    if (error) throw error;
+    return data || [];
+};
+
+// Tests created by a specific user (employee-created tests)
+export const getMyTests = async (userId) => {
+    const { data, error } = await supabase
+        .from('tests')
+        .select('id, title, timeLimit, passingScore, questions, isPublic, status, createdAt')
+        .eq('createdBy', userId)
         .order('createdAt', { ascending: false });
     if (error) throw error;
     return data || [];

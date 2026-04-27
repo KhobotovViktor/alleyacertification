@@ -138,6 +138,8 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['employee']} />}>
             <Route path="/employee" element={<EmployeeDashboard />} />
+            <Route path="/employee/test/new" element={<TestEditor />} />
+            <Route path="/employee/test/:id" element={<TestEditor />} />
           </Route>
 
           <Route path="/test/:id" element={<TestRunner />} />
