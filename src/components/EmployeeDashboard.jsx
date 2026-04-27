@@ -9,7 +9,8 @@ import {
     getTestsSummary, getCurrentUser, getUserResults,
     getArticles, getArticleProgress, getDepartmentLeaderboard,
     getMyTests, deleteTest, updateTestStatus, getAllUsers,
-    toggleTestLike, getPopularTests
+    toggleTestLike, getPopularTests,
+    getTestComments, addTestComment, deleteTestComment
 } from '../services/db';
 import { DashboardSkeleton } from './SkeletonLoader';
 
@@ -289,6 +290,89 @@ const ProgressChart = ({ results }) => {
     );
 };
 
+// ── Inline comments panel ────────────────────────────────────────────────────
+const CommentsPanel = ({ testId, currentUserId, isTestAuthor, comments, input, onInputChange, onAdd, onDelete, onExpand, expanded, submitting }) => {
+    const PREVIEW = 3;
+    const list = comments || [];
+    const visible = expanded ? list : list.slice(0, PREVIEW);
+    const hidden = list.length - PREVIEW;
+
+    const fmtDate = (iso) => {
+        const d = new Date(iso);
+        const now = new Date();
+        const diff = (now - d) / 1000;
+        if (diff < 60) return 'только что';
+        if (diff < 3600) return `${Math.floor(diff / 60)} мин. назад`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} ч. назад`;
+        if (diff < 604800) return `${Math.floor(diff / 86400)} дн. назад`;
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+    };
+
+    return (
+        <div style={{ marginTop: '0.75rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+            {comments === undefined ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem', opacity: 0.6 }}>Загрузка...</div>
+            ) : list.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.25rem 0', opacity: 0.55 }}>Комментариев пока нет — будьте первым</div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {visible.map(c => (
+                        <div key={c.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                            {/* Avatar */}
+                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: c.userId === currentUserId ? 'rgba(16,185,129,0.12)' : '#f1f5f9', color: c.userId === currentUserId ? 'var(--accent-primary)' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.7rem', flexShrink: 0, marginTop: '0.1rem' }}>
+                                {c.userName.charAt(0).toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-primary)' }}>{c.userName}</span>
+                                    <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', opacity: 0.55 }}>{fmtDate(c.createdAt)}</span>
+                                </div>
+                                <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', lineHeight: 1.4, marginTop: '0.15rem', wordBreak: 'break-word' }}>{c.text}</div>
+                            </div>
+                            {/* Delete — own comment OR test author */}
+                            {(c.userId === currentUserId || isTestAuthor) && (
+                                <button
+                                    onClick={() => onDelete(c.id)}
+                                    title="Удалить"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: '0.1rem 0.2rem', fontSize: '0.7rem', flexShrink: 0, lineHeight: 1, transition: 'color 0.15s' }}
+                                    onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; }}
+                                >✕</button>
+                            )}
+                        </div>
+                    ))}
+                    {!expanded && hidden > 0 && (
+                        <button onClick={onExpand} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.76rem', fontWeight: 600, color: 'var(--accent-primary)', textAlign: 'left', padding: '0.1rem 0', fontFamily: 'inherit' }}>
+                            + ещё {hidden} {hidden === 1 ? 'комментарий' : hidden < 5 ? 'комментария' : 'комментариев'}
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Input row */}
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-end' }}>
+                <textarea
+                    placeholder="Написать комментарий..."
+                    value={input || ''}
+                    onChange={e => onInputChange(e.target.value.slice(0, 500))}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onAdd(); } }}
+                    rows={1}
+                    style={{ flex: 1, borderRadius: '0.625rem', border: '1px solid #e2e8f0', padding: '0.45rem 0.65rem', fontSize: '0.8rem', resize: 'none', fontFamily: 'inherit', outline: 'none', transition: 'border-color 0.15s', background: 'white', lineHeight: 1.4 }}
+                    onFocus={e => { e.target.style.borderColor = 'var(--accent-primary)'; }}
+                    onBlur={e => { e.target.style.borderColor = '#e2e8f0'; }}
+                />
+                <button
+                    onClick={onAdd}
+                    disabled={!(input || '').trim() || submitting}
+                    style={{ padding: '0.45rem 0.75rem', borderRadius: '0.625rem', border: 'none', background: (input || '').trim() ? 'var(--accent-primary)' : '#e2e8f0', color: (input || '').trim() ? 'white' : '#94a3b8', fontWeight: 700, fontSize: '0.78rem', cursor: (input || '').trim() ? 'pointer' : 'default', transition: 'all 0.15s', flexShrink: 0, fontFamily: 'inherit' }}
+                >
+                    {submitting ? '...' : '→'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
 // ── Main component ───────────────────────────────────────────────────────────
 export default function EmployeeDashboard() {
     const [tests, setTests] = useState([]);
@@ -305,6 +389,13 @@ export default function EmployeeDashboard() {
     const [activeTab, setActiveTab] = useState('tests');
     const [copiedMyTestId, setCopiedMyTestId] = useState(null);
     const [deleteMyTestId, setDeleteMyTestId] = useState(null);
+
+    // ── Comments ──
+    const [openCommentTestId, setOpenCommentTestId] = useState(null);
+    const [commentsByTestId, setCommentsByTestId] = useState({});
+    const [commentInputs, setCommentInputs] = useState({});   // testId → draft text
+    const [commentSubmitting, setCommentSubmitting] = useState(false);
+    const [expandedComments, setExpandedComments] = useState({}); // testId → bool
     const user = getCurrentUser();
     const navigate = useNavigate();
 
@@ -407,6 +498,67 @@ export default function EmployeeDashboard() {
             setCopiedFeedTestId(testId);
             setTimeout(() => setCopiedFeedTestId(null), 2000);
         });
+    };
+
+    const toggleComments = async (testId) => {
+        if (openCommentTestId === testId) {
+            setOpenCommentTestId(null);
+            return;
+        }
+        setOpenCommentTestId(testId);
+        // Load if not cached yet
+        if (commentsByTestId[testId] === undefined) {
+            try {
+                const comments = await getTestComments(testId);
+                setCommentsByTestId(prev => ({ ...prev, [testId]: comments }));
+            } catch {
+                setCommentsByTestId(prev => ({ ...prev, [testId]: [] }));
+            }
+        }
+    };
+
+    const handleAddComment = async (testId) => {
+        const text = (commentInputs[testId] || '').trim();
+        if (!text || commentSubmitting) return;
+        setCommentSubmitting(true);
+        try {
+            const newComment = await addTestComment(user.id, user.name, testId, text);
+            setCommentsByTestId(prev => ({
+                ...prev,
+                [testId]: [...(prev[testId] || []), newComment],
+            }));
+            setCommentInputs(prev => ({ ...prev, [testId]: '' }));
+            // Bump comment count in feed list
+            setFeedTests(prev => prev?.map(t =>
+                t.id === testId ? { ...t, commentCount: (t.commentCount || 0) + 1 } : t
+            ));
+            // Bump in myTests list
+            setMyTests(prev => prev.map(t =>
+                t.id === testId ? { ...t, commentCount: (t.commentCount || 0) + 1 } : t
+            ));
+        } catch (err) {
+            console.error('Comment error:', err);
+        } finally {
+            setCommentSubmitting(false);
+        }
+    };
+
+    const handleDeleteComment = async (testId, commentId) => {
+        try {
+            await deleteTestComment(commentId);
+            setCommentsByTestId(prev => ({
+                ...prev,
+                [testId]: (prev[testId] || []).filter(c => c.id !== commentId),
+            }));
+            setFeedTests(prev => prev?.map(t =>
+                t.id === testId ? { ...t, commentCount: Math.max(0, (t.commentCount || 1) - 1) } : t
+            ));
+            setMyTests(prev => prev.map(t =>
+                t.id === testId ? { ...t, commentCount: Math.max(0, (t.commentCount || 1) - 1) } : t
+            ));
+        } catch (err) {
+            console.error('Delete comment error:', err);
+        }
     };
 
     if (isLoading) return <DashboardSkeleton />;
@@ -712,6 +864,25 @@ export default function EmployeeDashboard() {
                                                 <span>{test.likeCount > 0 ? test.likeCount : ''}</span>
                                             </button>
 
+                                            {/* Comments toggle */}
+                                            <button
+                                                onClick={() => toggleComments(test.id)}
+                                                title="Комментарии"
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '0.3rem',
+                                                    padding: '0.6rem 0.7rem', borderRadius: '0.75rem',
+                                                    border: `1.5px solid ${openCommentTestId === test.id ? 'rgba(99,102,241,0.35)' : '#e2e8f0'}`,
+                                                    background: openCommentTestId === test.id ? 'rgba(99,102,241,0.07)' : 'white',
+                                                    color: openCommentTestId === test.id ? '#6366f1' : 'var(--text-secondary)',
+                                                    fontSize: '0.8rem', fontWeight: 700,
+                                                    cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.color = '#6366f1'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.borderColor = openCommentTestId === test.id ? 'rgba(99,102,241,0.35)' : '#e2e8f0'; e.currentTarget.style.background = openCommentTestId === test.id ? 'rgba(99,102,241,0.07)' : 'white'; e.currentTarget.style.color = openCommentTestId === test.id ? '#6366f1' : 'var(--text-secondary)'; }}
+                                            >
+                                                💬 {test.commentCount > 0 ? test.commentCount : ''}
+                                            </button>
+
                                             {/* Share button */}
                                             <button
                                                 onClick={() => copyFeedLink(test.id)}
@@ -739,6 +910,23 @@ export default function EmployeeDashboard() {
                                                 <Play size={13}/> Пройти
                                             </button>
                                         </div>
+
+                                        {/* Expandable comments */}
+                                        {openCommentTestId === test.id && (
+                                            <CommentsPanel
+                                                testId={test.id}
+                                                currentUserId={user.id}
+                                                isTestAuthor={test.createdBy === user.id}
+                                                comments={commentsByTestId[test.id]}
+                                                input={commentInputs[test.id]}
+                                                onInputChange={v => setCommentInputs(prev => ({ ...prev, [test.id]: v }))}
+                                                onAdd={() => handleAddComment(test.id)}
+                                                onDelete={cid => handleDeleteComment(test.id, cid)}
+                                                onExpand={() => setExpandedComments(prev => ({ ...prev, [test.id]: true }))}
+                                                expanded={!!expandedComments[test.id]}
+                                                submitting={commentSubmitting}
+                                            />
+                                        )}
                                     </div>
                                 );
                             })}
@@ -815,6 +1003,14 @@ export default function EmployeeDashboard() {
                                             <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)' }}>
                                                 Балл: {test.passingScore}
                                             </span>
+                                            {test.commentCount > 0 && (
+                                                <button
+                                                    onClick={() => toggleComments(test.id)}
+                                                    style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: openCommentTestId === test.id ? 'rgba(99,102,241,0.1)' : '#f1f5f9', color: openCommentTestId === test.id ? '#6366f1' : '#64748b', border: `1px solid ${openCommentTestId === test.id ? 'rgba(99,102,241,0.2)' : 'transparent'}`, cursor: 'pointer', transition: 'all 0.15s' }}
+                                                >
+                                                    💬 {test.commentCount}
+                                                </button>
+                                            )}
                                         </div>
 
                                         {/* Share link (when published) */}
@@ -874,6 +1070,23 @@ export default function EmployeeDashboard() {
                                                 <Trash2 size={14}/>
                                             </button>
                                         </div>
+
+                                        {/* Comments panel */}
+                                        {openCommentTestId === test.id && (
+                                            <CommentsPanel
+                                                testId={test.id}
+                                                currentUserId={user.id}
+                                                isTestAuthor={true}
+                                                comments={commentsByTestId[test.id]}
+                                                input={commentInputs[test.id]}
+                                                onInputChange={v => setCommentInputs(prev => ({ ...prev, [test.id]: v }))}
+                                                onAdd={() => handleAddComment(test.id)}
+                                                onDelete={cid => handleDeleteComment(test.id, cid)}
+                                                onExpand={() => setExpandedComments(prev => ({ ...prev, [test.id]: true }))}
+                                                expanded={!!expandedComments[test.id]}
+                                                submitting={commentSubmitting}
+                                            />
+                                        )}
                                     </div>
                                 );
                             })}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle, Link2, Share2 } from 'lucide-react';
-import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds, notifyResultSaved } from '../services/db';
+import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds, notifyResultSaved, addTestComment } from '../services/db';
 import { sendTestResultToBitrix } from '../services/bitrix';
 import { RunnerSkeleton } from './SkeletonLoader';
 
@@ -24,6 +24,11 @@ export default function TestRunner() {
     const [copiedLink, setCopiedLink] = useState(false);
     const [sharedResult, setSharedResult] = useState(false);
     const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+    // ── Post-test comment state ──
+    const [commentText, setCommentText] = useState('');
+    const [commentSubmitting, setCommentSubmitting] = useState(false);
+    const [commentDone, setCommentDone] = useState(false);
 
     const [isLoading, setIsLoading] = useState(true);
 
@@ -273,6 +278,19 @@ export default function TestRunner() {
     }
     if (!test) return <div className="p-8 text-center text-danger">Тест не найден.</div>;
 
+    const handleSubmitComment = async () => {
+        if (!commentText.trim() || commentSubmitting) return;
+        setCommentSubmitting(true);
+        try {
+            await addTestComment(user.id, user.name, test.id, commentText.trim());
+            setCommentDone(true);
+        } catch (err) {
+            console.error('Comment error:', err);
+        } finally {
+            setCommentSubmitting(false);
+        }
+    };
+
     if (isFinished) {
         const { score, passed } = evaluateScore();
         return (
@@ -308,6 +326,60 @@ export default function TestRunner() {
                                 {passed ? 'Тест успешно сдан' : 'К сожалению, вы не набрали нужное количество баллов'}
                             </div>
                         </div>
+                    </div>
+
+                    {/* ── Comment form ── */}
+                    <div className="animate-fade-in" style={{ textAlign: 'left', background: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {commentDone ? (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                                <CheckCircle size={16}/> Спасибо за отзыв!
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    💬 Оставьте отзыв о тесте
+                                </div>
+                                {/* Quick chips */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                    {['Легко 😌', 'В самый раз 👌', 'Сложно 🤯', 'Интересно 🤩', 'Советую ✅'].map(chip => (
+                                        <button
+                                            key={chip}
+                                            type="button"
+                                            onClick={() => setCommentText(prev => prev === chip ? '' : chip)}
+                                            style={{
+                                                padding: '0.3rem 0.7rem', borderRadius: '2rem', fontSize: '0.78rem', fontWeight: 600,
+                                                cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit',
+                                                border: `1.5px solid ${commentText === chip ? 'var(--accent-primary)' : '#e2e8f0'}`,
+                                                background: commentText === chip ? 'rgba(16,185,129,0.1)' : 'white',
+                                                color: commentText === chip ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                            }}
+                                        >{chip}</button>
+                                    ))}
+                                </div>
+                                {/* Free-form text */}
+                                <textarea
+                                    className="form-control"
+                                    placeholder="Или напишите свой отзыв..."
+                                    value={commentText}
+                                    onChange={e => setCommentText(e.target.value.slice(0, 500))}
+                                    rows={2}
+                                    style={{ borderRadius: '0.75rem', resize: 'none', fontSize: '0.875rem' }}
+                                />
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                        onClick={handleSubmitComment}
+                                        disabled={!commentText.trim() || commentSubmitting}
+                                        className="btn btn-primary"
+                                        style={{ flex: 1, borderRadius: '0.75rem', padding: '0.55rem', fontSize: '0.875rem' }}
+                                    >{commentSubmitting ? 'Отправка...' : 'Отправить'}</button>
+                                    <button
+                                        onClick={() => setCommentDone(true)}
+                                        className="btn btn-secondary"
+                                        style={{ padding: '0.55rem 1rem', borderRadius: '0.75rem', fontSize: '0.875rem' }}
+                                    >Пропустить</button>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className="mt-6 flex flex-col gap-3">

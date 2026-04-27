@@ -118,7 +118,7 @@ export const getTestsSummary = async () => {
     return data || [];
 };
 
-// Tests created by a specific user (employee-created tests)
+// Tests created by a specific user (employee-created tests) — includes comment counts
 export const getMyTests = async (userId) => {
     const { data, error } = await supabase
         .from('tests')
@@ -126,7 +126,10 @@ export const getMyTests = async (userId) => {
         .eq('createdBy', userId)
         .order('createdAt', { ascending: false });
     if (error) throw error;
-    return data || [];
+    const tests = data || [];
+    if (!tests.length) return tests;
+    const commentCounts = await getCommentCounts(tests.map(t => t.id));
+    return tests.map(t => ({ ...t, commentCount: commentCounts[t.id] || 0 }));
 };
 
 export const getTestById = async (id) => {
@@ -425,6 +428,46 @@ export const getTestAttemptsCount = async (userId, testId) => {
     return count || 0;
 };
 
+// --- Test Comments ---
+export const getTestComments = async (testId) => {
+    const { data, error } = await supabase
+        .from('test_comments')
+        .select('*')
+        .eq('testId', testId)
+        .order('createdAt', { ascending: true });
+    if (error) throw error;
+    return data || [];
+};
+
+export const addTestComment = async (userId, userName, testId, text) => {
+    const { data, error } = await supabase
+        .from('test_comments')
+        .insert([{ userId, userName, testId, text: text.trim().slice(0, 500) }])
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const deleteTestComment = async (commentId) => {
+    const { error } = await supabase
+        .from('test_comments')
+        .delete()
+        .eq('id', commentId);
+    if (error) throw error;
+};
+
+export const getCommentCounts = async (testIds) => {
+    if (!testIds?.length) return {};
+    const { data } = await supabase
+        .from('test_comments')
+        .select('testId')
+        .in('testId', testIds);
+    const counts = {};
+    (data || []).forEach(c => { counts[c.testId] = (counts[c.testId] || 0) + 1; });
+    return counts;
+};
+
 // --- Test Likes ---
 export const toggleTestLike = async (userId, testId) => {
     const { data: existing } = await supabase
@@ -453,18 +496,27 @@ export const getPopularTests = async (currentUserId) => {
     if (!tests?.length) return { tests: [], userLikedIds: new Set() };
 
     const testIds = tests.map(t => t.id);
-    const [{ data: allLikes }, { data: myLikes }] = await Promise.all([
+    const [{ data: allLikes }, { data: myLikes }, { data: allComments }] = await Promise.all([
         supabase.from('test_likes').select('testId').in('testId', testIds),
         supabase.from('test_likes').select('testId').eq('userId', currentUserId).in('testId', testIds),
+        supabase.from('test_comments').select('testId').in('testId', testIds),
     ]);
 
     const likeCounts = {};
     (allLikes || []).forEach(l => { likeCounts[l.testId] = (likeCounts[l.testId] || 0) + 1; });
 
+    const commentCounts = {};
+    (allComments || []).forEach(c => { commentCounts[c.testId] = (commentCounts[c.testId] || 0) + 1; });
+
     const userLikedIds = new Set((myLikes || []).map(l => l.testId));
 
     const sorted = tests
-        .map(t => ({ ...t, likeCount: likeCounts[t.id] || 0, questionsCount: t.questions?.length || 0 }))
+        .map(t => ({
+            ...t,
+            likeCount: likeCounts[t.id] || 0,
+            commentCount: commentCounts[t.id] || 0,
+            questionsCount: t.questions?.length || 0,
+        }))
         .sort((a, b) => b.likeCount - a.likeCount || new Date(b.createdAt) - new Date(a.createdAt));
 
     return { tests: sorted, userLikedIds };
