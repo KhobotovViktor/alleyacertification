@@ -71,6 +71,13 @@ export default function TestRunner() {
                         return;
                     }
 
+                    // Check deadline before allowing entry
+                    if (dbTest.deadline && new Date(dbTest.deadline) < new Date()) {
+                        alert('Срок сдачи этого теста истёк.');
+                        navigate('/employee');
+                        return;
+                    }
+
                     const attempts = await getTestAttemptsCount(user.id, dbTest.id);
                     if (dbTest.maxAttempts > 0 && attempts >= dbTest.maxAttempts) {
                         alert('Лимит попыток исчерпан!');

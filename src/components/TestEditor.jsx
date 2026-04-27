@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2, Send, PenLine } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2, Send, PenLine, CalendarClock } from 'lucide-react';
 import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia, notifyTestPublished } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
@@ -26,8 +26,16 @@ export default function TestEditor() {
         showFeedback: false,
         isPublic: false,
         status: 'draft',   // new tests start as drafts
+        deadline: null,
         questions: []
     });
+
+    // Convert ISO UTC → datetime-local string (local timezone)
+    const toLocalDatetime = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    };
 
     const [copiedLink, setCopiedLink] = useState(false);
     const [uploadingQId, setUploadingQId] = useState(null); // question id currently uploading media
@@ -414,6 +422,41 @@ export default function TestEditor() {
                                 value={test.passingScore}
                                 onChange={e => setTest({ ...test, passingScore: parseInt(e.target.value) })}
                             />
+                        </div>
+
+                        {/* ── Deadline ── */}
+                        <div className="form-group col-span-2 pt-4 border-t border-[var(--border-color)]">
+                            <h4 className="mb-3 text-base flex items-center gap-2">
+                                <CalendarClock size={16} /> Срок сдачи
+                            </h4>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                <input
+                                    type="datetime-local"
+                                    className="form-control"
+                                    style={{ flex: '1', minWidth: '200px', maxWidth: '280px' }}
+                                    value={toLocalDatetime(test.deadline)}
+                                    min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                                    onChange={e => setTest({ ...test, deadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                                />
+                                {test.deadline && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setTest({ ...test, deadline: null })}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.75rem', borderRadius: '0.625rem', border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                                    >
+                                        <X size={13} /> Убрать срок
+                                    </button>
+                                )}
+                            </div>
+                            {test.deadline ? (
+                                <p className="text-xs text-secondary mt-2" style={{ opacity: 0.7 }}>
+                                    Тест автоматически закроется {new Date(test.deadline).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}. Сотрудники получат push-напоминание за 48 и 24 часа до срока.
+                                </p>
+                            ) : (
+                                <p className="text-xs text-secondary mt-2" style={{ opacity: 0.5 }}>
+                                    Не задан — тест доступен бессрочно
+                                </p>
+                            )}
                         </div>
 
                         <div className="form-group col-span-2 pt-4 border-t border-[var(--border-color)]">

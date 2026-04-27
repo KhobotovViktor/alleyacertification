@@ -112,7 +112,7 @@ export const getTests = async () => {
 export const getTestsSummary = async () => {
     const { data, error } = await supabase
         .from('tests')
-        .select('id, title, timeLimit, passingScore, maxAttempts, allowedUsers, requiredArticleId, shuffleQuestions, noRepeatQuestions, questionsLimit, showFeedback, isPublic, status, createdAt')
+        .select('id, title, timeLimit, passingScore, maxAttempts, allowedUsers, requiredArticleId, shuffleQuestions, noRepeatQuestions, questionsLimit, showFeedback, isPublic, status, deadline, createdAt')
         .order('createdAt', { ascending: false });
     if (error) throw error;
     return data || [];
@@ -136,8 +136,8 @@ export const saveTest = async (test) => {
         requiredArticleId: test.requiredArticleId || null,
         noRepeatQuestions: !!test.noRepeatQuestions,
         isPublic: !!test.isPublic,
-        // null/undefined → 'published' for backward-compat with tests created before this field existed
         status: test.status || 'published',
+        deadline: test.deadline || null,
     };
 
     if (test.id) {
@@ -438,9 +438,12 @@ export const notifyTestPublished = async (test) => {
         userIds = employees.map(e => e.id);
     }
     if (!userIds?.length) return;
+    const deadlineText = test.deadline
+        ? ` · Срок: ${new Date(test.deadline).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+        : '';
     await sendPushNotification(userIds, {
         title: `📋 Новый тест: ${test.title}`,
-        body: `Время: ${Math.round(test.timeLimit / 60)} мин · Проходной балл: ${test.passingScore}`,
+        body: `Время: ${Math.round(test.timeLimit / 60)} мин · Балл: ${test.passingScore}${deadlineText}`,
         url: '/employee',
         tag: `test-published-${test.id || Date.now()}`,
     });

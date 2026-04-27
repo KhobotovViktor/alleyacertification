@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, EyeOff, X, BarChart2, Download, Link2, Copy, PenLine, KeyRound, ShieldCheck, UserPlus } from 'lucide-react';
+import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, EyeOff, X, BarChart2, Download, Link2, Copy, PenLine, KeyRound, ShieldCheck, UserPlus, CalendarClock } from 'lucide-react';
 import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment, updateTestStatus, getFullUsersList, createUser, deleteUser, updateUserPassword } from '../services/db';
 import { getCurrentUser } from '../services/db';
 import { testConnection } from '../services/bitrix';
@@ -653,6 +653,16 @@ export default function AdminDashboard() {
                                                 <span className="badge badge-primary bg-slate-100 text-slate-600 border-none" style={{ padding: '0.2rem 0.5rem', textTransform: 'none' }}>{test.questions?.length || 0} вопр.</span>
                                                 <span className="badge badge-primary bg-slate-100 text-slate-600 border-none" style={{ padding: '0.2rem 0.5rem', textTransform: 'none' }}>{test.timeLimit / 60} мин.</span>
                                                 <span className="badge badge-primary bg-success/10 text-success border-none" style={{ padding: '0.2rem 0.5rem', textTransform: 'none' }}>Балл: {test.passingScore}</span>
+                                                {test.deadline && (() => {
+                                                    const dl = new Date(test.deadline);
+                                                    const expired = dl < new Date();
+                                                    return (
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.5rem', borderRadius: '2rem', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0, background: expired ? 'rgba(100,116,139,0.1)' : 'rgba(245,158,11,0.1)', color: expired ? '#64748b' : '#d97706', border: `1px solid ${expired ? 'rgba(100,116,139,0.2)' : 'rgba(245,158,11,0.2)'}` }}>
+                                                            <CalendarClock size={10} />
+                                                            {expired ? 'Срок истёк' : `До ${dl.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                         

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen,
-    Trophy, Star, Flame, Target, TrendingUp, Crown, Shield, Lock, Users
+    Trophy, Star, Flame, Target, TrendingUp, Crown, Shield, Lock, Users, CalendarClock
 } from 'lucide-react';
 import {
     getTestsSummary, getCurrentUser, getUserResults,
@@ -451,14 +451,36 @@ export default function EmployeeDashboard() {
             {activeTab === 'tests' && (
                 <div className="bento-grid">
                     {tests.map((test, index) => {
-                        const isBlocked = test.maxAttempts > 0 && test.attemptsCount >= test.maxAttempts;
+                        const now = new Date();
+                        const deadlineDate = test.deadline ? new Date(test.deadline) : null;
+                        const isExpired = deadlineDate && deadlineDate < now;
+                        const hoursLeft = deadlineDate && !isExpired ? (deadlineDate - now) / 3_600_000 : null;
+                        const isBlocked = isExpired || (test.maxAttempts > 0 && test.attemptsCount >= test.maxAttempts);
                         const hasPassed = test.bestResult?.passed;
+
+                        // Deadline badge colour
+                        const deadlineBadgeStyle = isExpired
+                            ? { background: 'rgba(100,116,139,0.1)', color: '#64748b', border: '1px solid rgba(100,116,139,0.2)' }
+                            : hoursLeft !== null && hoursLeft <= 24
+                                ? { background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }
+                                : hoursLeft !== null && hoursLeft <= 48
+                                    ? { background: 'rgba(245,158,11,0.08)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)' }
+                                    : { background: 'rgba(16,185,129,0.07)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' };
+
                         return (
                             <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`}>
                                 <div className="flex-col gap-1 mb-4 pr-6">
                                     <h3 className="text-lg font-bold text-primary leading-tight">{test.title}</h3>
                                 </div>
                                 <div className="flex-col gap-2.5 mb-6">
+                                    {deadlineDate && (
+                                        <div className="flex items-center gap-2 text-sm" style={{ ...deadlineBadgeStyle, padding: '0.25rem 0.625rem', borderRadius: '0.5rem', width: 'fit-content', fontSize: '0.75rem', fontWeight: 600 }}>
+                                            <CalendarClock size={12}/>
+                                            {isExpired
+                                                ? 'Срок истёк'
+                                                : `До ${deadlineDate.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-2 text-sm text-secondary">
                                         <div className="w-6 h-6 rounded bg-slate-50 flex items-center justify-center text-accent-primary"><Clock size={14}/></div>
                                         <span>{test.timeLimit / 60} мин</span>
@@ -482,6 +504,8 @@ export default function EmployeeDashboard() {
                                         <Link to={`/article/${test.requiredArticleId}`} className="btn w-full btn-secondary warning overflow-hidden text-ellipsis whitespace-nowrap text-xs flex justify-center items-center gap-1 bg-warning/10 text-warning border-warning/30 hover:bg-warning/20" style={{ padding: '0.875rem' }}>
                                             <AlertTriangle size={14}/><span className="truncate">Изучить: {test.requiredArticle?.title || 'Материал'}</span>
                                         </Link>
+                                    ) : isExpired ? (
+                                        <button className="btn w-full btn-secondary text-sm opacity-50" disabled style={{ padding: '0.875rem' }}>Срок сдачи истёк</button>
                                     ) : isBlocked ? (
                                         <button className="btn w-full btn-secondary text-sm opacity-50" disabled style={{ padding: '0.875rem' }}>Попытки исчерпаны</button>
                                     ) : (
