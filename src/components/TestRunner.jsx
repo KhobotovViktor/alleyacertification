@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle, Link2, Share2 } from 'lucide-react';
-import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds, notifyResultSaved, addTestComment } from '../services/db';
+import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle, Link2, Share2, HelpCircle } from 'lucide-react';
+import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds, notifyResultSaved, addTestComment, askTestAuthor } from '../services/db';
 import { sendTestResultToBitrix } from '../services/bitrix';
 import { RunnerSkeleton } from './SkeletonLoader';
 
@@ -29,6 +29,12 @@ export default function TestRunner() {
     const [commentText, setCommentText] = useState('');
     const [commentSubmitting, setCommentSubmitting] = useState(false);
     const [commentDone, setCommentDone] = useState(false);
+
+    // ── Ask author state ──
+    const [askOpen, setAskOpen] = useState(false);
+    const [askText, setAskText] = useState('');
+    const [askSent, setAskSent] = useState(false);
+    const [askSubmitting, setAskSubmitting] = useState(false);
 
     const [isLoading, setIsLoading] = useState(true);
 
@@ -220,6 +226,22 @@ export default function TestRunner() {
             score,
             passed: score >= test.passingScore
         };
+    };
+
+    const handleAskQuestion = async () => {
+        if (!askText.trim() || askSubmitting) return;
+        setAskSubmitting(true);
+        try {
+            await askTestAuthor(test.id, user.id, user.name, askText);
+            setAskSent(true);
+            setAskText('');
+            setAskOpen(false);
+            setTimeout(() => setAskSent(false), 3500);
+        } catch (err) {
+            console.error('Ask error:', err);
+        } finally {
+            setAskSubmitting(false);
+        }
     };
 
     const handleSubmit = async (isTimeout = false) => {
@@ -560,7 +582,48 @@ export default function TestRunner() {
 
                 {/* Navigation Controls */}
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '1.5rem', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '1rem', borderBottomLeftRadius: '2rem', borderBottomRightRadius: '2rem' }}>
-                    
+
+                    {/* ── Ask author widget ── */}
+                    {test.createdBy && (
+                        askSent ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', fontWeight: 600, color: 'var(--accent-primary)', animation: 'fadeIn 0.2s ease' }}>
+                                <CheckCircle size={14} /> Вопрос отправлен автору
+                            </div>
+                        ) : askOpen ? (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', animation: 'fadeIn 0.2s ease' }}>
+                                <textarea
+                                    autoFocus
+                                    placeholder="Напишите вопрос автору теста..."
+                                    value={askText}
+                                    onChange={e => setAskText(e.target.value.slice(0, 500))}
+                                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAskQuestion(); } }}
+                                    rows={2}
+                                    style={{ flex: 1, borderRadius: '0.75rem', border: '1px solid rgba(99,102,241,0.3)', padding: '0.5rem 0.7rem', fontSize: '0.8rem', resize: 'none', fontFamily: 'inherit', outline: 'none', background: 'white', lineHeight: 1.4 }}
+                                />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flexShrink: 0 }}>
+                                    <button
+                                        onClick={handleAskQuestion}
+                                        disabled={!askText.trim() || askSubmitting}
+                                        style={{ padding: '0.4rem 0.85rem', borderRadius: '0.625rem', border: 'none', background: askText.trim() ? '#6366f1' : '#e2e8f0', color: askText.trim() ? 'white' : '#94a3b8', fontWeight: 700, fontSize: '0.75rem', cursor: askText.trim() ? 'pointer' : 'default', fontFamily: 'inherit', transition: 'all 0.15s' }}
+                                    >{askSubmitting ? '...' : 'Отправить'}</button>
+                                    <button
+                                        onClick={() => { setAskOpen(false); setAskText(''); }}
+                                        style={{ padding: '0.35rem 0.85rem', borderRadius: '0.625rem', border: '1px solid #e2e8f0', background: 'white', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.73rem', cursor: 'pointer', fontFamily: 'inherit' }}
+                                    >Отмена</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setAskOpen(true)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '0.76rem', fontWeight: 600, padding: 0, fontFamily: 'inherit', width: 'fit-content', transition: 'color 0.15s' }}
+                                onMouseEnter={e => { e.currentTarget.style.color = '#6366f1'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; }}
+                            >
+                                <HelpCircle size={13} /> Задать вопрос автору
+                            </button>
+                        )
+                    )}
+
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                         {showQuestionFeedback ? (
                             <div className={`flex items-center gap-2 animate-fade-in ${isCurrentCorrect ? 'text-success' : 'text-danger'}`}>

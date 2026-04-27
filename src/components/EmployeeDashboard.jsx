@@ -10,7 +10,8 @@ import {
     getArticles, getArticleProgress, getDepartmentLeaderboard,
     getMyTests, deleteTest, updateTestStatus, getAllUsers,
     toggleTestLike, getPopularTests,
-    getTestComments, addTestComment, deleteTestComment
+    getTestComments, addTestComment, deleteTestComment,
+    getQuestionsForTest, answerTestQuestion,
 } from '../services/db';
 import { DashboardSkeleton } from './SkeletonLoader';
 
@@ -373,6 +374,74 @@ const CommentsPanel = ({ testId, currentUserId, isTestAuthor, comments, input, o
     );
 };
 
+// ── Questions-to-author panel ────────────────────────────────────────────────
+const QuestionsPanel = ({ questions, answerInputs, onInputChange, onAnswer, submitting }) => {
+    const relTime = (iso) => {
+        const diff = (Date.now() - new Date(iso)) / 1000;
+        if (diff < 60) return 'только что';
+        if (diff < 3600) return `${Math.floor(diff / 60)} мин. назад`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} ч. назад`;
+        return `${Math.floor(diff / 86400)} дн. назад`;
+    };
+
+    return (
+        <div style={{ marginTop: '0.75rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {questions === undefined ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem', opacity: 0.6 }}>Загрузка...</div>
+            ) : questions.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.25rem 0', opacity: 0.55 }}>Вопросов пока нет</div>
+            ) : questions.map(q => (
+                <div key={q.id} style={{ background: q.answer ? '#f8fafc' : 'rgba(245,158,11,0.03)', border: `1px solid ${q.answer ? '#e2e8f0' : 'rgba(245,158,11,0.25)'}`, borderRadius: '0.75rem', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {/* Question row */}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                        <div style={{ width: '1.75rem', height: '1.75rem', borderRadius: '50%', background: 'linear-gradient(135deg, #f59e0b, #ef4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, color: 'white', flexShrink: 0 }}>
+                            {(q.fromUserName?.[0] || '?').toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>{q.fromUserName}</span>
+                                <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{relTime(q.createdAt)}</span>
+                                {!q.answer && (
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.45rem', borderRadius: '0.4rem', background: 'rgba(245,158,11,0.12)', color: '#d97706' }}>
+                                        ожидает ответа
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', lineHeight: 1.45, marginTop: '0.2rem', wordBreak: 'break-word' }}>{q.question}</div>
+                        </div>
+                    </div>
+
+                    {/* Answer / reply area */}
+                    {q.answer ? (
+                        <div style={{ marginLeft: '2.25rem', padding: '0.5rem 0.7rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', display: 'flex', gap: '0.45rem', alignItems: 'flex-start' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--accent-primary)', flexShrink: 0, marginTop: '0.05rem' }}>↩</span>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', lineHeight: 1.45, wordBreak: 'break-word' }}>{q.answer}</span>
+                        </div>
+                    ) : (
+                        <div style={{ marginLeft: '2.25rem', display: 'flex', gap: '0.4rem', alignItems: 'flex-end' }}>
+                            <textarea
+                                placeholder="Напишите ответ..."
+                                value={answerInputs?.[q.id] || ''}
+                                onChange={e => onInputChange(q.id, e.target.value.slice(0, 1000))}
+                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onAnswer(q.id); } }}
+                                rows={2}
+                                style={{ flex: 1, borderRadius: '0.625rem', border: '1px solid #e2e8f0', padding: '0.45rem 0.65rem', fontSize: '0.78rem', resize: 'none', fontFamily: 'inherit', outline: 'none', transition: 'border-color 0.15s', background: 'white', lineHeight: 1.4 }}
+                                onFocus={e => { e.target.style.borderColor = 'var(--accent-primary)'; }}
+                                onBlur={e => { e.target.style.borderColor = '#e2e8f0'; }}
+                            />
+                            <button
+                                onClick={() => onAnswer(q.id)}
+                                disabled={!(answerInputs?.[q.id] || '').trim() || submitting}
+                                style={{ padding: '0.45rem 0.8rem', borderRadius: '0.625rem', border: 'none', background: (answerInputs?.[q.id] || '').trim() ? 'var(--accent-primary)' : '#e2e8f0', color: (answerInputs?.[q.id] || '').trim() ? 'white' : '#94a3b8', fontWeight: 700, fontSize: '0.8rem', cursor: (answerInputs?.[q.id] || '').trim() ? 'pointer' : 'default', transition: 'all 0.15s', flexShrink: 0, fontFamily: 'inherit' }}
+                            >{submitting ? '...' : '↩'}</button>
+                        </div>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+};
+
 // ── Main component ───────────────────────────────────────────────────────────
 export default function EmployeeDashboard() {
     const [tests, setTests] = useState([]);
@@ -396,6 +465,13 @@ export default function EmployeeDashboard() {
     const [commentInputs, setCommentInputs] = useState({});   // testId → draft text
     const [commentSubmitting, setCommentSubmitting] = useState(false);
     const [expandedComments, setExpandedComments] = useState({}); // testId → bool
+
+    // ── Questions to author ──
+    const [openQuestionTestId, setOpenQuestionTestId] = useState(null);
+    const [questionsByTestId, setQuestionsByTestId] = useState({});  // testId → Question[]
+    const [questionAnswerInputs, setQuestionAnswerInputs] = useState({}); // testId → { qId → text }
+    const [answerSubmitting, setAnswerSubmitting] = useState(false);
+
     const user = getCurrentUser();
     const navigate = useNavigate();
 
@@ -558,6 +634,45 @@ export default function EmployeeDashboard() {
             ));
         } catch (err) {
             console.error('Delete comment error:', err);
+        }
+    };
+
+    const toggleQuestions = async (testId) => {
+        if (openQuestionTestId === testId) { setOpenQuestionTestId(null); return; }
+        setOpenQuestionTestId(testId);
+        if (questionsByTestId[testId] === undefined) {
+            try {
+                const qs = await getQuestionsForTest(testId);
+                setQuestionsByTestId(prev => ({ ...prev, [testId]: qs }));
+            } catch {
+                setQuestionsByTestId(prev => ({ ...prev, [testId]: [] }));
+            }
+        }
+    };
+
+    const handleAnswerQuestion = async (testId, questionId) => {
+        const answer = (questionAnswerInputs[testId]?.[questionId] || '').trim();
+        if (!answer || answerSubmitting) return;
+        setAnswerSubmitting(true);
+        try {
+            const updated = await answerTestQuestion(questionId, answer);
+            setQuestionsByTestId(prev => ({
+                ...prev,
+                [testId]: (prev[testId] || []).map(q => q.id === questionId ? updated : q),
+            }));
+            setQuestionAnswerInputs(prev => ({
+                ...prev,
+                [testId]: { ...(prev[testId] || {}), [questionId]: '' },
+            }));
+            setMyTests(prev => prev.map(t =>
+                t.id === testId
+                    ? { ...t, unansweredQuestionCount: Math.max(0, (t.unansweredQuestionCount || 1) - 1) }
+                    : t
+            ));
+        } catch (err) {
+            console.error('Answer error:', err);
+        } finally {
+            setAnswerSubmitting(false);
         }
     };
 
@@ -1011,6 +1126,14 @@ export default function EmployeeDashboard() {
                                                     💬 {test.commentCount}
                                                 </button>
                                             )}
+                                            {(test.questionCount > 0 || test.unansweredQuestionCount > 0) && (
+                                                <button
+                                                    onClick={() => toggleQuestions(test.id)}
+                                                    style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: openQuestionTestId === test.id ? 'rgba(245,158,11,0.12)' : (test.unansweredQuestionCount > 0 ? 'rgba(245,158,11,0.08)' : '#f1f5f9'), color: openQuestionTestId === test.id ? '#b45309' : (test.unansweredQuestionCount > 0 ? '#d97706' : '#64748b'), border: `1px solid ${openQuestionTestId === test.id ? 'rgba(245,158,11,0.35)' : (test.unansweredQuestionCount > 0 ? 'rgba(245,158,11,0.2)' : 'transparent')}`, cursor: 'pointer', transition: 'all 0.15s' }}
+                                                >
+                                                    ❓ {test.unansweredQuestionCount > 0 ? `${test.unansweredQuestionCount} новых` : test.questionCount}
+                                                </button>
+                                            )}
                                         </div>
 
                                         {/* Share link (when published) */}
@@ -1085,6 +1208,20 @@ export default function EmployeeDashboard() {
                                                 onExpand={() => setExpandedComments(prev => ({ ...prev, [test.id]: true }))}
                                                 expanded={!!expandedComments[test.id]}
                                                 submitting={commentSubmitting}
+                                            />
+                                        )}
+
+                                        {/* Questions panel */}
+                                        {openQuestionTestId === test.id && (
+                                            <QuestionsPanel
+                                                questions={questionsByTestId[test.id]}
+                                                answerInputs={questionAnswerInputs[test.id]}
+                                                onInputChange={(qId, v) => setQuestionAnswerInputs(prev => ({
+                                                    ...prev,
+                                                    [test.id]: { ...(prev[test.id] || {}), [qId]: v },
+                                                }))}
+                                                onAnswer={qId => handleAnswerQuestion(test.id, qId)}
+                                                submitting={answerSubmitting}
                                             />
                                         )}
                                     </div>

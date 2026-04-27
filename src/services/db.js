@@ -118,7 +118,7 @@ export const getTestsSummary = async () => {
     return data || [];
 };
 
-// Tests created by a specific user (employee-created tests) — includes comment counts
+// Tests created by a specific user (employee-created tests) — includes comment + question counts
 export const getMyTests = async (userId) => {
     const { data, error } = await supabase
         .from('tests')
@@ -128,8 +128,17 @@ export const getMyTests = async (userId) => {
     if (error) throw error;
     const tests = data || [];
     if (!tests.length) return tests;
-    const commentCounts = await getCommentCounts(tests.map(t => t.id));
-    return tests.map(t => ({ ...t, commentCount: commentCounts[t.id] || 0 }));
+    const testIds = tests.map(t => t.id);
+    const [commentCounts, questionCounts] = await Promise.all([
+        getCommentCounts(testIds),
+        getAuthorQuestionCounts(testIds),
+    ]);
+    return tests.map(t => ({
+        ...t,
+        commentCount: commentCounts[t.id] || 0,
+        questionCount: questionCounts[t.id]?.total || 0,
+        unansweredQuestionCount: questionCounts[t.id]?.unanswered || 0,
+    }));
 };
 
 export const getTestById = async (id) => {
@@ -465,6 +474,51 @@ export const getCommentCounts = async (testIds) => {
         .in('testId', testIds);
     const counts = {};
     (data || []).forEach(c => { counts[c.testId] = (counts[c.testId] || 0) + 1; });
+    return counts;
+};
+
+// --- Questions to Author ---
+export const askTestAuthor = async (testId, fromUserId, fromUserName, question) => {
+    const { data, error } = await supabase
+        .from('test_questions_to_author')
+        .insert([{ testId, fromUserId, fromUserName, question: question.trim().slice(0, 500) }])
+        .select().single();
+    if (error) throw error;
+    return data;
+};
+
+export const getQuestionsForTest = async (testId) => {
+    const { data, error } = await supabase
+        .from('test_questions_to_author')
+        .select('*')
+        .eq('testId', testId)
+        .order('createdAt', { ascending: true });
+    if (error) throw error;
+    return data || [];
+};
+
+export const answerTestQuestion = async (questionId, answer) => {
+    const { data, error } = await supabase
+        .from('test_questions_to_author')
+        .update({ answer: answer.trim().slice(0, 1000), answeredAt: new Date().toISOString() })
+        .eq('id', questionId)
+        .select().single();
+    if (error) throw error;
+    return data;
+};
+
+export const getAuthorQuestionCounts = async (testIds) => {
+    if (!testIds?.length) return {};
+    const { data } = await supabase
+        .from('test_questions_to_author')
+        .select('testId, answer')
+        .in('testId', testIds);
+    const counts = {};
+    (data || []).forEach(q => {
+        if (!counts[q.testId]) counts[q.testId] = { total: 0, unanswered: 0 };
+        counts[q.testId].total++;
+        if (!q.answer) counts[q.testId].unanswered++;
+    });
     return counts;
 };
 
