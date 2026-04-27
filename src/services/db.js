@@ -425,6 +425,51 @@ export const getTestAttemptsCount = async (userId, testId) => {
     return count || 0;
 };
 
+// --- Test Likes ---
+export const toggleTestLike = async (userId, testId) => {
+    const { data: existing } = await supabase
+        .from('test_likes')
+        .select('id')
+        .eq('userId', userId)
+        .eq('testId', testId)
+        .single();
+
+    if (existing) {
+        await supabase.from('test_likes').delete().eq('id', existing.id);
+        return false; // unliked
+    } else {
+        await supabase.from('test_likes').insert([{ userId, testId }]);
+        return true; // liked
+    }
+};
+
+export const getPopularTests = async (currentUserId) => {
+    const { data: tests, error } = await supabase
+        .from('tests')
+        .select('id, title, timeLimit, passingScore, maxAttempts, status, isPublic, createdAt, createdBy, questions')
+        .eq('isPublic', true)
+        .eq('status', 'published');
+    if (error) throw error;
+    if (!tests?.length) return { tests: [], userLikedIds: new Set() };
+
+    const testIds = tests.map(t => t.id);
+    const [{ data: allLikes }, { data: myLikes }] = await Promise.all([
+        supabase.from('test_likes').select('testId').in('testId', testIds),
+        supabase.from('test_likes').select('testId').eq('userId', currentUserId).in('testId', testIds),
+    ]);
+
+    const likeCounts = {};
+    (allLikes || []).forEach(l => { likeCounts[l.testId] = (likeCounts[l.testId] || 0) + 1; });
+
+    const userLikedIds = new Set((myLikes || []).map(l => l.testId));
+
+    const sorted = tests
+        .map(t => ({ ...t, likeCount: likeCounts[t.id] || 0, questionsCount: t.questions?.length || 0 }))
+        .sort((a, b) => b.likeCount - a.likeCount || new Date(b.createdAt) - new Date(a.createdAt));
+
+    return { tests: sorted, userLikedIds };
+};
+
 // --- Push Notifications ---
 export const sendPushNotification = async (userIds, { title, body, url = '/', tag }) => {
     if (!userIds?.length) return;

@@ -611,11 +611,12 @@ export default function AdminDashboard() {
                                 <h3 className="m-0">Список тестов</h3>
                             </div>
                             {/* Status filter chips */}
-                            <div style={{ display: 'flex', gap: '0.375rem', padding: '0.25rem', background: 'rgba(255,255,255,0.6)', borderRadius: '0.875rem', border: '1px solid rgba(255,255,255,0.8)' }}>
+                            <div style={{ display: 'flex', gap: '0.375rem', padding: '0.25rem', background: 'rgba(255,255,255,0.6)', borderRadius: '0.875rem', border: '1px solid rgba(255,255,255,0.8)', flexWrap: 'wrap' }}>
                                 {[
                                     { key: 'all', label: 'Все' },
                                     { key: 'published', label: 'Опубликованные' },
                                     { key: 'draft', label: 'Черновики' },
+                                    { key: 'user_created', label: 'От пользователей' },
                                 ].map(f => (
                                     <button key={f.key} onClick={() => setTestStatusFilter(f.key)} style={{ padding: '0.3rem 0.75rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s', fontFamily: 'inherit', background: testStatusFilter === f.key ? 'white' : 'transparent', color: testStatusFilter === f.key ? 'var(--text-primary)' : 'var(--text-secondary)', boxShadow: testStatusFilter === f.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
                                         {f.label}
@@ -625,8 +626,9 @@ export default function AdminDashboard() {
                         </div>
                         {(() => {
                             const visibleTests = tests.filter(t => {
-                                const s = t.status || 'published';
                                 if (testStatusFilter === 'all') return true;
+                                if (testStatusFilter === 'user_created') return !!t.createdBy;
+                                const s = t.status || 'published';
                                 return s === testStatusFilter;
                             });
                             return visibleTests.length === 0 ? (
@@ -648,6 +650,16 @@ export default function AdminDashboard() {
                                                     {isDraft ? 'Черновик' : 'Опубликован'}
                                                 </span>
                                             </div>
+
+                                            {/* Creator badge — shown when test was made by an employee */}
+                                            {test.createdBy && (() => {
+                                                const creator = allUsers.find(u => u.id === test.createdBy);
+                                                return creator ? (
+                                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.68rem', fontWeight: 600, color: '#6366f1', background: 'rgba(99,102,241,0.07)', padding: '0.15rem 0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(99,102,241,0.15)', width: 'fit-content', marginBottom: '0.25rem' }}>
+                                                        <Users size={9}/> Автор: {creator.name}
+                                                    </div>
+                                                ) : null;
+                                            })()}
 
                                             <div className="text-secondary flex flex-wrap gap-2 mt-auto">
                                                 <span className="badge badge-primary bg-slate-100 text-slate-600 border-none" style={{ padding: '0.2rem 0.5rem', textTransform: 'none' }}>{test.questions?.length || 0} вопр.</span>

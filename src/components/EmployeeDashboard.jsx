@@ -3,12 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
     Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen,
     Trophy, Star, Flame, Target, TrendingUp, Crown, Shield, Lock, Users, CalendarClock,
-    Plus, Edit, Trash2, Link2, Copy, Send, PenLine
+    Plus, Edit, Trash2, Link2, Copy, Send, PenLine, Heart, Rss
 } from 'lucide-react';
 import {
     getTestsSummary, getCurrentUser, getUserResults,
     getArticles, getArticleProgress, getDepartmentLeaderboard,
-    getMyTests, deleteTest, updateTestStatus
+    getMyTests, deleteTest, updateTestStatus, getAllUsers,
+    toggleTestLike, getPopularTests
 } from '../services/db';
 import { DashboardSkeleton } from './SkeletonLoader';
 
@@ -295,6 +296,11 @@ export default function EmployeeDashboard() {
     const [results, setResults] = useState([]);
     const [leaderboard, setLeaderboard] = useState([]);
     const [myTests, setMyTests] = useState([]);
+    const [feedTests, setFeedTests] = useState(null); // null = not loaded yet
+    const [feedUserLikedIds, setFeedUserLikedIds] = useState(new Set());
+    const [feedLoading, setFeedLoading] = useState(false);
+    const [likeInProgress, setLikeInProgress] = useState(new Set());
+    const [copiedFeedTestId, setCopiedFeedTestId] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('tests');
     const [copiedMyTestId, setCopiedMyTestId] = useState(null);
@@ -349,6 +355,60 @@ export default function EmployeeDashboard() {
         }
     };
 
+    // ── Feed: lazy-load when tab is first opened ──
+    useEffect(() => {
+        if (activeTab === 'feed' && feedTests === null) loadFeed();
+    }, [activeTab]);
+
+    const loadFeed = async () => {
+        setFeedLoading(true);
+        try {
+            const [{ tests: popular, userLikedIds }, users] = await Promise.all([
+                getPopularTests(user.id),
+                getAllUsers(),
+            ]);
+            const nameMap = Object.fromEntries(users.map(u => [u.id, u.name]));
+            setFeedTests(popular.map(t => ({
+                ...t,
+                creatorName: t.createdBy ? (nameMap[t.createdBy] || 'Пользователь') : null,
+            })));
+            setFeedUserLikedIds(userLikedIds);
+        } catch (err) {
+            console.error('Feed load error:', err);
+            setFeedTests([]);
+        } finally {
+            setFeedLoading(false);
+        }
+    };
+
+    const handleLike = async (testId) => {
+        if (likeInProgress.has(testId)) return;
+        setLikeInProgress(prev => new Set([...prev, testId]));
+        try {
+            const nowLiked = await toggleTestLike(user.id, testId);
+            setFeedUserLikedIds(prev => {
+                const next = new Set(prev);
+                if (nowLiked) next.add(testId); else next.delete(testId);
+                return next;
+            });
+            setFeedTests(prev => prev.map(t =>
+                t.id === testId
+                    ? { ...t, likeCount: t.likeCount + (nowLiked ? 1 : -1) }
+                    : t
+            ));
+        } finally {
+            setLikeInProgress(prev => { const next = new Set(prev); next.delete(testId); return next; });
+        }
+    };
+
+    const copyFeedLink = (testId) => {
+        const url = `${window.location.origin}/test/${testId}`;
+        navigator.clipboard.writeText(url).then(() => {
+            setCopiedFeedTestId(testId);
+            setTimeout(() => setCopiedFeedTestId(null), 2000);
+        });
+    };
+
     if (isLoading) return <DashboardSkeleton />;
 
     const formatDate = (dateStr) =>
@@ -401,12 +461,13 @@ export default function EmployeeDashboard() {
     };
 
     const tabs = [
-        { key: 'tests',         icon: <Play size={16} />,      label: 'Тесты' },
-        { key: 'mytests',       icon: <Plus size={16} />,      label: 'Мои тесты' },
+        { key: 'tests',         icon: <Play size={16} />,        label: 'Тесты' },
+        { key: 'feed',          icon: <Rss size={16} />,         label: 'Лента' },
+        { key: 'mytests',       icon: <Plus size={16} />,        label: 'Мои тесты' },
         { key: 'results',       icon: <CheckCircle size={16} />, label: 'Результаты' },
-        { key: 'articles',      icon: <BookOpen size={16} />,   label: 'Материалы' },
-        { key: 'trainingStats', icon: <Clock size={16} />,      label: 'Статистика' },
-        { key: 'progress',      icon: <Trophy size={16} />,     label: 'Прогресс' },
+        { key: 'articles',      icon: <BookOpen size={16} />,    label: 'Материалы' },
+        { key: 'trainingStats', icon: <Clock size={16} />,       label: 'Статистика' },
+        { key: 'progress',      icon: <Trophy size={16} />,      label: 'Прогресс' },
     ];
 
     return (
@@ -557,6 +618,131 @@ export default function EmployeeDashboard() {
                     })}
                     {tests.length === 0 && (
                         <div className="bento-card col-span-full p-8 text-center text-secondary border-dashed">Нет доступных тестов.</div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Feed ── */}
+            {activeTab === 'feed' && (
+                <div className="flex-col gap-5 animate-fade-in">
+                    <div>
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Rss size={18} style={{ color: 'var(--accent-primary)' }}/> Лента популярных тестов
+                        </h3>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
+                            Все публичные тесты сервиса — лайкайте понравившиеся и делитесь ссылкой
+                        </p>
+                    </div>
+
+                    {feedLoading || feedTests === null ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '1rem' }}>
+                            {[1,2,3,4,5,6].map(i => (
+                                <div key={i} style={{ borderRadius: '1.25rem', background: 'white', border: '1px solid #f1f5f9', padding: '1.25rem', minHeight: '180px', animation: 'pulse 1.5s infinite' }}>
+                                    <div style={{ height: 18, borderRadius: 6, background: '#f1f5f9', marginBottom: '0.75rem', width: '70%' }}/>
+                                    <div style={{ height: 12, borderRadius: 4, background: '#f8fafc', marginBottom: '0.5rem', width: '45%' }}/>
+                                    <div style={{ height: 12, borderRadius: 4, background: '#f8fafc', width: '55%' }}/>
+                                </div>
+                            ))}
+                        </div>
+                    ) : feedTests.length === 0 ? (
+                        <div className="bento-card" style={{ textAlign: 'center', padding: '3rem 2rem', borderStyle: 'dashed' }}>
+                            <div style={{ width: 52, height: 52, borderRadius: '1rem', background: 'rgba(16,185,129,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+                                <Rss size={24} style={{ color: 'var(--accent-primary)' }}/>
+                            </div>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.4rem' }}>Лента пока пуста</div>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
+                                Когда появятся публичные тесты — они отобразятся здесь
+                            </p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '1rem' }}>
+                            {feedTests.map((test, index) => {
+                                const liked = feedUserLikedIds.has(test.id);
+                                const pending = likeInProgress.has(test.id);
+                                const isCopied = copiedFeedTestId === test.id;
+                                return (
+                                    <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+                                        {/* Header */}
+                                        <div style={{ marginBottom: '0.75rem' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.35, color: 'var(--text-primary)', marginBottom: test.creatorName ? '0.35rem' : 0 }}>
+                                                {test.title}
+                                            </div>
+                                            {test.creatorName && (
+                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', fontWeight: 600, color: '#6366f1', background: 'rgba(99,102,241,0.08)', padding: '0.15rem 0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(99,102,241,0.15)' }}>
+                                                    <Users size={9}/> {test.creatorName}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Stats chips */}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
+                                                {test.questionsCount} вопр.
+                                            </span>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
+                                                {test.timeLimit / 60} мин.
+                                            </span>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)' }}>
+                                                Балл: {test.passingScore}
+                                            </span>
+                                        </div>
+
+                                        {/* Action row */}
+                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', alignItems: 'stretch' }}>
+                                            {/* Like button */}
+                                            <button
+                                                onClick={() => handleLike(test.id)}
+                                                disabled={pending}
+                                                title={liked ? 'Убрать лайк' : 'Понравилось'}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '0.35rem',
+                                                    padding: '0.6rem 0.75rem', borderRadius: '0.75rem',
+                                                    border: `1.5px solid ${liked ? 'rgba(239,68,68,0.3)' : '#e2e8f0'}`,
+                                                    background: liked ? 'rgba(239,68,68,0.07)' : 'white',
+                                                    color: liked ? '#ef4444' : 'var(--text-secondary)',
+                                                    fontSize: '0.82rem', fontWeight: 700,
+                                                    cursor: pending ? 'wait' : 'pointer',
+                                                    transition: 'all 0.2s', flexShrink: 0,
+                                                }}
+                                                onMouseEnter={e => { if (!pending) { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)'; e.currentTarget.style.background = 'rgba(239,68,68,0.07)'; e.currentTarget.style.color = '#ef4444'; }}}
+                                                onMouseLeave={e => { if (!pending) { e.currentTarget.style.borderColor = liked ? 'rgba(239,68,68,0.3)' : '#e2e8f0'; e.currentTarget.style.background = liked ? 'rgba(239,68,68,0.07)' : 'white'; e.currentTarget.style.color = liked ? '#ef4444' : 'var(--text-secondary)'; }}}
+                                            >
+                                                <Heart size={14} style={{ fill: liked ? '#ef4444' : 'none', transition: 'fill 0.2s' }}/>
+                                                <span>{test.likeCount > 0 ? test.likeCount : ''}</span>
+                                            </button>
+
+                                            {/* Share button */}
+                                            <button
+                                                onClick={() => copyFeedLink(test.id)}
+                                                title="Скопировать ссылку"
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    width: '2.5rem', borderRadius: '0.75rem',
+                                                    border: `1.5px solid ${isCopied ? 'rgba(16,185,129,0.35)' : '#e2e8f0'}`,
+                                                    background: isCopied ? 'rgba(16,185,129,0.08)' : 'white',
+                                                    color: isCopied ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                                    cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
+                                                }}
+                                                onMouseEnter={e => { if (!isCopied) { e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)'; e.currentTarget.style.background = 'rgba(16,185,129,0.06)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}}
+                                                onMouseLeave={e => { if (!isCopied) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; }}}
+                                            >
+                                                {isCopied ? <CheckCircle size={14}/> : <Link2 size={14}/>}
+                                            </button>
+
+                                            {/* Take test button */}
+                                            <button
+                                                onClick={() => navigate(`/test/${test.id}`)}
+                                                className="btn btn-primary"
+                                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', padding: '0.6rem', borderRadius: '0.75rem', fontSize: '0.85rem', fontWeight: 700 }}
+                                            >
+                                                <Play size={13}/> Пройти
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             )}
