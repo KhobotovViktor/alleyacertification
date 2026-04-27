@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useNavigate } from 'react-router-dom';
 import { LogOut, BookOpen, ShieldCheck } from 'lucide-react';
 import { getCurrentUser, logout } from './services/db';
+import { registerServiceWorker, requestAndSubscribe } from './services/pushNotifications';
 
 // Pages — lazy loaded for route-based code splitting
 const Login = lazy(() => import('./components/Login'));
@@ -29,6 +30,16 @@ const Layout = () => {
     window.addEventListener('user-session-change', handler);
     return () => window.removeEventListener('user-session-change', handler);
   }, []);
+
+  // Register Service Worker once on mount
+  useEffect(() => { registerServiceWorker(); }, []);
+
+  // Subscribe to push when user logs in
+  useEffect(() => {
+    if (!user?.id) return;
+    const t = setTimeout(() => requestAndSubscribe(user.id), 1500);
+    return () => clearTimeout(t);
+  }, [user?.id]);
 
   // Mouse Tracking Glow Effect (throttled via requestAnimationFrame)
   useEffect(() => {

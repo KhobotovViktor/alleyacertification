@@ -414,6 +414,60 @@ export const getTestAttemptsCount = async (userId, testId) => {
     return count || 0;
 };
 
+// --- Push Notifications ---
+export const sendPushNotification = async (userIds, { title, body, url = '/', tag }) => {
+    if (!userIds?.length) return;
+    try {
+        await supabase.functions.invoke('send-push', {
+            body: { userIds, title, body, url, tag },
+        });
+    } catch (err) {
+        console.warn('[Push] invoke failed:', err);
+    }
+};
+
+export const getAdminUserIds = async () => {
+    const { data } = await supabase.from('users').select('id').eq('role', 'admin');
+    return (data || []).map(u => u.id);
+};
+
+export const notifyTestPublished = async (test) => {
+    let userIds = test.allowedUsers?.length ? test.allowedUsers : null;
+    if (!userIds) {
+        const employees = await getAllEmployees();
+        userIds = employees.map(e => e.id);
+    }
+    if (!userIds?.length) return;
+    await sendPushNotification(userIds, {
+        title: `📋 Новый тест: ${test.title}`,
+        body: `Время: ${Math.round(test.timeLimit / 60)} мин · Проходной балл: ${test.passingScore}`,
+        url: '/employee',
+        tag: `test-published-${test.id || Date.now()}`,
+    });
+};
+
+export const notifyResultSaved = async (result, testTitle, userName) => {
+    const pct = Math.round(result.score / result.total * 100);
+    const emoji = result.passed ? '✅' : '❌';
+    // Notify the employee
+    sendPushNotification([result.userId], {
+        title: `${emoji} ${testTitle}`,
+        body: `Ваш результат: ${result.score} из ${result.total} (${pct}%)`,
+        url: '/employee',
+        tag: `result-${result.testId}`,
+    });
+    // Notify all admins
+    const adminIds = await getAdminUserIds();
+    if (adminIds.length) {
+        sendPushNotification(adminIds, {
+            title: `📊 Новый результат`,
+            body: `${userName}: «${testTitle}» — ${result.score}/${result.total} (${pct}%) ${emoji}`,
+            url: '/admin',
+            tag: `admin-result-${result.testId}-${result.userId}`,
+        });
+    }
+};
+
 // --- Department Leaderboard ---
 export const getDepartmentLeaderboard = async (department) => {
     if (!department) return [];

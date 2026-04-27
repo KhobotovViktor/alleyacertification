@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2, Send, PenLine } from 'lucide-react';
-import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia } from '../services/db';
+import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia, notifyTestPublished } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
 
@@ -98,7 +98,13 @@ export default function TestEditor() {
         }
         setIsLoading(true);
         try {
-            await saveTest({ ...test, status: targetStatus });
+            const testToSave = { ...test, status: targetStatus };
+            await saveTest(testToSave);
+            // Notify users only on first publish (draft→published or new published test)
+            const isFirstPublish = targetStatus === 'published' && (isDraft || !test.id);
+            if (isFirstPublish) {
+                notifyTestPublished(testToSave).catch(() => {});
+            }
             navigate('/admin');
         } catch (err) {
             alert('Ошибка при сохранении теста');

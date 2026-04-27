@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle, Link2, Share2 } from 'lucide-react';
-import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds } from '../services/db';
+import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds, notifyResultSaved } from '../services/db';
 import { sendTestResultToBitrix } from '../services/bitrix';
 import { RunnerSkeleton } from './SkeletonLoader';
 
@@ -238,6 +238,12 @@ export default function TestRunner() {
                 total: activeQuestions.length,
                 passed
             });
+            // Fire-and-forget push notifications (employee + all admins)
+            notifyResultSaved(
+                { id: resultId, userId: user.id, testId: test.id, score, total: activeQuestions.length, passed },
+                test.title,
+                user.name
+            ).catch(() => {});
 
             setIsFinished(true);
         } catch (err) {
