@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
     Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen,
     Trophy, Star, Flame, Target, TrendingUp, Crown, Shield, Lock, Users, CalendarClock,
-    Plus, Edit, Trash2, Link2, Copy, Send, PenLine, Heart, Rss
+    Plus, Edit, Trash2, Link2, Copy, Send, PenLine, Heart, Rss, Zap
 } from 'lucide-react';
 import {
     getTestsSummary, getCurrentUser, getUserResults,
@@ -12,6 +12,7 @@ import {
     toggleTestLike, getPopularTests,
     getTestComments, addTestComment, deleteTestComment,
     getQuestionsForTest, answerTestQuestion,
+    getActivityFeed, getReactionData, toggleResultReaction,
 } from '../services/db';
 import { DashboardSkeleton } from './SkeletonLoader';
 
@@ -466,6 +467,13 @@ export default function EmployeeDashboard() {
     const [commentSubmitting, setCommentSubmitting] = useState(false);
     const [expandedComments, setExpandedComments] = useState({}); // testId → bool
 
+    // ── Activity feed & reactions ──
+    const [activityResults, setActivityResults] = useState(null); // null = not loaded
+    const [activityLoading, setActivityLoading] = useState(false);
+    const [reactionCounts, setReactionCounts] = useState({});  // resultId → {emoji → count}
+    const [myReactions, setMyReactions] = useState({});        // resultId → Set<emoji>
+    const [reactionInProgress, setReactionInProgress] = useState(new Set());
+
     // ── Questions to author ──
     const [openQuestionTestId, setOpenQuestionTestId] = useState(null);
     const [questionsByTestId, setQuestionsByTestId] = useState({});  // testId → Question[]
@@ -525,6 +533,7 @@ export default function EmployeeDashboard() {
     // ── Feed: lazy-load when tab is first opened ──
     useEffect(() => {
         if (activeTab === 'feed' && feedTests === null) loadFeed();
+        if (activeTab === 'activity' && activityResults === null) loadActivity();
     }, [activeTab]);
 
     const loadFeed = async () => {
@@ -545,6 +554,68 @@ export default function EmployeeDashboard() {
             setFeedTests([]);
         } finally {
             setFeedLoading(false);
+        }
+    };
+
+    const loadActivity = async () => {
+        setActivityLoading(true);
+        try {
+            const [results, allUsers] = await Promise.all([
+                getActivityFeed(40),
+                getAllUsers(),
+            ]);
+            const userMap = Object.fromEntries(allUsers.map(u => [u.id, u.name]));
+            const enriched = results.map(r => ({ ...r, userName: userMap[r.userId] || 'Сотрудник' }));
+            const { counts, myReactions: mine } = await getReactionData(enriched.map(r => r.id), user.id);
+            setActivityResults(enriched);
+            setReactionCounts(counts);
+            setMyReactions(mine);
+        } catch (err) {
+            console.error('Activity load error:', err);
+            setActivityResults([]);
+        } finally {
+            setActivityLoading(false);
+        }
+    };
+
+    const handleReact = async (resultId, emoji) => {
+        const key = `${resultId}:${emoji}`;
+        if (reactionInProgress.has(key)) return;
+        setReactionInProgress(prev => new Set([...prev, key]));
+
+        // Optimistic
+        const wasReacted = myReactions[resultId]?.has(emoji);
+        setMyReactions(prev => {
+            const s = new Set(prev[resultId] || []);
+            wasReacted ? s.delete(emoji) : s.add(emoji);
+            return { ...prev, [resultId]: s };
+        });
+        setReactionCounts(prev => ({
+            ...prev,
+            [resultId]: {
+                ...(prev[resultId] || {}),
+                [emoji]: Math.max(0, ((prev[resultId]?.[emoji] || 0) + (wasReacted ? -1 : 1))),
+            },
+        }));
+
+        try {
+            await toggleResultReaction(resultId, user.id, emoji);
+        } catch (err) {
+            // Revert on error
+            setMyReactions(prev => {
+                const s = new Set(prev[resultId] || []);
+                wasReacted ? s.add(emoji) : s.delete(emoji);
+                return { ...prev, [resultId]: s };
+            });
+            setReactionCounts(prev => ({
+                ...prev,
+                [resultId]: {
+                    ...(prev[resultId] || {}),
+                    [emoji]: Math.max(0, ((prev[resultId]?.[emoji] || 0) + (wasReacted ? 1 : -1))),
+                },
+            }));
+        } finally {
+            setReactionInProgress(prev => { const n = new Set(prev); n.delete(key); return n; });
         }
     };
 
@@ -730,6 +801,7 @@ export default function EmployeeDashboard() {
     const tabs = [
         { key: 'tests',         icon: <Play size={16} />,        label: 'Тесты' },
         { key: 'feed',          icon: <Rss size={16} />,         label: 'Лента' },
+        { key: 'activity',      icon: <Zap size={16} />,         label: 'Активность' },
         { key: 'mytests',       icon: <Plus size={16} />,        label: 'Мои тесты' },
         { key: 'results',       icon: <CheckCircle size={16} />, label: 'Результаты' },
         { key: 'articles',      icon: <BookOpen size={16} />,    label: 'Материалы' },
@@ -1042,6 +1114,112 @@ export default function EmployeeDashboard() {
                                                 submitting={commentSubmitting}
                                             />
                                         )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Activity ── */}
+            {activeTab === 'activity' && (
+                <div className="flex-col gap-5 animate-fade-in">
+                    <div>
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Zap size={18} style={{ color: 'var(--accent-primary)' }} /> Активность коллег
+                        </h3>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
+                            Последние сданные тесты — отмечайте успехи коллег реакциями
+                        </p>
+                    </div>
+
+                    {activityLoading ? (
+                        <div className="bento-grid">
+                            {[1,2,3,4,5,6].map(i => (
+                                <div key={i} className="bento-card animate-pulse" style={{ height: '130px', background: 'linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%)', backgroundSize: '200% 100%' }}></div>
+                            ))}
+                        </div>
+                    ) : !activityResults?.length ? (
+                        <div className="bento-card" style={{ textAlign: 'center', padding: '3rem 2rem', borderStyle: 'dashed' }}>
+                            <Zap size={36} style={{ color: '#cbd5e1', marginBottom: '0.75rem', display: 'block', margin: '0 auto 0.75rem' }} />
+                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 600 }}>Пока никто не сдавал тесты</p>
+                            <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', opacity: 0.6 }}>Сдайте первый тест — коллеги смогут поставить реакцию</p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                            {activityResults.map((result, index) => {
+                                const pct = result.total > 0 ? Math.round(result.score / result.total * 100) : 0;
+                                const isOwn = result.userId === user.id;
+                                const reacted = myReactions[result.id] || new Set();
+                                const counts = reactionCounts[result.id] || {};
+                                const totalReactions = ['👍','🔥','🎉'].reduce((s, e) => s + (counts[e] || 0), 0);
+
+                                const diff = (Date.now() - new Date(result.date)) / 1000;
+                                const timeAgo = diff < 60 ? 'только что' : diff < 3600 ? `${Math.floor(diff/60)} мин. назад` : diff < 86400 ? `${Math.floor(diff/3600)} ч. назад` : `${Math.floor(diff/86400)} дн. назад`;
+
+                                const aGrads = ['linear-gradient(135deg,#10b981,#06b6d4)','linear-gradient(135deg,#6366f1,#8b5cf6)','linear-gradient(135deg,#f59e0b,#ef4444)','linear-gradient(135deg,#ec4899,#f97316)','linear-gradient(135deg,#06b6d4,#6366f1)'];
+                                const avatarBg = aGrads[(result.userName?.charCodeAt(0) || 0) % aGrads.length];
+                                const ES = { '👍': { bg:'rgba(59,130,246,0.1)', border:'rgba(59,130,246,0.35)' }, '🔥': { bg:'rgba(249,115,22,0.1)', border:'rgba(249,115,22,0.35)' }, '🎉': { bg:'rgba(168,85,247,0.1)', border:'rgba(168,85,247,0.35)' } };
+
+                                return (
+                                    <div key={result.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`} style={{ padding: '0.9rem 1.1rem' }}>
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                                            {/* Avatar */}
+                                            <div style={{ width: 42, height: 42, borderRadius: '50%', background: avatarBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1rem', color: 'white', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                                                {(result.userName?.[0] || '?').toUpperCase()}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                                                        {result.userName}
+                                                        {isOwn && <span style={{ fontWeight: 500, color: 'var(--text-secondary)', fontSize: '0.75rem' }}> (вы)</span>}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', flexShrink: 0 }}>{timeAgo}</span>
+                                                </div>
+                                                <div style={{ fontSize: '0.81rem', color: 'var(--text-secondary)', marginTop: '0.1rem', lineHeight: 1.4 }}>
+                                                    сдал тест <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>«{result.testTitle}»</span>
+                                                </div>
+                                                <div style={{ marginTop: '0.4rem' }}>
+                                                    <span style={{ fontSize: '0.71rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                                        ✓ {result.score}/{result.total} · {pct}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Reactions */}
+                                        <div style={{ marginTop: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                            {!isOwn ? (
+                                                ['👍','🔥','🎉'].map(emoji => {
+                                                    const active = reacted.has(emoji);
+                                                    const count = counts[emoji] || 0;
+                                                    return (
+                                                        <button
+                                                            key={emoji}
+                                                            onClick={() => handleReact(result.id, emoji)}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.28rem 0.65rem', borderRadius: '2rem', border: `1.5px solid ${active ? ES[emoji].border : '#e2e8f0'}`, background: active ? ES[emoji].bg : 'white', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.88rem', fontWeight: 600, transition: 'all 0.15s', lineHeight: 1 }}
+                                                            onMouseEnter={e => { if (!active) { e.currentTarget.style.background = ES[emoji].bg; e.currentTarget.style.borderColor = ES[emoji].border; } }}
+                                                            onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e2e8f0'; } }}
+                                                        >
+                                                            <span>{emoji}</span>
+                                                            {count > 0 && <span style={{ fontSize: '0.73rem', color: '#64748b', fontWeight: 700 }}>{count}</span>}
+                                                        </button>
+                                                    );
+                                                })
+                                            ) : totalReactions > 0 ? (
+                                                <>
+                                                    {['👍','🔥','🎉'].filter(e => counts[e] > 0).map(emoji => (
+                                                        <span key={emoji} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.6rem', borderRadius: '2rem', background: ES[emoji].bg, border: `1.5px solid ${ES[emoji].border}`, fontSize: '0.85rem', fontWeight: 700 }}>
+                                                            {emoji} <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{counts[emoji]}</span>
+                                                        </span>
+                                                    ))}
+                                                    <span style={{ fontSize: '0.71rem', color: '#94a3b8', marginLeft: '0.15rem' }}>от коллег</span>
+                                                </>
+                                            ) : (
+                                                <span style={{ fontSize: '0.72rem', color: '#cbd5e1', fontStyle: 'italic' }}>Коллеги ещё не оценили</span>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}

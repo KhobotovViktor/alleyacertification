@@ -576,6 +576,63 @@ export const getPopularTests = async (currentUserId) => {
     return { tests: sorted, userLikedIds };
 };
 
+// --- Activity Feed & Reactions ---
+export const getActivityFeed = async (limit = 40) => {
+    const { data: results, error } = await supabase
+        .from('results')
+        .select('id, userId, testId, score, total, date')
+        .eq('passed', true)
+        .order('date', { ascending: false })
+        .limit(limit);
+    if (error) throw error;
+    if (!results?.length) return [];
+
+    const testIds = [...new Set(results.map(r => r.testId))];
+    const { data: tests } = await supabase
+        .from('tests')
+        .select('id, title')
+        .in('id', testIds);
+    const testMap = Object.fromEntries((tests || []).map(t => [t.id, t.title]));
+
+    return results.map(r => ({ ...r, testTitle: testMap[r.testId] || 'Тест' }));
+};
+
+export const getReactionData = async (resultIds, currentUserId) => {
+    if (!resultIds?.length) return { counts: {}, myReactions: {} };
+    const [{ data: all }, { data: mine }] = await Promise.all([
+        supabase.from('result_reactions').select('resultId, emoji').in('resultId', resultIds),
+        supabase.from('result_reactions').select('resultId, emoji').in('resultId', resultIds).eq('userId', currentUserId),
+    ]);
+    const counts = {};
+    (all || []).forEach(r => {
+        if (!counts[r.resultId]) counts[r.resultId] = {};
+        counts[r.resultId][r.emoji] = (counts[r.resultId][r.emoji] || 0) + 1;
+    });
+    const myReactions = {};
+    (mine || []).forEach(r => {
+        if (!myReactions[r.resultId]) myReactions[r.resultId] = new Set();
+        myReactions[r.resultId].add(r.emoji);
+    });
+    return { counts, myReactions };
+};
+
+export const toggleResultReaction = async (resultId, userId, emoji) => {
+    const { data: existing } = await supabase
+        .from('result_reactions')
+        .select('id')
+        .eq('resultId', resultId)
+        .eq('userId', userId)
+        .eq('emoji', emoji)
+        .single();
+    if (existing) {
+        await supabase.from('result_reactions').delete().eq('id', existing.id);
+        return false;
+    } else {
+        await supabase.from('result_reactions').insert([{ resultId, userId, emoji }]);
+        return true;
+    }
+};
+
 // --- Push Notifications ---
 export const sendPushNotification = async (userIds, { title, body, url = '/', tag }) => {
     if (!userIds?.length) return;
