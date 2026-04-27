@@ -1,7 +1,106 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle, Link2, Share2, HelpCircle } from 'lucide-react';
+import { Clock, AlertCircle, ArrowRight, ArrowLeft, CheckCircle, Link2, Share2, HelpCircle, Download } from 'lucide-react';
 import { getTestById, saveResult, getCurrentUser, getTestAttemptsCount, getAlreadyAnsweredQuestionIds, notifyResultSaved, addTestComment, askTestAuthor } from '../services/db';
+
+// ── Result card canvas generator ─────────────────────────────────────────────
+const rRect = (ctx, x, y, w, h, r) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+};
+
+const generateResultCard = (userName, testTitle, score, total, passed) => {
+    const W = 800, H = 420;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    const pct = total > 0 ? Math.round(score / total * 100) : 0;
+
+    // Background
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#0c1222'); bg.addColorStop(0.5, '#111827'); bg.addColorStop(1, '#0c1222');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+    // Glow — top right (pass/fail color)
+    const g1 = ctx.createRadialGradient(W * 0.85, 0, 0, W * 0.85, 0, 320);
+    g1.addColorStop(0, passed ? 'rgba(16,185,129,0.22)' : 'rgba(239,68,68,0.18)');
+    g1.addColorStop(1, 'transparent');
+    ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H);
+
+    // Glow — bottom left (indigo)
+    const g2 = ctx.createRadialGradient(0, H, 0, 0, H, 280);
+    g2.addColorStop(0, 'rgba(99,102,241,0.18)'); g2.addColorStop(1, 'transparent');
+    ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+
+    // Thin top border line
+    const line = ctx.createLinearGradient(0, 0, W, 0);
+    line.addColorStop(0, 'transparent');
+    line.addColorStop(0.3, passed ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.5)');
+    line.addColorStop(0.7, passed ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.5)');
+    line.addColorStop(1, 'transparent');
+    ctx.fillStyle = line; ctx.fillRect(0, 0, W, 2);
+
+    // App name (top left)
+    ctx.font = 'bold 15px system-ui,-apple-system,sans-serif';
+    ctx.fillStyle = passed ? '#10b981' : '#ef4444';
+    ctx.textAlign = 'left';
+    ctx.fillText('Аллея · Тестирование', 48, 52);
+
+    // Pass/fail badge (top right)
+    const badgeText = passed ? '✓  ТЕСТ СДАН' : '✗  НЕ СДАН';
+    const bColor = passed ? '#10b981' : '#ef4444';
+    const bBg = passed ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)';
+    ctx.font = 'bold 12px system-ui,-apple-system,sans-serif';
+    const bW = ctx.measureText(badgeText).width + 28;
+    ctx.fillStyle = bBg;
+    rRect(ctx, W - bW - 44, 34, bW, 30, 15); ctx.fill();
+    ctx.strokeStyle = passed ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.3)';
+    ctx.lineWidth = 1; rRect(ctx, W - bW - 44, 34, bW, 30, 15); ctx.stroke();
+    ctx.fillStyle = bColor;
+    ctx.textAlign = 'right';
+    ctx.fillText(badgeText, W - 44 - 14, 53);
+
+    // Big score
+    const scoreStr = `${pct}%`;
+    ctx.font = `900 118px system-ui,-apple-system,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.fillText(scoreStr, W / 2, H / 2 + 38);
+
+    // Score sub-label
+    ctx.font = '400 16px system-ui,-apple-system,sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.38)';
+    ctx.fillText(`${score} из ${total} правильных ответов`, W / 2, H / 2 + 72);
+
+    // Divider
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W / 2 - 120, H - 120); ctx.lineTo(W / 2 + 120, H - 120); ctx.stroke();
+
+    // User name
+    ctx.font = 'bold 20px system-ui,-apple-system,sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillText(userName, W / 2, H - 88);
+
+    // Test title
+    ctx.font = '400 14px system-ui,-apple-system,sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.36)';
+    const title = testTitle.length > 64 ? testTitle.slice(0, 61) + '…' : testTitle;
+    ctx.fillText(`«${title}»`, W / 2, H - 62);
+
+    // Date (bottom right)
+    ctx.textAlign = 'right';
+    ctx.font = '400 12px system-ui,-apple-system,sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillText(new Date().toLocaleDateString('ru-RU'), W - 44, H - 32);
+
+    return canvas;
+};
 import { sendTestResultToBitrix } from '../services/bitrix';
 import { RunnerSkeleton } from './SkeletonLoader';
 
@@ -29,6 +128,9 @@ export default function TestRunner() {
     const [commentText, setCommentText] = useState('');
     const [commentSubmitting, setCommentSubmitting] = useState(false);
     const [commentDone, setCommentDone] = useState(false);
+
+    // ── Share card state ──
+    const [cardDownloading, setCardDownloading] = useState(false);
 
     // ── Ask author state ──
     const [askOpen, setAskOpen] = useState(false);
@@ -228,6 +330,21 @@ export default function TestRunner() {
         };
     };
 
+    const handleDownloadCard = () => {
+        if (cardDownloading) return;
+        setCardDownloading(true);
+        const { score, passed } = evaluateScore();
+        try {
+            const canvas = generateResultCard(user.name, test.title, score, activeQuestions.length, passed);
+            const link = document.createElement('a');
+            link.download = `результат.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } finally {
+            setTimeout(() => setCardDownloading(false), 1000);
+        }
+    };
+
     const handleAskQuestion = async () => {
         if (!askText.trim() || askSubmitting) return;
         setAskSubmitting(true);
@@ -405,13 +522,23 @@ export default function TestRunner() {
                     </div>
 
                     <div className="mt-6 flex flex-col gap-3">
+                        {/* Download result card */}
+                        <button
+                            onClick={handleDownloadCard}
+                            disabled={cardDownloading}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', padding: '0.75rem 1.25rem', borderRadius: '0.75rem', border: `1px solid ${passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.25)'}`, background: passed ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.05)', color: passed ? 'var(--accent-primary)' : '#ef4444', fontWeight: 700, fontSize: '0.9rem', cursor: cardDownloading ? 'wait' : 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}
+                        >
+                            <Download size={16} />
+                            {cardDownloading ? 'Генерация...' : 'Скачать карточку результата'}
+                        </button>
+
                         {test.isPublic && (
                             <button
                                 onClick={() => shareResult(score, activeQuestions.length, passed)}
                                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', padding: '0.75rem 1.25rem', borderRadius: '0.75rem', border: '1px solid', borderColor: sharedResult ? 'rgba(16,185,129,0.4)' : '#e2e8f0', background: sharedResult ? 'rgba(16,185,129,0.08)' : 'white', color: sharedResult ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: 600, fontSize: '0.9375rem', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}
                             >
                                 <Share2 size={16} />
-                                {sharedResult ? 'Скопировано в буфер!' : 'Поделиться результатом'}
+                                {sharedResult ? 'Скопировано в буфер!' : 'Поделиться ссылкой'}
                             </button>
                         )}
                         <button onClick={() => navigate('/employee')} className="btn btn-primary w-full">

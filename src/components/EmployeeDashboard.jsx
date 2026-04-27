@@ -13,6 +13,7 @@ import {
     getTestComments, addTestComment, deleteTestComment,
     getQuestionsForTest, answerTestQuestion,
     getActivityFeed, getReactionData, toggleResultReaction,
+    toggleFollow, getFollowedAuthorIds,
 } from '../services/db';
 import { DashboardSkeleton } from './SkeletonLoader';
 
@@ -474,6 +475,10 @@ export default function EmployeeDashboard() {
     const [myReactions, setMyReactions] = useState({});        // resultId → Set<emoji>
     const [reactionInProgress, setReactionInProgress] = useState(new Set());
 
+    // ── Follow ──
+    const [followedAuthorIds, setFollowedAuthorIds] = useState(new Set()); // in Feed
+    const [followInProgress, setFollowInProgress] = useState(new Set());
+
     // ── Questions to author ──
     const [openQuestionTestId, setOpenQuestionTestId] = useState(null);
     const [questionsByTestId, setQuestionsByTestId] = useState({});  // testId → Question[]
@@ -539,9 +544,10 @@ export default function EmployeeDashboard() {
     const loadFeed = async () => {
         setFeedLoading(true);
         try {
-            const [{ tests: popular, userLikedIds }, users] = await Promise.all([
+            const [{ tests: popular, userLikedIds }, users, followedIds] = await Promise.all([
                 getPopularTests(user.id),
                 getAllUsers(),
+                getFollowedAuthorIds(user.id),
             ]);
             const nameMap = Object.fromEntries(users.map(u => [u.id, u.name]));
             setFeedTests(popular.map(t => ({
@@ -549,11 +555,34 @@ export default function EmployeeDashboard() {
                 creatorName: t.createdBy ? (nameMap[t.createdBy] || 'Пользователь') : null,
             })));
             setFeedUserLikedIds(userLikedIds);
+            setFollowedAuthorIds(followedIds);
         } catch (err) {
             console.error('Feed load error:', err);
             setFeedTests([]);
         } finally {
             setFeedLoading(false);
+        }
+    };
+
+    const handleFollowAuthor = async (authorId) => {
+        if (followInProgress.has(authorId)) return;
+        setFollowInProgress(prev => new Set([...prev, authorId]));
+        const was = followedAuthorIds.has(authorId);
+        setFollowedAuthorIds(prev => {
+            const s = new Set(prev);
+            was ? s.delete(authorId) : s.add(authorId);
+            return s;
+        });
+        try {
+            await toggleFollow(user.id, authorId);
+        } catch {
+            setFollowedAuthorIds(prev => {
+                const s = new Set(prev);
+                was ? s.add(authorId) : s.delete(authorId);
+                return s;
+            });
+        } finally {
+            setFollowInProgress(prev => { const s = new Set(prev); s.delete(authorId); return s; });
         }
     };
 
@@ -823,6 +852,9 @@ export default function EmployeeDashboard() {
                             </div>
                         </div>
                         <p className="m-0 text-sm text-secondary opacity-80">Готов к сегодняшним достижениям? Твой прогресс выглядит отлично.</p>
+                        <Link to={`/profile/${user.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem', padding: '0.4rem 0.875rem', borderRadius: '0.75rem', border: '1px solid rgba(16,185,129,0.25)', background: 'rgba(16,185,129,0.06)', color: 'var(--accent-primary)', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'none', transition: 'all 0.2s' }}>
+                            👤 Мой профиль
+                        </Link>
                     </div>
                 </div>
 
@@ -1008,8 +1040,19 @@ export default function EmployeeDashboard() {
                                                 {test.title}
                                             </div>
                                             {test.creatorName && (
-                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', fontWeight: 600, color: '#6366f1', background: 'rgba(99,102,241,0.08)', padding: '0.15rem 0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(99,102,241,0.15)' }}>
-                                                    <Users size={9}/> {test.creatorName}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                    <Link to={`/profile/${test.createdBy}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', fontWeight: 600, color: '#6366f1', background: 'rgba(99,102,241,0.08)', padding: '0.15rem 0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(99,102,241,0.15)', textDecoration: 'none' }}>
+                                                        <Users size={9}/> {test.creatorName}
+                                                    </Link>
+                                                    {test.createdBy !== user.id && (
+                                                        <button
+                                                            onClick={() => handleFollowAuthor(test.createdBy)}
+                                                            disabled={followInProgress.has(test.createdBy)}
+                                                            style={{ fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', border: `1px solid ${followedAuthorIds.has(test.createdBy) ? 'rgba(16,185,129,0.3)' : '#e2e8f0'}`, background: followedAuthorIds.has(test.createdBy) ? 'rgba(16,185,129,0.08)' : 'white', color: followedAuthorIds.has(test.createdBy) ? 'var(--accent-primary)' : '#64748b', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}
+                                                        >
+                                                            {followedAuthorIds.has(test.createdBy) ? '✓ Слежу' : '+ Следить'}
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -1171,26 +1214,62 @@ export default function EmployeeDashboard() {
                                             </div>
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                    <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                                                    <Link to={`/profile/${result.userId}`} style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)', textDecoration: 'none' }}>
                                                         {result.userName}
                                                         {isOwn && <span style={{ fontWeight: 500, color: 'var(--text-secondary)', fontSize: '0.75rem' }}> (вы)</span>}
-                                                    </span>
+                                                    </Link>
                                                     <span style={{ fontSize: '0.7rem', color: '#94a3b8', flexShrink: 0 }}>{timeAgo}</span>
                                                 </div>
-                                                <div style={{ fontSize: '0.81rem', color: 'var(--text-secondary)', marginTop: '0.1rem', lineHeight: 1.4 }}>
-                                                    сдал тест <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>«{result.testTitle}»</span>
-                                                </div>
-                                                <div style={{ marginTop: '0.4rem' }}>
-                                                    <span style={{ fontSize: '0.71rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                                                        ✓ {result.score}/{result.total} · {pct}%
-                                                    </span>
-                                                </div>
+
+                                                {result.type === 'test_passed' ? (
+                                                    <>
+                                                        <div style={{ fontSize: '0.81rem', color: 'var(--text-secondary)', marginTop: '0.1rem', lineHeight: 1.4 }}>
+                                                            сдал тест <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>«{result.testTitle}»</span>
+                                                        </div>
+                                                        <div style={{ marginTop: '0.4rem' }}>
+                                                            <span style={{ fontSize: '0.71rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                                                ✓ {result.score}/{result.total} · {pct}%
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div style={{ fontSize: '0.81rem', color: 'var(--text-secondary)', marginTop: '0.1rem', lineHeight: 1.4 }}>
+                                                            опубликовал тест <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>«{result.testTitle}»</span>
+                                                        </div>
+                                                        <div style={{ marginTop: '0.4rem' }}>
+                                                            <span style={{ fontSize: '0.71rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '0.5rem', background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)' }}>
+                                                                📝 Новый тест
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
 
-                                        {/* Reactions */}
+                                        {/* Bottom row */}
                                         <div style={{ marginTop: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                            {!isOwn ? (
+                                            {result.type === 'test_created' ? (
+                                                // Created test: follow author + play button
+                                                <>
+                                                    {!isOwn && (
+                                                        <button
+                                                            onClick={() => handleFollowAuthor(result.userId)}
+                                                            disabled={followInProgress.has(result.userId)}
+                                                            style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.3rem 0.75rem', borderRadius: '2rem', border: `1.5px solid ${followedAuthorIds.has(result.userId) ? 'rgba(16,185,129,0.3)' : '#e2e8f0'}`, background: followedAuthorIds.has(result.userId) ? 'rgba(16,185,129,0.07)' : 'white', color: followedAuthorIds.has(result.userId) ? 'var(--accent-primary)' : '#64748b', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+                                                        >
+                                                            {followedAuthorIds.has(result.userId) ? '✓ Слежу' : '+ Следить'}
+                                                        </button>
+                                                    )}
+                                                    <Link
+                                                        to={`/test/${result.testId}`}
+                                                        style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.3rem 0.85rem', borderRadius: '2rem', border: '1.5px solid rgba(99,102,241,0.25)', background: 'rgba(99,102,241,0.07)', color: '#6366f1', textDecoration: 'none', transition: 'all 0.15s' }}
+                                                    >
+                                                        ▶ Пройти тест
+                                                    </Link>
+                                                </>
+                                            ) : !isOwn ? (
+                                                // Passed test: emoji reactions
                                                 ['👍','🔥','🎉'].map(emoji => {
                                                     const active = reacted.has(emoji);
                                                     const count = counts[emoji] || 0;

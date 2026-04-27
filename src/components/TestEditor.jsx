@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2, Send, PenLine, CalendarClock } from 'lucide-react';
-import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia, notifyTestPublished, getCurrentUser } from '../services/db';
+import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia, notifyTestPublished, getCurrentUser, getFollowerIds, sendPushNotification } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
 
@@ -122,8 +122,22 @@ export default function TestEditor() {
             await saveTest(testToSave);
             // Notify users only on first publish (draft→published or new published test)
             const isFirstPublish = targetStatus === 'published' && (isDraft || !test.id);
-            if (isFirstPublish && !isEmployeeMode) {
-                notifyTestPublished(testToSave).catch(() => {});
+            if (isFirstPublish) {
+                if (!isEmployeeMode) {
+                    notifyTestPublished(testToSave).catch(() => {});
+                } else if (currentUser?.id) {
+                    // Notify followers of this employee-author
+                    getFollowerIds(currentUser.id).then(followerIds => {
+                        if (followerIds.length > 0) {
+                            sendPushNotification(followerIds, {
+                                title: '📝 Новый тест от автора',
+                                body: `${currentUser.name} опубликовал тест «${testToSave.title}»`,
+                                url: `/test/${testToSave.id}`,
+                                tag: `new-test-${testToSave.id}`,
+                            }).catch(() => {});
+                        }
+                    }).catch(() => {});
+                }
             }
             navigate(backPath);
         } catch (err) {

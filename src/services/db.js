@@ -578,23 +578,35 @@ export const getPopularTests = async (currentUserId) => {
 
 // --- Activity Feed & Reactions ---
 export const getActivityFeed = async (limit = 40) => {
-    const { data: results, error } = await supabase
-        .from('results')
-        .select('id, userId, testId, score, total, date')
-        .eq('passed', true)
-        .order('date', { ascending: false })
-        .limit(limit);
-    if (error) throw error;
-    if (!results?.length) return [];
+    const [{ data: results }, { data: createdTests }] = await Promise.all([
+        supabase.from('results').select('id, userId, testId, score, total, date')
+            .eq('passed', true).order('date', { ascending: false }).limit(limit),
+        supabase.from('tests').select('id, title, createdAt, createdBy')
+            .not('createdBy', 'is', null).eq('status', 'published').eq('isPublic', true)
+            .order('createdAt', { ascending: false }).limit(20),
+    ]);
 
-    const testIds = [...new Set(results.map(r => r.testId))];
-    const { data: tests } = await supabase
-        .from('tests')
-        .select('id, title')
-        .in('id', testIds);
-    const testMap = Object.fromEntries((tests || []).map(t => [t.id, t.title]));
+    const testIds = [...new Set((results || []).map(r => r.testId))];
+    const { data: testRows } = testIds.length
+        ? await supabase.from('tests').select('id, title').in('id', testIds)
+        : { data: [] };
+    const testMap = Object.fromEntries((testRows || []).map(t => [t.id, t.title]));
 
-    return results.map(r => ({ ...r, testTitle: testMap[r.testId] || 'Тест' }));
+    const passedEvents = (results || []).map(r => ({
+        id: r.id, type: 'test_passed',
+        userId: r.userId, date: r.date,
+        testId: r.testId, testTitle: testMap[r.testId] || 'Тест',
+        score: r.score, total: r.total,
+    }));
+    const createdEvents = (createdTests || []).map(t => ({
+        id: `created_${t.id}`, type: 'test_created',
+        userId: t.createdBy, date: t.createdAt,
+        testId: t.id, testTitle: t.title,
+    }));
+
+    return [...passedEvents, ...createdEvents]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, limit);
 };
 
 export const getReactionData = async (resultIds, currentUserId) => {
@@ -614,6 +626,51 @@ export const getReactionData = async (resultIds, currentUserId) => {
         myReactions[r.resultId].add(r.emoji);
     });
     return { counts, myReactions };
+};
+
+// --- Public Profile ---
+export const getUserProfile = async (userId) => {
+    const { data: user, error } = await supabase
+        .from('users').select('id, name, role, department').eq('id', userId).single();
+    if (error || !user) return null;
+    const [{ data: results }, { data: createdTests }] = await Promise.all([
+        supabase.from('results').select('score, total, passed, date').eq('userId', userId).order('date', { ascending: false }),
+        supabase.from('tests').select('id, title, timeLimit, passingScore, questions, isPublic, status, createdAt')
+            .eq('createdBy', userId).eq('status', 'published').eq('isPublic', true),
+    ]);
+    return { user, results: results || [], createdTests: createdTests || [] };
+};
+
+// --- Author Follows ---
+export const toggleFollow = async (followerId, authorId) => {
+    const { data: existing } = await supabase.from('author_follows').select('id')
+        .eq('followerId', followerId).eq('authorId', authorId).single();
+    if (existing) {
+        await supabase.from('author_follows').delete().eq('id', existing.id);
+        return false;
+    }
+    await supabase.from('author_follows').insert([{ followerId, authorId }]);
+    return true;
+};
+
+export const getFollowData = async (authorId, currentUserId) => {
+    const [{ count }, { data: mine }] = await Promise.all([
+        supabase.from('author_follows').select('*', { count: 'exact', head: true }).eq('authorId', authorId),
+        currentUserId
+            ? supabase.from('author_follows').select('id').eq('followerId', currentUserId).eq('authorId', authorId).single()
+            : Promise.resolve({ data: null }),
+    ]);
+    return { followerCount: count || 0, isFollowing: !!mine };
+};
+
+export const getFollowerIds = async (authorId) => {
+    const { data } = await supabase.from('author_follows').select('followerId').eq('authorId', authorId);
+    return (data || []).map(f => f.followerId);
+};
+
+export const getFollowedAuthorIds = async (userId) => {
+    const { data } = await supabase.from('author_follows').select('authorId').eq('followerId', userId);
+    return new Set((data || []).map(f => f.authorId));
 };
 
 export const toggleResultReaction = async (resultId, userId, emoji) => {
