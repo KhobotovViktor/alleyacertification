@@ -59,90 +59,79 @@ const CreateForm = ({ onSubmit, onCancel, submitting }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {/* Title */}
                 <div>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-                        Название *
-                    </label>
+                    <label className="form-label-sm">Название *</label>
                     <input
                         value={form.title}
                         onChange={e => set('title', e.target.value)}
                         placeholder="Напр.: Пройди 5 тестов за неделю"
                         maxLength={200}
-                        style={{ width: '100%', borderRadius: '0.625rem', border: '1px solid #e2e8f0', padding: '0.55rem 0.75rem', fontSize: '0.88rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                        className="form-control-sm"
                     />
                 </div>
 
                 {/* Description */}
                 <div>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-                        Описание
-                    </label>
+                    <label className="form-label-sm">Описание</label>
                     <textarea
                         value={form.description}
                         onChange={e => set('description', e.target.value)}
                         placeholder="Дополнительные условия или призы..."
                         maxLength={500}
                         rows={2}
-                        style={{ width: '100%', borderRadius: '0.625rem', border: '1px solid #e2e8f0', padding: '0.55rem 0.75rem', fontSize: '0.85rem', fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                        className="form-control-sm"
+                        style={{ resize: 'vertical' }}
                     />
                 </div>
 
                 {/* Goal type + value */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem' }}>
                     <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-                            Цель *
-                        </label>
+                        <label className="form-label-sm">Цель *</label>
                         <select
                             value={form.goalType}
                             onChange={e => set('goalType', e.target.value)}
-                            style={{ width: '100%', borderRadius: '0.625rem', border: '1px solid #e2e8f0', padding: '0.55rem 0.75rem', fontSize: '0.85rem', fontFamily: 'inherit', outline: 'none', background: 'white' }}
+                            className="form-control-sm"
                         >
                             <option value="tests_count">Количество сданных тестов</option>
                             <option value="avg_score">Средний балл (%)</option>
                         </select>
                     </div>
                     <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-                            {form.goalType === 'tests_count' ? 'Тестов' : 'Балл %'}
-                        </label>
+                        <label className="form-label-sm">{form.goalType === 'tests_count' ? 'Тестов' : 'Балл %'}</label>
                         <input
                             type="number"
                             min={1}
                             max={form.goalType === 'avg_score' ? 100 : 999}
                             value={form.goalValue}
                             onChange={e => set('goalValue', Math.max(1, parseInt(e.target.value) || 1))}
-                            style={{ width: '80px', borderRadius: '0.625rem', border: '1px solid #e2e8f0', padding: '0.55rem 0.75rem', fontSize: '0.88rem', fontFamily: 'inherit', outline: 'none', textAlign: 'center' }}
+                            className="form-control-sm"
+                            style={{ width: '5rem', textAlign: 'center' }}
                         />
                     </div>
                 </div>
 
                 {/* Deadline */}
                 <div>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-                        Дедлайн *
-                    </label>
+                    <label className="form-label-sm">Дедлайн *</label>
                     <input
                         type="datetime-local"
                         value={form.deadline}
                         onChange={e => set('deadline', e.target.value)}
-                        style={{ borderRadius: '0.625rem', border: '1px solid #e2e8f0', padding: '0.55rem 0.75rem', fontSize: '0.85rem', fontFamily: 'inherit', outline: 'none' }}
+                        className="form-control-sm"
+                        style={{ width: 'auto' }}
                     />
                 </div>
 
                 {/* Buttons */}
                 <div style={{ display: 'flex', gap: '0.625rem', marginTop: '0.25rem' }}>
-                    <button
-                        onClick={onCancel}
-                        className="btn btn-secondary"
-                        style={{ flex: 1, borderRadius: '0.875rem', padding: '0.625rem' }}
-                    >
+                    <button onClick={onCancel} className="btn btn-secondary" style={{ flex: 1 }}>
                         Отмена
                     </button>
                     <button
                         onClick={() => valid && onSubmit(form)}
                         disabled={!valid || submitting}
                         className="btn btn-primary"
-                        style={{ flex: 1, borderRadius: '0.875rem', padding: '0.625rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', opacity: valid ? 1 : 0.5 }}
+                        style={{ flex: 1, gap: '0.4rem', opacity: valid ? 1 : 0.5 }}
                     >
                         <Trophy size={15} />
                         {submitting ? 'Создание...' : 'Создать'}
@@ -172,21 +161,13 @@ const ChallengeCard = ({ challenge, currentUser, isAdmin, onJoin, onLeave, onDel
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 800, lineHeight: 1.25 }}>{title}</span>
-                        {isExpired && (
-                            <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.5rem', borderRadius: '2rem', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', flexShrink: 0 }}>
-                                Завершён
-                            </span>
-                        )}
-                        {achieved && !isExpired && (
-                            <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.5rem', borderRadius: '2rem', background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)', flexShrink: 0 }}>
-                                ✓ Выполнено
-                            </span>
-                        )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.9375rem', fontWeight: 800, lineHeight: 1.25, color: 'var(--text-primary)' }}>{title}</span>
+                        {isExpired && <span className="status-pill status-pill-danger">Завершён</span>}
+                        {achieved && !isExpired && <span className="status-pill status-pill-published">✓ Выполнено</span>}
                     </div>
                     {description && (
-                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                        <p style={{ margin: '0.2rem 0 0', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                             {description}
                         </p>
                     )}
@@ -205,30 +186,23 @@ const ChallengeCard = ({ challenge, currentUser, isAdmin, onJoin, onLeave, onDel
             </div>
 
             {/* Goal + deadline meta */}
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '0.5rem', background: 'rgba(99,102,241,0.08)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <Target size={11} /> {goalDesc}
-                </span>
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: '0.5rem', background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <Clock size={11} /> {tl ? `Осталось: ${tl}` : fmtDeadline(deadline)}
-                </span>
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: '0.5rem', background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <Users size={11} /> {participants.length} участн.
-                </span>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <span className="chip chip-purple"><Target size={11} />{goalDesc}</span>
+                <span className="chip chip-neutral"><Clock size={11} />{tl ? `Осталось: ${tl}` : fmtDeadline(deadline)}</span>
+                <span className="chip chip-neutral"><Users size={11} />{participants.length} участн.</span>
             </div>
 
             {/* Progress bar (only for joined) */}
             {isJoined && (
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                        <span style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Мой прогресс</span>
-                        <span style={{ fontSize: '0.76rem', fontWeight: 800, color: achieved ? 'var(--accent-primary)' : '#6366f1' }}>
+                        <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--text-secondary)' }}>Мой прогресс</span>
+                        <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 800, color: achieved ? 'var(--accent-primary)' : '#6366f1' }}>
                             {goalType === 'tests_count' ? `${myProgress} / ${goalValue}` : `${myProgress}% / ${goalValue}%`}
                         </span>
                     </div>
-                    <div style={{ height: '8px', borderRadius: '4px', background: '#f1f5f9', overflow: 'hidden' }}>
-                        <div style={{
-                            height: '100%', borderRadius: '4px', transition: 'width 0.4s ease',
+                    <div className="progress-bg" style={{ height: '0.4rem' }}>
+                        <div className="progress-fill" style={{
                             width: `${pct}%`,
                             background: achieved
                                 ? 'linear-gradient(90deg, #10b981, #06b6d4)'
@@ -241,39 +215,39 @@ const ChallengeCard = ({ challenge, currentUser, isAdmin, onJoin, onLeave, onDel
             {/* Leaderboard */}
             {participants.length > 0 && (
                 <div>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <div style={{ fontSize: 'var(--font-size-2xs)', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.7 }}>
                         Таблица участников
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         {participants.slice(0, 5).map((p, idx) => {
                             const isMe = p.userId === currentUser?.id;
                             const pPct = Math.min(100, Math.round((p.progress / goalValue) * 100));
                             const pAchieved = p.progress >= goalValue;
                             return (
                                 <div key={p.userId} style={{
-                                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.6rem', borderRadius: '0.5rem',
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                    padding: '0.3rem 0.6rem', borderRadius: 'var(--radius-sm)',
                                     background: isMe ? 'rgba(99,102,241,0.06)' : 'transparent',
-                                    border: isMe ? '1px solid rgba(99,102,241,0.15)' : '1px solid transparent',
+                                    border: `1px solid ${isMe ? 'rgba(99,102,241,0.15)' : 'transparent'}`,
                                 }}>
                                     <span style={{ fontSize: '0.9rem', width: '1.5rem', textAlign: 'center', flexShrink: 0 }}>
                                         {idx < 3 ? MEDALS[idx] : `${idx + 1}.`}
                                     </span>
-                                    <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: isMe ? 800 : 600, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    <span style={{ flex: 1, fontSize: 'var(--font-size-sm)', fontWeight: isMe ? 800 : 600, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {p.userName}{isMe && ' (вы)'}
                                     </span>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: pAchieved ? 'var(--accent-primary)' : '#6366f1', flexShrink: 0 }}>
+                                    <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 800, color: pAchieved ? 'var(--accent-primary)' : '#6366f1', flexShrink: 0 }}>
                                         {goalType === 'tests_count' ? p.progress : `${p.progress}%`}
-                                        {pAchieved && <span style={{ marginLeft: '0.25rem' }}>✓</span>}
+                                        {pAchieved && ' ✓'}
                                     </span>
-                                    {/* mini bar */}
-                                    <div style={{ width: 48, height: 5, borderRadius: 3, background: '#f1f5f9', flexShrink: 0, overflow: 'hidden' }}>
-                                        <div style={{ height: '100%', borderRadius: 3, width: `${pPct}%`, background: pAchieved ? '#10b981' : '#6366f1' }} />
+                                    <div style={{ width: '3rem', height: '0.3rem', borderRadius: 'var(--radius-full)', background: '#f1f5f9', flexShrink: 0, overflow: 'hidden' }}>
+                                        <div style={{ height: '100%', borderRadius: 'var(--radius-full)', width: `${pPct}%`, background: pAchieved ? '#10b981' : '#6366f1' }} />
                                     </div>
                                 </div>
                             );
                         })}
                         {participants.length > 5 && (
-                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', textAlign: 'center', paddingTop: '0.15rem' }}>
+                            <div style={{ fontSize: 'var(--font-size-2xs)', color: '#94a3b8', textAlign: 'center', paddingTop: '0.15rem' }}>
                                 и ещё {participants.length - 5} участников
                             </div>
                         )}
@@ -288,7 +262,8 @@ const ChallengeCard = ({ challenge, currentUser, isAdmin, onJoin, onLeave, onDel
                         <button
                             onClick={() => onLeave(challenge.id)}
                             disabled={joining === challenge.id}
-                            style={{ width: '100%', padding: '0.55rem', borderRadius: '0.75rem', border: '1.5px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.05)', color: '#ef4444', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}
+                            className="btn btn-danger w-full"
+                            style={{ padding: '0.55rem' }}
                         >
                             {joining === challenge.id ? '...' : 'Покинуть'}
                         </button>
@@ -296,8 +271,8 @@ const ChallengeCard = ({ challenge, currentUser, isAdmin, onJoin, onLeave, onDel
                         <button
                             onClick={() => onJoin(challenge.id)}
                             disabled={joining === challenge.id}
-                            className="btn btn-primary"
-                            style={{ width: '100%', padding: '0.55rem', borderRadius: '0.75rem', fontSize: '0.84rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                            className="btn btn-primary w-full"
+                            style={{ gap: '0.4rem', padding: '0.55rem' }}
                         >
                             <CheckCircle size={14} />
                             {joining === challenge.id ? '...' : 'Участвовать'}
@@ -306,8 +281,7 @@ const ChallengeCard = ({ challenge, currentUser, isAdmin, onJoin, onLeave, onDel
                 </div>
             )}
 
-            {/* Author */}
-            <div style={{ fontSize: '0.7rem', color: '#94a3b8', textAlign: 'right', marginTop: '-0.25rem' }}>
+            <div style={{ fontSize: 'var(--font-size-2xs)', color: '#94a3b8', textAlign: 'right', marginTop: '-0.25rem' }}>
                 Создал: {createdByName}
             </div>
         </div>

@@ -960,15 +960,7 @@ export default function EmployeeDashboard() {
                             {tab.icon}
                             <span className="mobile-text-sm">{tab.label}</span>
                             {tab.key === 'progress' && earnedAchievements.length > 0 && (
-                                <span style={{
-                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                    minWidth: '18px', height: '18px', borderRadius: '9px', padding: '0 4px',
-                                    background: activeTab === 'progress' ? 'var(--accent-primary)' : 'rgba(16,185,129,0.12)',
-                                    color: activeTab === 'progress' ? 'white' : 'var(--accent-primary)',
-                                    fontSize: '0.65rem', fontWeight: 800,
-                                }}>
-                                    {earnedAchievements.length}
-                                </span>
+                                <span className="notif-bubble">{earnedAchievements.length}</span>
                             )}
                         </button>
                     ))}
@@ -1101,7 +1093,7 @@ export default function EmployeeDashboard() {
                                             </div>
                                             {test.creatorName && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                                    <Link to={`/profile/${test.createdBy}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', fontWeight: 600, color: '#6366f1', background: 'rgba(99,102,241,0.08)', padding: '0.15rem 0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(99,102,241,0.15)', textDecoration: 'none' }}>
+                                                    <Link to={`/profile/${test.createdBy}`} className="chip chip-purple" style={{ textDecoration: 'none' }}>
                                                         <Users size={9}/> {test.creatorName}
                                                     </Link>
                                                     {test.createdBy !== user.id && (
@@ -1119,15 +1111,9 @@ export default function EmployeeDashboard() {
 
                                         {/* Stats chips */}
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
-                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
-                                                {test.questionsCount} вопр.
-                                            </span>
-                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
-                                                {test.timeLimit / 60} мин.
-                                            </span>
-                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)' }}>
-                                                Балл: {test.passingScore}
-                                            </span>
+                                            <span className="chip chip-neutral">{test.questionsCount} вопр.</span>
+                                            <span className="chip chip-neutral">{test.timeLimit / 60} мин.</span>
+                                            <span className="chip chip-primary">Балл: {test.passingScore}</span>
                                         </div>
 
                                         {/* Action rows — 2-row layout avoids overflow */}
@@ -1526,13 +1512,13 @@ export default function EmployeeDashboard() {
                                             <div style={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.35, color: 'var(--text-primary)', flex: 1 }}>{test.title}</div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-end', flexShrink: 0 }}>
                                                 {/* Status badge */}
-                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.55rem', borderRadius: '2rem', fontSize: '0.68rem', fontWeight: 700, background: isDraft ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: isDraft ? '#d97706' : 'var(--accent-primary)', border: `1px solid ${isDraft ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}` }}>
+                                                <span className={`status-pill ${isDraft ? 'status-pill-draft' : 'status-pill-published'}`}>
                                                     {isDraft ? <PenLine size={9}/> : <CheckCircle size={9}/>}
                                                     {isDraft ? 'Черновик' : 'Опубликован'}
                                                 </span>
                                                 {/* Collaborator badge */}
                                                 {!test.isOwner && (
-                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.15rem 0.5rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 700, background: 'rgba(99,102,241,0.08)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.18)' }}>
+                                                    <span className="chip chip-purple">
                                                         <Users size={9}/> {test.collaboratorRole === 'edit' ? 'Соавтор' : 'Просмотр'}
                                                     </span>
                                                 )}
@@ -1541,19 +1527,14 @@ export default function EmployeeDashboard() {
 
                                         {/* Stats row */}
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
-                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
-                                                {test.questions?.length || 0} вопр.
-                                            </span>
-                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
-                                                {test.timeLimit / 60} мин.
-                                            </span>
-                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)' }}>
-                                                Балл: {test.passingScore}
-                                            </span>
+                                            <span className="chip chip-neutral">{test.questions?.length || 0} вопр.</span>
+                                            <span className="chip chip-neutral">{test.timeLimit / 60} мин.</span>
+                                            <span className="chip chip-primary">Балл: {test.passingScore}</span>
                                             {test.commentCount > 0 && (
                                                 <button
                                                     onClick={() => toggleComments(test.id)}
-                                                    style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: openCommentTestId === test.id ? 'rgba(99,102,241,0.1)' : '#f1f5f9', color: openCommentTestId === test.id ? '#6366f1' : '#64748b', border: `1px solid ${openCommentTestId === test.id ? 'rgba(99,102,241,0.2)' : 'transparent'}`, cursor: 'pointer', transition: 'all 0.15s' }}
+                                                    className={`chip ${openCommentTestId === test.id ? 'chip-purple' : 'chip-neutral'}`}
+                                                    style={{ cursor: 'pointer', border: 'none', transition: 'all 0.15s' }}
                                                 >
                                                     💬 {test.commentCount}
                                                 </button>
@@ -1561,7 +1542,8 @@ export default function EmployeeDashboard() {
                                             {(test.questionCount > 0 || test.unansweredQuestionCount > 0) && (
                                                 <button
                                                     onClick={() => toggleQuestions(test.id)}
-                                                    style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: openQuestionTestId === test.id ? 'rgba(245,158,11,0.12)' : (test.unansweredQuestionCount > 0 ? 'rgba(245,158,11,0.08)' : '#f1f5f9'), color: openQuestionTestId === test.id ? '#b45309' : (test.unansweredQuestionCount > 0 ? '#d97706' : '#64748b'), border: `1px solid ${openQuestionTestId === test.id ? 'rgba(245,158,11,0.35)' : (test.unansweredQuestionCount > 0 ? 'rgba(245,158,11,0.2)' : 'transparent')}`, cursor: 'pointer', transition: 'all 0.15s' }}
+                                                    className={`chip ${openQuestionTestId === test.id || test.unansweredQuestionCount > 0 ? 'chip-warning' : 'chip-neutral'}`}
+                                                    style={{ cursor: 'pointer', border: 'none', transition: 'all 0.15s' }}
                                                 >
                                                     ❓ {test.unansweredQuestionCount > 0 ? `${test.unansweredQuestionCount} новых` : test.questionCount}
                                                 </button>

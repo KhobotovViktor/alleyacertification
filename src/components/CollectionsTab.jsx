@@ -24,7 +24,8 @@ const CreateForm = ({ onSubmit, onCancel, submitting }) => {
                     onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
                     placeholder="Название коллекции *"
                     maxLength={200}
-                    style={{ width: '100%', borderRadius: '0.625rem', border: '1px solid #e2e8f0', padding: '0.55rem 0.75rem', fontSize: '0.875rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                    className="form-control-sm"
+                    style={{ width: '100%', boxSizing: 'border-box' }}
                     onKeyDown={e => e.key === 'Enter' && valid && onSubmit(form)}
                     autoFocus
                 />
@@ -34,7 +35,8 @@ const CreateForm = ({ onSubmit, onCancel, submitting }) => {
                     placeholder="Описание (необязательно)"
                     maxLength={500}
                     rows={2}
-                    style={{ width: '100%', borderRadius: '0.625rem', border: '1px solid #e2e8f0', padding: '0.55rem 0.75rem', fontSize: '0.85rem', fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                    className="form-control-sm"
+                    style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }}
                 />
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button onClick={onCancel} className="btn btn-secondary" style={{ flex: 1, borderRadius: '0.75rem' }}>Отмена</button>
@@ -248,7 +250,7 @@ export default function CollectionsTab({ currentUser }) {
                                         <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.description}</div>
                                     )}
                                 </div>
-                                <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '2rem', background: 'rgba(99,102,241,0.08)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.15)', flexShrink: 0 }}>
+                                <span className="chip chip-purple" style={{ flexShrink: 0 }}>
                                     {c.testCount} тест{c.testCount === 1 ? '' : c.testCount < 5 ? 'а' : 'ов'}
                                 </span>
 

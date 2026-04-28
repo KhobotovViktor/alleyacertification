@@ -387,13 +387,13 @@ export default function AdminDashboard() {
                                 <div style={{
                                     display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap',
                                 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--success)', background: 'rgba(16,185,129,0.08)', padding: '0.35rem 0.75rem', borderRadius: '2rem', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                    <div className="chip chip-primary" style={{ gap: '0.4rem' }}>
                                         <CheckCircle size={13} /> {correctCount} правильно
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--danger)', background: 'rgba(239,68,68,0.08)', padding: '0.35rem 0.75rem', borderRadius: '2rem', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                    <div className="chip chip-danger" style={{ gap: '0.4rem' }}>
                                         <AlertCircle size={13} /> {questions.length - correctCount} ошибок
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', background: '#f1f5f9', padding: '0.35rem 0.75rem', borderRadius: '2rem', border: '1px solid #e2e8f0' }}>
+                                    <div className="chip chip-neutral" style={{ gap: '0.4rem' }}>
                                         {questions.length} вопросов
                                     </div>
                                 </div>
@@ -647,7 +647,7 @@ export default function AdminDashboard() {
                                             <div className="flex items-start justify-between gap-2 mb-1">
                                                 <div className="font-bold text-primary text-lg leading-tight">{test.title}</div>
                                                 {/* Status badge */}
-                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.6rem', borderRadius: '2rem', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0, background: isDraft ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: isDraft ? '#d97706' : 'var(--accent-primary)', border: `1px solid ${isDraft ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}` }}>
+                                                <span className={`status-pill ${isDraft ? 'status-pill-draft' : 'status-pill-published'}`} style={{ flexShrink: 0 }}>
                                                     {isDraft ? <PenLine size={10} /> : <CheckCircle size={10} />}
                                                     {isDraft ? 'Черновик' : 'Опубликован'}
                                                 </span>
@@ -657,21 +657,21 @@ export default function AdminDashboard() {
                                             {test.createdBy && (() => {
                                                 const creator = allUsers.find(u => u.id === test.createdBy);
                                                 return creator ? (
-                                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.68rem', fontWeight: 600, color: '#6366f1', background: 'rgba(99,102,241,0.07)', padding: '0.15rem 0.5rem', borderRadius: '0.5rem', border: '1px solid rgba(99,102,241,0.15)', width: 'fit-content', marginBottom: '0.25rem' }}>
+                                                    <div className="chip chip-purple" style={{ width: 'fit-content', marginBottom: '0.25rem' }}>
                                                         <Users size={9}/> Автор: {creator.name}
                                                     </div>
                                                 ) : null;
                                             })()}
 
                                             <div className="text-secondary flex flex-wrap gap-2 mt-auto">
-                                                <span className="badge badge-primary bg-slate-100 text-slate-600 border-none" style={{ padding: '0.2rem 0.5rem', textTransform: 'none' }}>{test.questions?.length || 0} вопр.</span>
-                                                <span className="badge badge-primary bg-slate-100 text-slate-600 border-none" style={{ padding: '0.2rem 0.5rem', textTransform: 'none' }}>{test.timeLimit / 60} мин.</span>
-                                                <span className="badge badge-primary bg-success/10 text-success border-none" style={{ padding: '0.2rem 0.5rem', textTransform: 'none' }}>Балл: {test.passingScore}</span>
+                                                <span className="chip chip-neutral">{test.questions?.length || 0} вопр.</span>
+                                                <span className="chip chip-neutral">{test.timeLimit / 60} мин.</span>
+                                                <span className="chip chip-primary">Балл: {test.passingScore}</span>
                                                 {test.deadline && (() => {
                                                     const dl = new Date(test.deadline);
                                                     const expired = dl < new Date();
                                                     return (
-                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.5rem', borderRadius: '2rem', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0, background: expired ? 'rgba(100,116,139,0.1)' : 'rgba(245,158,11,0.1)', color: expired ? '#64748b' : '#d97706', border: `1px solid ${expired ? 'rgba(100,116,139,0.2)' : 'rgba(245,158,11,0.2)'}` }}>
+                                                        <span className={`chip ${expired ? 'chip-slate' : 'chip-warning'}`} style={{ flexShrink: 0, gap: '0.25rem' }}>
                                                             <CalendarClock size={10} />
                                                             {expired ? 'Срок истёк' : `До ${dl.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
                                                         </span>
@@ -1022,11 +1022,11 @@ export default function AdminDashboard() {
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                         {u.name}
-                                                        {isMe && <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '0.375rem', background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)' }}>вы</span>}
+                                                        {isMe && <span className="chip chip-primary">вы</span>}
                                                     </div>
                                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                         <span style={{ fontFamily: 'monospace' }}>@{u.id}</span>
-                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.1rem 0.4rem', borderRadius: '0.375rem', fontSize: '0.65rem', fontWeight: 700, background: u.role === 'admin' ? 'rgba(99,102,241,0.1)' : 'rgba(16,185,129,0.08)', color: u.role === 'admin' ? '#6366f1' : 'var(--accent-primary)' }}>
+                                                        <span className={`chip ${u.role === 'admin' ? 'chip-purple' : 'chip-primary'}`}>
                                                             {u.role === 'admin' ? <ShieldCheck size={9} /> : <Users size={9} />}
                                                             {u.role === 'admin' ? 'Админ' : 'Сотрудник'}
                                                         </span>
@@ -1128,7 +1128,7 @@ export default function AdminDashboard() {
                             {departments.length > 0 && (
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
                                     {departments.map(d => (
-                                        <span key={d} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: '2rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' }}>{d}</span>
+                                        <span key={d} className="chip chip-primary">{d}</span>
                                     ))}
                                 </div>
                             )}
