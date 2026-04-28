@@ -1092,7 +1092,7 @@ export default function EmployeeDashboard() {
                                 const pending = likeInProgress.has(test.id);
                                 const isCopied = copiedFeedTestId === test.id;
                                 return (
-                                    <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                                    <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`} style={{ display: 'flex', flexDirection: 'column', gap: 0, overflow: 'visible' }}>
 
                                         {/* Header */}
                                         <div style={{ marginBottom: '0.75rem' }}>
@@ -1130,102 +1130,112 @@ export default function EmployeeDashboard() {
                                             </span>
                                         </div>
 
-                                        {/* Action row */}
-                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', alignItems: 'stretch' }}>
-                                            {/* Like button */}
-                                            <button
-                                                onClick={() => handleLike(test.id)}
-                                                disabled={pending}
-                                                title={liked ? 'Убрать лайк' : 'Понравилось'}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: '0.35rem',
-                                                    padding: '0.6rem 0.75rem', borderRadius: '0.75rem',
-                                                    border: `1.5px solid ${liked ? 'rgba(239,68,68,0.3)' : '#e2e8f0'}`,
-                                                    background: liked ? 'rgba(239,68,68,0.07)' : 'white',
-                                                    color: liked ? '#ef4444' : 'var(--text-secondary)',
-                                                    fontSize: '0.82rem', fontWeight: 700,
-                                                    cursor: pending ? 'wait' : 'pointer',
-                                                    transition: 'all 0.2s', flexShrink: 0,
-                                                }}
-                                                onMouseEnter={e => { if (!pending) { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)'; e.currentTarget.style.background = 'rgba(239,68,68,0.07)'; e.currentTarget.style.color = '#ef4444'; }}}
-                                                onMouseLeave={e => { if (!pending) { e.currentTarget.style.borderColor = liked ? 'rgba(239,68,68,0.3)' : '#e2e8f0'; e.currentTarget.style.background = liked ? 'rgba(239,68,68,0.07)' : 'white'; e.currentTarget.style.color = liked ? '#ef4444' : 'var(--text-secondary)'; }}}
-                                            >
-                                                <Heart size={14} style={{ fill: liked ? '#ef4444' : 'none', transition: 'fill 0.2s' }}/>
-                                                <span>{test.likeCount > 0 ? test.likeCount : ''}</span>
-                                            </button>
+                                        {/* Action rows — 2-row layout avoids overflow */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: 'auto' }}>
 
-                                            {/* Comments toggle */}
-                                            <button
-                                                onClick={() => toggleComments(test.id)}
-                                                title="Комментарии"
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: '0.3rem',
-                                                    padding: '0.6rem 0.7rem', borderRadius: '0.75rem',
-                                                    border: `1.5px solid ${openCommentTestId === test.id ? 'rgba(99,102,241,0.35)' : '#e2e8f0'}`,
-                                                    background: openCommentTestId === test.id ? 'rgba(99,102,241,0.07)' : 'white',
-                                                    color: openCommentTestId === test.id ? '#6366f1' : 'var(--text-secondary)',
-                                                    fontSize: '0.8rem', fontWeight: 700,
-                                                    cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
-                                                }}
-                                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.color = '#6366f1'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.borderColor = openCommentTestId === test.id ? 'rgba(99,102,241,0.35)' : '#e2e8f0'; e.currentTarget.style.background = openCommentTestId === test.id ? 'rgba(99,102,241,0.07)' : 'white'; e.currentTarget.style.color = openCommentTestId === test.id ? '#6366f1' : 'var(--text-secondary)'; }}
-                                            >
-                                                💬 {test.commentCount > 0 ? test.commentCount : ''}
-                                            </button>
+                                            {/* Row 1: social (left) + utility icons (right) */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
 
-                                            {/* Share button */}
-                                            <button
-                                                onClick={() => copyFeedLink(test.id)}
-                                                title="Скопировать ссылку"
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    width: '2.5rem', borderRadius: '0.75rem',
-                                                    border: `1.5px solid ${isCopied ? 'rgba(16,185,129,0.35)' : '#e2e8f0'}`,
-                                                    background: isCopied ? 'rgba(16,185,129,0.08)' : 'white',
-                                                    color: isCopied ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                                    cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
-                                                }}
-                                                onMouseEnter={e => { if (!isCopied) { e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)'; e.currentTarget.style.background = 'rgba(16,185,129,0.06)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}}
-                                                onMouseLeave={e => { if (!isCopied) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; }}}
-                                            >
-                                                {isCopied ? <CheckCircle size={14}/> : <Link2 size={14}/>}
-                                            </button>
-
-                                            {/* Add to collection */}
-                                            <AddToCollectionDropdown
-                                                testId={test.id}
-                                                collections={myCollections}
-                                                onAdded={() => {}}
-                                            />
-
-                                            {/* Copy test — only for tests by others */}
-                                            {test.createdBy !== user.id && (
+                                                {/* Like */}
                                                 <button
-                                                    onClick={() => handleCopyTest(test.id)}
-                                                    disabled={copyingTestId === test.id}
-                                                    title="Взять за основу — создать копию в «Мои тесты»"
+                                                    onClick={() => handleLike(test.id)}
+                                                    disabled={pending}
+                                                    title={liked ? 'Убрать лайк' : 'Понравилось'}
                                                     style={{
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        width: '2.5rem', borderRadius: '0.75rem',
-                                                        border: '1.5px solid #e2e8f0', background: 'white',
-                                                        color: 'var(--text-secondary)',
-                                                        cursor: copyingTestId === test.id ? 'wait' : 'pointer',
+                                                        display: 'flex', alignItems: 'center', gap: '0.3rem',
+                                                        padding: '0.45rem 0.65rem', borderRadius: '0.625rem',
+                                                        border: `1.5px solid ${liked ? 'rgba(239,68,68,0.3)' : '#e2e8f0'}`,
+                                                        background: liked ? 'rgba(239,68,68,0.07)' : 'white',
+                                                        color: liked ? '#ef4444' : 'var(--text-secondary)',
+                                                        fontSize: '0.8rem', fontWeight: 700,
+                                                        cursor: pending ? 'wait' : 'pointer',
                                                         transition: 'all 0.2s', flexShrink: 0,
                                                     }}
-                                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.35)'; e.currentTarget.style.background = 'rgba(99,102,241,0.07)'; e.currentTarget.style.color = '#6366f1'; }}
-                                                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                                    onMouseEnter={e => { if (!pending) { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)'; e.currentTarget.style.background = 'rgba(239,68,68,0.07)'; e.currentTarget.style.color = '#ef4444'; }}}
+                                                    onMouseLeave={e => { if (!pending) { e.currentTarget.style.borderColor = liked ? 'rgba(239,68,68,0.3)' : '#e2e8f0'; e.currentTarget.style.background = liked ? 'rgba(239,68,68,0.07)' : 'white'; e.currentTarget.style.color = liked ? '#ef4444' : 'var(--text-secondary)'; }}}
                                                 >
-                                                    {copyingTestId === test.id ? <span style={{ fontSize: '0.7rem' }}>...</span> : <GitFork size={14}/>}
+                                                    <Heart size={13} style={{ fill: liked ? '#ef4444' : 'none', transition: 'fill 0.2s' }}/>
+                                                    {test.likeCount > 0 && <span>{test.likeCount}</span>}
                                                 </button>
-                                            )}
 
-                                            {/* Take test button */}
+                                                {/* Comments */}
+                                                <button
+                                                    onClick={() => toggleComments(test.id)}
+                                                    title="Комментарии"
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '0.25rem',
+                                                        padding: '0.45rem 0.65rem', borderRadius: '0.625rem',
+                                                        border: `1.5px solid ${openCommentTestId === test.id ? 'rgba(99,102,241,0.35)' : '#e2e8f0'}`,
+                                                        background: openCommentTestId === test.id ? 'rgba(99,102,241,0.07)' : 'white',
+                                                        color: openCommentTestId === test.id ? '#6366f1' : 'var(--text-secondary)',
+                                                        fontSize: '0.8rem', fontWeight: 700,
+                                                        cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.color = '#6366f1'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.borderColor = openCommentTestId === test.id ? 'rgba(99,102,241,0.35)' : '#e2e8f0'; e.currentTarget.style.background = openCommentTestId === test.id ? 'rgba(99,102,241,0.07)' : 'white'; e.currentTarget.style.color = openCommentTestId === test.id ? '#6366f1' : 'var(--text-secondary)'; }}
+                                                >
+                                                    💬{test.commentCount > 0 && <span>{test.commentCount}</span>}
+                                                </button>
+
+                                                {/* Spacer */}
+                                                <div style={{ flex: 1 }}/>
+
+                                                {/* Share */}
+                                                <button
+                                                    onClick={() => copyFeedLink(test.id)}
+                                                    title="Скопировать ссылку"
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        width: '2.1rem', height: '2.1rem', borderRadius: '0.625rem',
+                                                        border: `1.5px solid ${isCopied ? 'rgba(16,185,129,0.35)' : '#e2e8f0'}`,
+                                                        background: isCopied ? 'rgba(16,185,129,0.08)' : 'white',
+                                                        color: isCopied ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                                        cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
+                                                    }}
+                                                    onMouseEnter={e => { if (!isCopied) { e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)'; e.currentTarget.style.background = 'rgba(16,185,129,0.06)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}}
+                                                    onMouseLeave={e => { if (!isCopied) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; }}}
+                                                >
+                                                    {isCopied ? <CheckCircle size={13}/> : <Link2 size={13}/>}
+                                                </button>
+
+                                                {/* Add to collection */}
+                                                <AddToCollectionDropdown
+                                                    testId={test.id}
+                                                    collections={myCollections}
+                                                    onAdded={() => {}}
+                                                />
+
+                                                {/* Copy / fork — only for others' tests */}
+                                                {test.createdBy !== user.id && (
+                                                    <button
+                                                        onClick={() => handleCopyTest(test.id)}
+                                                        disabled={copyingTestId === test.id}
+                                                        title="Взять за основу — создать копию в «Мои тесты»"
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            width: '2.1rem', height: '2.1rem', borderRadius: '0.625rem',
+                                                            border: '1.5px solid #e2e8f0', background: 'white',
+                                                            color: 'var(--text-secondary)',
+                                                            cursor: copyingTestId === test.id ? 'wait' : 'pointer',
+                                                            transition: 'all 0.2s', flexShrink: 0,
+                                                        }}
+                                                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.35)'; e.currentTarget.style.background = 'rgba(99,102,241,0.07)'; e.currentTarget.style.color = '#6366f1'; }}
+                                                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                                    >
+                                                        {copyingTestId === test.id
+                                                            ? <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>…</span>
+                                                            : <GitFork size={13}/>}
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Row 2: primary CTA — full width */}
                                             <button
                                                 onClick={() => navigate(`/test/${test.id}`)}
                                                 className="btn btn-primary"
-                                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', padding: '0.6rem', borderRadius: '0.75rem', fontSize: '0.85rem', fontWeight: 700 }}
+                                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem', borderRadius: '0.75rem', fontSize: '0.875rem', fontWeight: 700 }}
                                             >
-                                                <Play size={13}/> Пройти
+                                                <Play size={14}/> Пройти тест
                                             </button>
                                         </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookMarked, Plus, Trash2, Play, X, Check, Link2, ExternalLink } from 'lucide-react';
 import {
@@ -57,6 +57,14 @@ export const AddToCollectionDropdown = ({ testId, collections, onAdded }) => {
     const [open, setOpen] = useState(false);
     const [adding, setAdding] = useState(null);
     const [done, setDone] = useState(new Set());
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
 
     const handle = async (collId) => {
         if (done.has(collId)) return;
@@ -76,13 +84,13 @@ export const AddToCollectionDropdown = ({ testId, collections, onAdded }) => {
     if (!collections?.length) return null;
 
     return (
-        <div style={{ position: 'relative' }}>
+        <div ref={ref} style={{ position: 'relative' }}>
             <button
                 onClick={() => setOpen(o => !o)}
                 title="Добавить в коллекцию"
                 style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: '2.5rem', borderRadius: '0.75rem',
+                    width: '2.1rem', height: '2.1rem', borderRadius: '0.625rem',
                     border: `1.5px solid ${open ? 'rgba(99,102,241,0.35)' : '#e2e8f0'}`,
                     background: open ? 'rgba(99,102,241,0.07)' : 'white',
                     color: open ? '#6366f1' : 'var(--text-secondary)',
@@ -91,14 +99,14 @@ export const AddToCollectionDropdown = ({ testId, collections, onAdded }) => {
                 onMouseEnter={e => { if (!open) { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.color = '#6366f1'; }}}
                 onMouseLeave={e => { if (!open) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; }}}
             >
-                <BookMarked size={14}/>
+                <BookMarked size={13}/>
             </button>
             {open && (
                 <div style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+                    position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, zIndex: 200,
                     background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.875rem',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.1)', minWidth: '180px', padding: '0.375rem',
-                    animation: 'fadeIn 0.15s',
+                    boxShadow: '0 -4px 24px rgba(0,0,0,0.1)', minWidth: '190px', padding: '0.375rem',
+                    animation: 'fadeIn 0.12s',
                 }}>
                     <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', padding: '0.25rem 0.6rem 0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         Добавить в коллекцию
