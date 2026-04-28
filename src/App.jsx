@@ -14,6 +14,7 @@ const TestRunner = lazy(() => import('./components/TestRunner'));
 const ArticleViewer = lazy(() => import('./components/ArticleViewer'));
 const ResultPage = lazy(() => import('./components/ResultPage'));
 const ProfilePage = lazy(() => import('./components/ProfilePage'));
+const CollectionViewer = lazy(() => import('./components/CollectionViewer'));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -147,6 +148,7 @@ function App() {
           <Route path="/result" element={<ResultPage />} />
           <Route path="/article/:id" element={<ArticleViewer />} />
           <Route path="/profile/:userId" element={<ProfilePage />} />
+          <Route path="/collection/:id" element={<CollectionViewer />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

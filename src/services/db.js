@@ -120,14 +120,41 @@ export const getTestsSummary = async () => {
 
 // Tests created by a specific user (employee-created tests) — includes comment + question counts
 export const getMyTests = async (userId) => {
-    const { data, error } = await supabase
-        .from('tests')
-        .select('id, title, timeLimit, passingScore, questions, isPublic, status, createdAt')
-        .eq('createdBy', userId)
-        .order('createdAt', { ascending: false });
-    if (error) throw error;
-    const tests = data || [];
+    // Own tests + tests where user is a collaborator
+    const [ownResult, collabResult] = await Promise.all([
+        supabase
+            .from('tests')
+            .select('id, title, timeLimit, passingScore, questions, isPublic, status, createdAt, createdBy')
+            .eq('createdBy', userId)
+            .order('createdAt', { ascending: false }),
+        supabase
+            .from('test_collaborators')
+            .select('testId, role')
+            .eq('userId', userId),
+    ]);
+
+    const ownTests = (ownResult.data || []).map(t => ({ ...t, isOwner: true, collaboratorRole: null }));
+
+    const collabEntries = collabResult.data || [];
+    let collabTests = [];
+    if (collabEntries.length) {
+        const collabIds = collabEntries.map(c => c.testId);
+        const roleMap = Object.fromEntries(collabEntries.map(c => [c.testId, c.role]));
+        const { data } = await supabase
+            .from('tests')
+            .select('id, title, timeLimit, passingScore, questions, isPublic, status, createdAt, createdBy')
+            .in('id', collabIds)
+            .order('createdAt', { ascending: false });
+        collabTests = (data || []).map(t => ({
+            ...t,
+            isOwner: false,
+            collaboratorRole: roleMap[t.id] || 'edit',
+        }));
+    }
+
+    const tests = [...ownTests, ...collabTests];
     if (!tests.length) return tests;
+
     const testIds = tests.map(t => t.id);
     const [commentCounts, questionCounts] = await Promise.all([
         getCommentCounts(testIds),
@@ -935,5 +962,167 @@ export const leaveChallenge = async (challengeId, userId) => {
         .delete()
         .eq('challengeId', challengeId)
         .eq('userId', userId);
+    if (error) throw error;
+};
+
+// --- Test Collaborators (co-authoring) ---
+export const getTestCollaborators = async (testId) => {
+    const { data, error } = await supabase
+        .from('test_collaborators')
+        .select('*')
+        .eq('testId', testId)
+        .order('createdAt', { ascending: true });
+    if (error) throw error;
+    return data || [];
+};
+
+export const addCollaborator = async (testId, userId, userName, role, addedBy) => {
+    const { error } = await supabase
+        .from('test_collaborators')
+        .insert([{ testId, userId, userName, role, addedBy }]);
+    if (error) throw error;
+};
+
+export const removeCollaborator = async (testId, userId) => {
+    const { error } = await supabase
+        .from('test_collaborators')
+        .delete()
+        .eq('testId', testId)
+        .eq('userId', userId);
+    if (error) throw error;
+};
+
+export const updateCollaboratorRole = async (testId, userId, role) => {
+    const { error } = await supabase
+        .from('test_collaborators')
+        .update({ role })
+        .eq('testId', testId)
+        .eq('userId', userId);
+    if (error) throw error;
+};
+
+// --- Copy test ---
+export const copyTest = async (testId, newOwnerId) => {
+    const original = await getTestById(testId);
+    if (!original) throw new Error('Test not found');
+    const { id, createdAt, ...rest } = original;
+    const copy = {
+        ...rest,
+        title: `Копия: ${original.title}`,
+        status: 'draft',
+        createdBy: newOwnerId,
+        isPublic: true,
+        allowedUsers: [],
+    };
+    const { data, error } = await supabase
+        .from('tests')
+        .insert([copy])
+        .select('id')
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+// --- Collections / Playlists ---
+export const getMyCollections = async (userId) => {
+    const { data, error } = await supabase
+        .from('test_collections')
+        .select('*')
+        .eq('createdBy', userId)
+        .order('createdAt', { ascending: false });
+    if (error) throw error;
+    const collections = data || [];
+    if (!collections.length) return collections;
+
+    const ids = collections.map(c => c.id);
+    const { data: ctData } = await supabase
+        .from('collection_tests')
+        .select('collectionId')
+        .in('collectionId', ids);
+
+    const countMap = {};
+    for (const row of ctData || []) {
+        countMap[row.collectionId] = (countMap[row.collectionId] || 0) + 1;
+    }
+    return collections.map(c => ({ ...c, testCount: countMap[c.id] || 0 }));
+};
+
+export const getCollection = async (id) => {
+    const { data: coll, error } = await supabase
+        .from('test_collections')
+        .select('*')
+        .eq('id', id)
+        .single();
+    if (error || !coll) return null;
+
+    const { data: ctData } = await supabase
+        .from('collection_tests')
+        .select('*')
+        .eq('collectionId', id)
+        .order('position', { ascending: true });
+
+    const testIds = (ctData || []).map(ct => ct.testId);
+    let tests = [];
+    if (testIds.length) {
+        const { data: testData } = await supabase
+            .from('tests')
+            .select('id, title, timeLimit, passingScore, questions, status, createdBy, isPublic')
+            .in('id', testIds);
+        const posMap = Object.fromEntries((ctData || []).map(ct => [ct.testId, ct.position]));
+        tests = (testData || []).sort((a, b) => (posMap[a.id] ?? 999) - (posMap[b.id] ?? 999));
+    }
+
+    return { ...coll, tests };
+};
+
+export const createCollection = async (data) => {
+    const { data: created, error } = await supabase
+        .from('test_collections')
+        .insert([{
+            title: data.title,
+            description: data.description || '',
+            createdBy: data.createdBy,
+            createdByName: data.createdByName,
+            isPublic: data.isPublic !== false,
+        }])
+        .select()
+        .single();
+    if (error) throw error;
+    return created;
+};
+
+export const updateCollection = async (id, patch) => {
+    const { error } = await supabase
+        .from('test_collections')
+        .update(patch)
+        .eq('id', id);
+    if (error) throw error;
+};
+
+export const deleteCollection = async (id) => {
+    const { error } = await supabase.from('test_collections').delete().eq('id', id);
+    if (error) throw error;
+};
+
+export const addTestToCollection = async (collectionId, testId) => {
+    const { data: existing } = await supabase
+        .from('collection_tests')
+        .select('position')
+        .eq('collectionId', collectionId)
+        .order('position', { ascending: false })
+        .limit(1);
+    const pos = existing?.[0]?.position ?? -1;
+    const { error } = await supabase
+        .from('collection_tests')
+        .insert([{ collectionId, testId, position: pos + 1 }]);
+    if (error) throw error;
+};
+
+export const removeTestFromCollection = async (collectionId, testId) => {
+    const { error } = await supabase
+        .from('collection_tests')
+        .delete()
+        .eq('collectionId', collectionId)
+        .eq('testId', testId);
     if (error) throw error;
 };

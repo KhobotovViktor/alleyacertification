@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
     Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen,
     Star, Flame, Target, TrendingUp, Crown, Shield, Lock, Users, CalendarClock,
-    Plus, Edit, Trash2, Link2, Copy, Send, PenLine, Heart, Rss, Zap, Trophy
+    Plus, Edit, Trash2, Link2, Copy, Send, PenLine, Heart, Rss, Zap, Trophy,
+    BookMarked, GitFork
 } from 'lucide-react';
 import {
     getTestsSummary, getCurrentUser, getUserResults,
@@ -15,8 +16,11 @@ import {
     getActivityFeed, getReactionData, toggleResultReaction,
     toggleFollow, getFollowedAuthorIds,
     getWeeklyRating,
+    copyTest, getMyCollections,
 } from '../services/db';
 import ChallengesTab from './ChallengesTab';
+import CollectionsTab from './CollectionsTab';
+import { AddToCollectionDropdown } from './CollectionsTab';
 import { DashboardSkeleton } from './SkeletonLoader';
 
 // ── Achievement definitions ──────────────────────────────────────────────────
@@ -485,6 +489,12 @@ export default function EmployeeDashboard() {
     const [weeklyRating, setWeeklyRating] = useState(null); // null = not loaded
     const [weeklyLoading, setWeeklyLoading] = useState(false);
 
+    // ── Copy test ──
+    const [copyingTestId, setCopyingTestId] = useState(null);
+
+    // ── Collections (for AddToCollection dropdown in feed) ──
+    const [myCollections, setMyCollections] = useState(null); // null = not loaded
+
     // ── Questions to author ──
     const [openQuestionTestId, setOpenQuestionTestId] = useState(null);
     const [questionsByTestId, setQuestionsByTestId] = useState({});  // testId → Question[]
@@ -543,7 +553,10 @@ export default function EmployeeDashboard() {
 
     // ── Feed / Activity: lazy-load when tab is first opened ──
     useEffect(() => {
-        if (activeTab === 'feed' && feedTests === null) loadFeed();
+        if (activeTab === 'feed') {
+            if (feedTests === null) loadFeed();
+            if (myCollections === null) loadMyCollections();
+        }
         if (activeTab === 'activity') {
             if (activityResults === null) loadActivity();
             if (weeklyRating === null) loadWeeklyRating();
@@ -626,6 +639,29 @@ export default function EmployeeDashboard() {
             setWeeklyRating([]);
         } finally {
             setWeeklyLoading(false);
+        }
+    };
+
+    const loadMyCollections = async () => {
+        if (!user?.id) return;
+        try {
+            const data = await getMyCollections(user.id);
+            setMyCollections(data);
+        } catch (err) {
+            setMyCollections([]);
+        }
+    };
+
+    const handleCopyTest = async (testId) => {
+        if (copyingTestId) return;
+        setCopyingTestId(testId);
+        try {
+            const newTest = await copyTest(testId, user.id);
+            navigate(`/employee/test/${newTest.id}`);
+        } catch (err) {
+            alert('Ошибка при копировании теста');
+        } finally {
+            setCopyingTestId(null);
         }
     };
 
@@ -850,15 +886,16 @@ export default function EmployeeDashboard() {
     };
 
     const tabs = [
-        { key: 'tests',         icon: <Play size={16} />,        label: 'Тесты' },
-        { key: 'feed',          icon: <Rss size={16} />,         label: 'Лента' },
-        { key: 'activity',      icon: <Zap size={16} />,         label: 'Активность' },
-        { key: 'challenges',    icon: <Trophy size={16} />,      label: 'Челленджи' },
-        { key: 'mytests',       icon: <Plus size={16} />,        label: 'Мои тесты' },
-        { key: 'results',       icon: <CheckCircle size={16} />, label: 'Результаты' },
-        { key: 'articles',      icon: <BookOpen size={16} />,    label: 'Материалы' },
-        { key: 'trainingStats', icon: <Clock size={16} />,       label: 'Статистика' },
-        { key: 'progress',      icon: <Star size={16} />,        label: 'Прогресс' },
+        { key: 'tests',         icon: <Play size={16} />,         label: 'Тесты' },
+        { key: 'feed',          icon: <Rss size={16} />,          label: 'Лента' },
+        { key: 'activity',      icon: <Zap size={16} />,          label: 'Активность' },
+        { key: 'challenges',    icon: <Trophy size={16} />,       label: 'Челленджи' },
+        { key: 'collections',   icon: <BookMarked size={16} />,   label: 'Коллекции' },
+        { key: 'mytests',       icon: <Plus size={16} />,         label: 'Мои тесты' },
+        { key: 'results',       icon: <CheckCircle size={16} />,  label: 'Результаты' },
+        { key: 'articles',      icon: <BookOpen size={16} />,     label: 'Материалы' },
+        { key: 'trainingStats', icon: <Clock size={16} />,        label: 'Статистика' },
+        { key: 'progress',      icon: <Star size={16} />,         label: 'Прогресс' },
     ];
 
     return (
@@ -1154,6 +1191,34 @@ export default function EmployeeDashboard() {
                                                 {isCopied ? <CheckCircle size={14}/> : <Link2 size={14}/>}
                                             </button>
 
+                                            {/* Add to collection */}
+                                            <AddToCollectionDropdown
+                                                testId={test.id}
+                                                collections={myCollections}
+                                                onAdded={() => {}}
+                                            />
+
+                                            {/* Copy test — only for tests by others */}
+                                            {test.createdBy !== user.id && (
+                                                <button
+                                                    onClick={() => handleCopyTest(test.id)}
+                                                    disabled={copyingTestId === test.id}
+                                                    title="Взять за основу — создать копию в «Мои тесты»"
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        width: '2.5rem', borderRadius: '0.75rem',
+                                                        border: '1.5px solid #e2e8f0', background: 'white',
+                                                        color: 'var(--text-secondary)',
+                                                        cursor: copyingTestId === test.id ? 'wait' : 'pointer',
+                                                        transition: 'all 0.2s', flexShrink: 0,
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.35)'; e.currentTarget.style.background = 'rgba(99,102,241,0.07)'; e.currentTarget.style.color = '#6366f1'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                                >
+                                                    {copyingTestId === test.id ? <span style={{ fontSize: '0.7rem' }}>...</span> : <GitFork size={14}/>}
+                                                </button>
+                                            )}
+
                                             {/* Take test button */}
                                             <button
                                                 onClick={() => navigate(`/test/${test.id}`)}
@@ -1394,6 +1459,11 @@ export default function EmployeeDashboard() {
                 <ChallengesTab currentUser={user} isAdmin={user?.role === 'admin'} />
             )}
 
+            {/* ── Collections ── */}
+            {activeTab === 'collections' && (
+                <CollectionsTab currentUser={user} />
+            )}
+
             {/* ── My Tests ── */}
             {activeTab === 'mytests' && (
                 <div className="flex-col gap-5 animate-fade-in">
@@ -1444,11 +1514,19 @@ export default function EmployeeDashboard() {
                                     <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`} style={{ opacity: isDraft ? 0.85 : 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem' }}>
                                             <div style={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.35, color: 'var(--text-primary)', flex: 1 }}>{test.title}</div>
-                                            {/* Status badge */}
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.55rem', borderRadius: '2rem', fontSize: '0.68rem', fontWeight: 700, flexShrink: 0, background: isDraft ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: isDraft ? '#d97706' : 'var(--accent-primary)', border: `1px solid ${isDraft ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}` }}>
-                                                {isDraft ? <PenLine size={9}/> : <CheckCircle size={9}/>}
-                                                {isDraft ? 'Черновик' : 'Опубликован'}
-                                            </span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-end', flexShrink: 0 }}>
+                                                {/* Status badge */}
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.55rem', borderRadius: '2rem', fontSize: '0.68rem', fontWeight: 700, background: isDraft ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: isDraft ? '#d97706' : 'var(--accent-primary)', border: `1px solid ${isDraft ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}` }}>
+                                                    {isDraft ? <PenLine size={9}/> : <CheckCircle size={9}/>}
+                                                    {isDraft ? 'Черновик' : 'Опубликован'}
+                                                </span>
+                                                {/* Collaborator badge */}
+                                                {!test.isOwner && (
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.15rem 0.5rem', borderRadius: '2rem', fontSize: '0.65rem', fontWeight: 700, background: 'rgba(99,102,241,0.08)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.18)' }}>
+                                                        <Users size={9}/> {test.collaboratorRole === 'edit' ? 'Соавтор' : 'Просмотр'}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Stats row */}

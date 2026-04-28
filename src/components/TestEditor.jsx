@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2, Send, PenLine, CalendarClock } from 'lucide-react';
-import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia, notifyTestPublished, getCurrentUser, getFollowerIds, sendPushNotification } from '../services/db';
+import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2, Send, PenLine, CalendarClock, Users, ChevronDown } from 'lucide-react';
+import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia, notifyTestPublished, getCurrentUser, getFollowerIds, sendPushNotification, getTestCollaborators, addCollaborator, removeCollaborator, updateCollaboratorRole } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
 
@@ -46,6 +46,12 @@ export default function TestEditor() {
     const [copiedLink, setCopiedLink] = useState(false);
     const [uploadingQId, setUploadingQId] = useState(null); // question id currently uploading media
 
+    // ── Collaborators state ──
+    const [collaborators, setCollaborators] = useState([]);
+    const [addCollabId, setAddCollabId] = useState('');
+    const [addCollabRole, setAddCollabRole] = useState('edit');
+    const [collabSubmitting, setCollabSubmitting] = useState(false);
+
     const handleMediaUpload = async (qId, file) => {
         if (!file) return;
         setUploadingQId(qId);
@@ -84,9 +90,13 @@ export default function TestEditor() {
                 setArticles(articlesData || []);
 
                 if (!isNew && id) {
-                    const existingTest = await getTestById(id);
+                    const [existingTest, collabs] = await Promise.all([
+                        getTestById(id),
+                        getTestCollaborators(id),
+                    ]);
                     if (existingTest) {
                         setTest(existingTest);
+                        setCollaborators(collabs || []);
                     } else {
                         navigate(backPath);
                     }
@@ -241,6 +251,48 @@ export default function TestEditor() {
         }));
     };
 
+    const isOwner = !isNew && test.createdBy === currentUser?.id;
+    const isCollaborator = !isNew && !isOwner && collaborators.some(c => c.userId === currentUser?.id);
+
+    const handleAddCollab = async () => {
+        if (!addCollabId.trim() || !isOwner) return;
+        // Find user by ID among employees
+        const emp = employees.find(e => e.id === addCollabId.trim());
+        if (!emp) { alert('Пользователь не найден. Укажите точный ID.'); return; }
+        if (emp.id === currentUser.id) { alert('Нельзя добавить себя'); return; }
+        if (collaborators.some(c => c.userId === emp.id)) { alert('Уже добавлен'); return; }
+        setCollabSubmitting(true);
+        try {
+            await addCollaborator(test.id, emp.id, emp.name, addCollabRole, currentUser.id);
+            setCollaborators(prev => [...prev, { testId: test.id, userId: emp.id, userName: emp.name, role: addCollabRole }]);
+            setAddCollabId('');
+        } catch (err) {
+            alert('Ошибка: ' + err.message);
+        } finally {
+            setCollabSubmitting(false);
+        }
+    };
+
+    const handleRemoveCollab = async (userId) => {
+        if (!isOwner) return;
+        try {
+            await removeCollaborator(test.id, userId);
+            setCollaborators(prev => prev.filter(c => c.userId !== userId));
+        } catch (err) {
+            alert('Ошибка при удалении');
+        }
+    };
+
+    const handleChangeRole = async (userId, role) => {
+        if (!isOwner) return;
+        try {
+            await updateCollaboratorRole(test.id, userId, role);
+            setCollaborators(prev => prev.map(c => c.userId === userId ? { ...c, role } : c));
+        } catch (err) {
+            alert('Ошибка');
+        }
+    };
+
     if (isLoading) {
         return <EditorSkeleton />;
     }
@@ -300,6 +352,8 @@ export default function TestEditor() {
                         { key: 'questions', icon: <FileQuestion size={16} />, label: `Вопросы (${test.questions.length})` },
                         // Employees don't assign users — their tests are always public links
                         ...(!isEmployeeMode ? [{ key: 'access', icon: <List size={16} />, label: 'Доступ и обучение' }] : []),
+                        // Collaborators tab — only for existing tests (owner sees management, collaborators see read-only)
+                        ...(!isNew ? [{ key: 'coauthors', icon: <Users size={16} />, label: `Соавторы${collaborators.length ? ` (${collaborators.length})` : ''}` }] : []),
                     ].map(tab => (
                         <button
                             key={tab.key}
@@ -400,6 +454,142 @@ export default function TestEditor() {
                             ))}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* ── Соавторы tab ── */}
+            {activeTab === 'coauthors' && (
+                <div className="card max-w-2xl animate-fade-in flex-col gap-6">
+                    <div>
+                        <h3 style={{ margin: '0 0 0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Users size={18} style={{ color: 'var(--accent-primary)' }}/> Соавторы теста
+                        </h3>
+                        <p className="text-sm text-secondary" style={{ margin: 0, opacity: 0.7 }}>
+                            {isOwner
+                                ? 'Добавьте коллег для совместного редактирования. Соавтор с правом «Редактирование» может изменять вопросы и настройки.'
+                                : 'Список людей, имеющих доступ к этому тесту.'}
+                        </p>
+                    </div>
+
+                    {/* Add form — owner only */}
+                    {isOwner && (
+                        <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-end', flexWrap: 'wrap', padding: '1rem', background: 'rgba(16,185,129,0.04)', borderRadius: '0.875rem', border: '1px solid rgba(16,185,129,0.15)' }}>
+                            <div style={{ flex: 1, minWidth: '180px' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                                    Пользователь (выберите из списка)
+                                </label>
+                                <select
+                                    value={addCollabId}
+                                    onChange={e => setAddCollabId(e.target.value)}
+                                    className="form-control"
+                                    style={{ fontSize: '0.875rem', padding: '0.5rem 0.75rem' }}
+                                >
+                                    <option value="">— выберите сотрудника —</option>
+                                    {employees
+                                        .filter(e => e.id !== currentUser?.id && !collaborators.some(c => c.userId === e.id))
+                                        .map(e => (
+                                            <option key={e.id} value={e.id}>{e.name}{e.department ? ` (${e.department})` : ''}</option>
+                                        ))
+                                    }
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                                    Права
+                                </label>
+                                <select
+                                    value={addCollabRole}
+                                    onChange={e => setAddCollabRole(e.target.value)}
+                                    className="form-control"
+                                    style={{ fontSize: '0.875rem', padding: '0.5rem 0.75rem' }}
+                                >
+                                    <option value="edit">Редактирование</option>
+                                    <option value="view">Просмотр</option>
+                                </select>
+                            </div>
+                            <button
+                                onClick={handleAddCollab}
+                                disabled={!addCollabId || collabSubmitting}
+                                className="btn btn-primary"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1.1rem', borderRadius: '0.75rem', fontSize: '0.875rem', opacity: addCollabId ? 1 : 0.5 }}
+                            >
+                                <Plus size={15}/>{collabSubmitting ? '...' : 'Добавить'}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Owner row */}
+                    {test.createdBy && (
+                        <div>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Владелец
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.7rem 0.875rem', borderRadius: '0.75rem', background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                                <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#10b981,#06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'white', fontSize: '0.85rem', flexShrink: 0 }}>
+                                    {(employees.find(e => e.id === test.createdBy)?.name?.[0] || '?').toUpperCase()}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 700, fontSize: '0.875rem' }}>
+                                        {employees.find(e => e.id === test.createdBy)?.name || test.createdBy}
+                                        {test.createdBy === currentUser?.id && ' (вы)'}
+                                    </div>
+                                </div>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '2rem', background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                    Владелец
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Collaborator list */}
+                    {collaborators.length > 0 ? (
+                        <div>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Соавторы ({collaborators.length})
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                {collaborators.map(c => (
+                                    <div key={c.userId} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.875rem', borderRadius: '0.75rem', background: 'white', border: '1px solid #e2e8f0' }}>
+                                        <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'white', fontSize: '0.85rem', flexShrink: 0 }}>
+                                            {(c.userName?.[0] || '?').toUpperCase()}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontWeight: 700, fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.userName}</div>
+                                        </div>
+                                        {isOwner ? (
+                                            <>
+                                                <select
+                                                    value={c.role}
+                                                    onChange={e => handleChangeRole(c.userId, e.target.value)}
+                                                    style={{ fontSize: '0.78rem', fontWeight: 600, borderRadius: '0.5rem', border: '1px solid #e2e8f0', padding: '0.3rem 0.5rem', cursor: 'pointer', background: 'white', color: c.role === 'edit' ? '#6366f1' : '#64748b' }}
+                                                >
+                                                    <option value="edit">Редактирование</option>
+                                                    <option value="view">Просмотр</option>
+                                                </select>
+                                                <button
+                                                    onClick={() => handleRemoveCollab(c.userId)}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: '0.25rem', transition: 'color 0.15s', flexShrink: 0 }}
+                                                    onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                                                    onMouseLeave={e => e.currentTarget.style.color = '#cbd5e1'}
+                                                    title="Удалить"
+                                                >
+                                                    <X size={16}/>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '2rem', background: c.role === 'edit' ? 'rgba(99,102,241,0.08)' : '#f1f5f9', color: c.role === 'edit' ? '#6366f1' : '#64748b', border: `1px solid ${c.role === 'edit' ? 'rgba(99,102,241,0.2)' : '#e2e8f0'}` }}>
+                                                {c.role === 'edit' ? 'Редактирование' : 'Просмотр'}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.875rem', opacity: 0.6, borderRadius: '0.75rem', border: '1px dashed #e2e8f0' }}>
+                            {isOwner ? 'Соавторов пока нет. Добавьте коллег выше.' : 'Нет соавторов.'}
+                        </div>
+                    )}
                 </div>
             )}
 
