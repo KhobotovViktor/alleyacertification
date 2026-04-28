@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, EyeOff, X, BarChart2, Download, Link2, Copy, PenLine, KeyRound, ShieldCheck, UserPlus, CalendarClock } from 'lucide-react';
+import { Plus, Trash2, Edit, CheckCircle, FileText, BookOpen, Clock, Users, Send, AlertCircle, Eye, EyeOff, X, BarChart2, Download, Link2, Copy, PenLine, KeyRound, ShieldCheck, UserPlus, CalendarClock, Trophy } from 'lucide-react';
 import { getTests, deleteTest, getResults, getAllEmployees, clearResults, getArticles, deleteArticle, getArticleProgress, updateUserDepartment, updateTestStatus, getFullUsersList, createUser, deleteUser, updateUserPassword } from '../services/db';
 import { getCurrentUser } from '../services/db';
+import ChallengesTab from './ChallengesTab';
 import { testConnection } from '../services/bitrix';
 import { DashboardSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
@@ -579,7 +580,8 @@ export default function AdminDashboard() {
                         { key: 'analytics', icon: <BarChart2 size={16} />, label: 'Аналитика' },
                         { key: 'articles', icon: <FileText size={16} />, label: 'Материалы' },
                         { key: 'trainingStats', icon: <Clock size={16} />, label: 'Обучение' },
-                        { key: 'employees', icon: <Users size={16} />, label: 'Сотрудники' }
+                        { key: 'employees', icon: <Users size={16} />, label: 'Сотрудники' },
+                        { key: 'challenges', icon: <Trophy size={16} />, label: 'Челленджи' },
                     ].map(tab => (
                         <button
                             key={tab.key}
@@ -1295,6 +1297,13 @@ export default function AdminDashboard() {
                         </button>
                     </div>
                 </div>
+            </div>
+        )}
+
+        {/* ── Challenges ── */}
+        {activeTab === 'challenges' && (
+            <div style={{ marginTop: '0.5rem' }}>
+                <ChallengesTab currentUser={currentUser} isAdmin={true} />
             </div>
         )}
 

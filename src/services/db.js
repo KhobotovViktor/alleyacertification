@@ -780,3 +780,160 @@ export const getDepartmentLeaderboard = async (department) => {
         })
         .sort((a, b) => b.passedCount - a.passedCount || b.avgPct - a.avgPct);
 };
+
+// --- Weekly Rating ---
+export const getWeeklyRating = async () => {
+    // Find Monday 00:00 of current week
+    const now = new Date();
+    const monday = new Date(now);
+    const day = now.getDay(); // 0=Sun, 1=Mon, ...
+    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    monday.setHours(0, 0, 0, 0);
+
+    const { data: weekResults, error } = await supabase
+        .from('results')
+        .select('userId, score, total, passed')
+        .gte('date', monday.toISOString());
+
+    if (error || !weekResults?.length) return [];
+
+    // Get unique userIds and fetch names
+    const userIds = [...new Set(weekResults.map(r => r.userId))];
+    const { data: users } = await supabase
+        .from('users')
+        .select('id, name, department')
+        .in('id', userIds);
+
+    const userMap = Object.fromEntries((users || []).map(u => [u.id, u]));
+
+    // Group by userId
+    const byUser = {};
+    for (const r of weekResults) {
+        if (!byUser[r.userId]) byUser[r.userId] = [];
+        byUser[r.userId].push(r);
+    }
+
+    return Object.entries(byUser)
+        .map(([userId, rs]) => {
+            const passedCount = rs.filter(r => r.passed).length;
+            const avgScore = rs.length
+                ? Math.round(rs.reduce((s, r) => s + (r.total > 0 ? r.score / r.total * 100 : 0), 0) / rs.length)
+                : 0;
+            const u = userMap[userId] || {};
+            return { userId, name: u.name || userId, department: u.department || '', passedCount, avgScore, total: rs.length };
+        })
+        .sort((a, b) => b.passedCount - a.passedCount || b.avgScore - a.avgScore)
+        .slice(0, 5);
+};
+
+// --- Challenges ---
+export const getChallenges = async (currentUserId) => {
+    const { data: challenges, error } = await supabase
+        .from('challenges')
+        .select('*')
+        .order('createdAt', { ascending: false });
+
+    if (error || !challenges?.length) return [];
+
+    // Fetch all participants in one query
+    const challengeIds = challenges.map(c => c.id);
+    const { data: participants } = await supabase
+        .from('challenge_participants')
+        .select('*')
+        .in('challengeId', challengeIds);
+
+    const allParticipants = participants || [];
+
+    // Find earliest challenge start date to bound results query
+    const earliest = challenges.reduce((min, c) => {
+        const d = new Date(c.createdAt);
+        return d < min ? d : min;
+    }, new Date());
+
+    // Fetch all results since the earliest challenge was created (for progress computation)
+    const { data: allResults } = currentUserId
+        ? await supabase
+            .from('results')
+            .select('userId, testId, score, total, passed, date')
+            .gte('date', earliest.toISOString())
+        : { data: [] };
+
+    const results = allResults || [];
+
+    return challenges.map(c => {
+        const cParticipants = allParticipants.filter(p => p.challengeId === c.id);
+        const isJoined = currentUserId ? cParticipants.some(p => p.userId === currentUserId) : false;
+        const isExpired = new Date(c.deadline) < new Date();
+        const start = new Date(c.createdAt);
+        const end = new Date(c.deadline);
+
+        // Compute progress for each participant
+        const participantsWithProgress = cParticipants.map(p => {
+            const userResults = results.filter(r =>
+                r.userId === p.userId &&
+                new Date(r.date) >= start &&
+                new Date(r.date) <= end
+            );
+            let progress = 0;
+            if (c.goalType === 'tests_count') {
+                progress = userResults.filter(r => r.passed).length;
+            } else if (c.goalType === 'avg_score') {
+                const passed = userResults.filter(r => r.passed);
+                progress = passed.length
+                    ? Math.round(passed.reduce((s, r) => s + (r.total > 0 ? r.score / r.total * 100 : 0), 0) / passed.length)
+                    : 0;
+            }
+            return { ...p, progress };
+        }).sort((a, b) => b.progress - a.progress);
+
+        const myParticipant = participantsWithProgress.find(p => p.userId === currentUserId);
+        const myProgress = myParticipant?.progress ?? 0;
+
+        return {
+            ...c,
+            participants: participantsWithProgress,
+            isJoined,
+            isExpired,
+            myProgress,
+        };
+    });
+};
+
+export const createChallenge = async (data) => {
+    const { error, data: created } = await supabase
+        .from('challenges')
+        .insert([{
+            title: data.title,
+            description: data.description || '',
+            goalType: data.goalType,
+            goalValue: data.goalValue,
+            deadline: data.deadline,
+            createdBy: data.createdBy,
+            createdByName: data.createdByName,
+        }])
+        .select()
+        .single();
+    if (error) throw error;
+    return created;
+};
+
+export const deleteChallenge = async (id) => {
+    const { error } = await supabase.from('challenges').delete().eq('id', id);
+    if (error) throw error;
+};
+
+export const joinChallenge = async (challengeId, userId, userName) => {
+    const { error } = await supabase
+        .from('challenge_participants')
+        .insert([{ challengeId, userId, userName }]);
+    if (error) throw error;
+};
+
+export const leaveChallenge = async (challengeId, userId) => {
+    const { error } = await supabase
+        .from('challenge_participants')
+        .delete()
+        .eq('challengeId', challengeId)
+        .eq('userId', userId);
+    if (error) throw error;
+};

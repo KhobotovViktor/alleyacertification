@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Play, CheckCircle, Clock, AlertTriangle, FileText, BookOpen,
-    Trophy, Star, Flame, Target, TrendingUp, Crown, Shield, Lock, Users, CalendarClock,
-    Plus, Edit, Trash2, Link2, Copy, Send, PenLine, Heart, Rss, Zap
+    Star, Flame, Target, TrendingUp, Crown, Shield, Lock, Users, CalendarClock,
+    Plus, Edit, Trash2, Link2, Copy, Send, PenLine, Heart, Rss, Zap, Trophy
 } from 'lucide-react';
 import {
     getTestsSummary, getCurrentUser, getUserResults,
@@ -14,7 +14,9 @@ import {
     getQuestionsForTest, answerTestQuestion,
     getActivityFeed, getReactionData, toggleResultReaction,
     toggleFollow, getFollowedAuthorIds,
+    getWeeklyRating,
 } from '../services/db';
+import ChallengesTab from './ChallengesTab';
 import { DashboardSkeleton } from './SkeletonLoader';
 
 // ── Achievement definitions ──────────────────────────────────────────────────
@@ -479,6 +481,10 @@ export default function EmployeeDashboard() {
     const [followedAuthorIds, setFollowedAuthorIds] = useState(new Set()); // in Feed
     const [followInProgress, setFollowInProgress] = useState(new Set());
 
+    // ── Weekly rating ──
+    const [weeklyRating, setWeeklyRating] = useState(null); // null = not loaded
+    const [weeklyLoading, setWeeklyLoading] = useState(false);
+
     // ── Questions to author ──
     const [openQuestionTestId, setOpenQuestionTestId] = useState(null);
     const [questionsByTestId, setQuestionsByTestId] = useState({});  // testId → Question[]
@@ -535,10 +541,13 @@ export default function EmployeeDashboard() {
         }
     };
 
-    // ── Feed: lazy-load when tab is first opened ──
+    // ── Feed / Activity: lazy-load when tab is first opened ──
     useEffect(() => {
         if (activeTab === 'feed' && feedTests === null) loadFeed();
-        if (activeTab === 'activity' && activityResults === null) loadActivity();
+        if (activeTab === 'activity') {
+            if (activityResults === null) loadActivity();
+            if (weeklyRating === null) loadWeeklyRating();
+        }
     }, [activeTab]);
 
     const loadFeed = async () => {
@@ -604,6 +613,19 @@ export default function EmployeeDashboard() {
             setActivityResults([]);
         } finally {
             setActivityLoading(false);
+        }
+    };
+
+    const loadWeeklyRating = async () => {
+        setWeeklyLoading(true);
+        try {
+            const data = await getWeeklyRating();
+            setWeeklyRating(data);
+        } catch (err) {
+            console.error('Weekly rating load error:', err);
+            setWeeklyRating([]);
+        } finally {
+            setWeeklyLoading(false);
         }
     };
 
@@ -831,11 +853,12 @@ export default function EmployeeDashboard() {
         { key: 'tests',         icon: <Play size={16} />,        label: 'Тесты' },
         { key: 'feed',          icon: <Rss size={16} />,         label: 'Лента' },
         { key: 'activity',      icon: <Zap size={16} />,         label: 'Активность' },
+        { key: 'challenges',    icon: <Trophy size={16} />,      label: 'Челленджи' },
         { key: 'mytests',       icon: <Plus size={16} />,        label: 'Мои тесты' },
         { key: 'results',       icon: <CheckCircle size={16} />, label: 'Результаты' },
         { key: 'articles',      icon: <BookOpen size={16} />,    label: 'Материалы' },
         { key: 'trainingStats', icon: <Clock size={16} />,       label: 'Статистика' },
-        { key: 'progress',      icon: <Trophy size={16} />,      label: 'Прогресс' },
+        { key: 'progress',      icon: <Star size={16} />,        label: 'Прогресс' },
     ];
 
     return (
@@ -1177,6 +1200,65 @@ export default function EmployeeDashboard() {
                         </p>
                     </div>
 
+                    {/* ── Weekly Rating widget ── */}
+                    {(() => {
+                        const now = new Date();
+                        const day = now.getDay();
+                        const monday = new Date(now);
+                        monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+                        monday.setHours(0, 0, 0, 0);
+                        const weekLabel = `${monday.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })} — сегодня`;
+                        const medals = ['🥇', '🥈', '🥉'];
+                        return (
+                            <div className="bento-card" style={{ padding: '1.1rem 1.25rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <Crown size={16} style={{ color: '#f59e0b' }} /> Рейтинг недели
+                                    </h4>
+                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>{weekLabel}</span>
+                                </div>
+                                {weeklyLoading || weeklyRating === null ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                        {[1,2,3].map(i => (
+                                            <div key={i} className="animate-pulse" style={{ height: 32, borderRadius: '0.5rem', background: 'linear-gradient(90deg,#f1f5f9,#e2e8f0,#f1f5f9)' }} />
+                                        ))}
+                                    </div>
+                                ) : weeklyRating.length === 0 ? (
+                                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', opacity: 0.6, textAlign: 'center', padding: '0.5rem 0' }}>
+                                        На этой неделе ещё нет сданных тестов
+                                    </p>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                        {weeklyRating.map((row, idx) => {
+                                            const isMe = row.userId === user.id;
+                                            return (
+                                                <div key={row.userId} style={{
+                                                    display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.4rem 0.65rem', borderRadius: '0.6rem',
+                                                    background: isMe ? 'rgba(99,102,241,0.07)' : idx === 0 ? 'rgba(245,158,11,0.06)' : 'transparent',
+                                                    border: isMe ? '1px solid rgba(99,102,241,0.2)' : '1px solid transparent',
+                                                }}>
+                                                    <span style={{ width: '1.5rem', textAlign: 'center', flexShrink: 0, fontSize: '0.9rem' }}>
+                                                        {idx < 3 ? medals[idx] : `${idx + 1}.`}
+                                                    </span>
+                                                    <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: isMe ? 800 : 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {row.name}{isMe && ' (вы)'}
+                                                        {row.department && <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.72rem', marginLeft: '0.3rem' }}>{row.department}</span>}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#10b981', flexShrink: 0 }}>
+                                                        {row.passedCount} <span style={{ fontWeight: 500, color: '#94a3b8', fontSize: '0.7rem' }}>сдано</span>
+                                                    </span>
+                                                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6366f1', flexShrink: 0 }}>
+                                                        {row.avgScore}%
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+
                     {activityLoading ? (
                         <div className="bento-grid">
                             {[1,2,3,4,5,6].map(i => (
@@ -1305,6 +1387,11 @@ export default function EmployeeDashboard() {
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* ── Challenges ── */}
+            {activeTab === 'challenges' && (
+                <ChallengesTab currentUser={user} isAdmin={user?.role === 'admin'} />
             )}
 
             {/* ── My Tests ── */}
