@@ -955,24 +955,23 @@ export default function AdminDashboard() {
                             <p className="text-secondary p-4 text-center border border-dashed border-[var(--border-color)] rounded-lg">Пока нет данных об изучении материалов.</p>
                         ) : (
                             <>
-                                <div className="scroll-hint">Листайте таблицу вправо →</div>
                                 <div className="table-container">
-                                    <table className="w-full text-left border-collapse min-w-[600px]">
+                                    <table className="w-full text-left border-collapse" style={{ minWidth: '480px' }}>
                                         <thead>
                                             <tr className="bg-[var(--bg-secondary)] border-b border-[var(--border-color)]">
-                                                <th className="p-4 font-semibold text-secondary">Сотрудник</th>
-                                                <th className="p-4 font-semibold text-secondary">Материал</th>
-                                                <th className="p-4 font-semibold text-secondary">Время</th>
-                                                <th className="p-4 font-semibold text-secondary">Завершено</th>
+                                                <th className="px-4 py-3 font-semibold text-secondary" style={{ whiteSpace: 'nowrap' }}>Сотрудник</th>
+                                                <th className="px-4 py-3 font-semibold text-secondary">Материал</th>
+                                                <th className="px-4 py-3 font-semibold text-secondary" style={{ whiteSpace: 'nowrap' }}>Время</th>
+                                                <th className="px-4 py-3 font-semibold text-secondary" style={{ whiteSpace: 'nowrap' }}>Завершено</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[var(--border-color)]">
                                             {[...articleProgress].sort((a, b) => new Date(b.lastReadAt).getTime() - new Date(a.lastReadAt).getTime()).map(prog => (
                                                 <tr key={prog.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                                    <td className="p-4 font-medium">{getEmpName(prog.userId)}</td>
-                                                    <td className="p-4">{getArticleTitle(prog.articleId)}</td>
-                                                    <td className="p-4">{Math.round((prog.timeSpentSeconds || 0) / 60)} мин.</td>
-                                                    <td className="p-4 text-secondary">{new Date(prog.lastReadAt).toLocaleDateString()}</td>
+                                                    <td className="px-4 py-3 font-medium" style={{ whiteSpace: 'nowrap' }}>{getEmpName(prog.userId)}</td>
+                                                    <td className="px-4 py-3">{getArticleTitle(prog.articleId)}</td>
+                                                    <td className="px-4 py-3 text-secondary" style={{ whiteSpace: 'nowrap' }}>{Math.round((prog.timeSpentSeconds || 0) / 60)} мин.</td>
+                                                    <td className="px-4 py-3 text-secondary" style={{ whiteSpace: 'nowrap' }}>{new Date(prog.lastReadAt).toLocaleDateString()}</td>
                                                 </tr>
                                             ))}
                                         </tbody>

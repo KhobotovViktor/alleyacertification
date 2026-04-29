@@ -1672,7 +1672,7 @@ export default function EmployeeDashboard() {
             {activeTab === 'results' && (
                 <div className="animate-fade-in">
                     <div className="scroll-hint">Листайте таблицу вправо →</div>
-                    <div className="card table-container p-0 overflow-hidden">
+                    <div className="card table-container p-0">
                         <table className="w-full min-w-[500px]">
                             <thead>
                                 <tr className="border-b border-[var(--border-color)] bg-white/30">

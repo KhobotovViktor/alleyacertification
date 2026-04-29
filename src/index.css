@@ -684,6 +684,20 @@ textarea.form-control {
   letter-spacing: 0.01em;
 }
 
+/* ── Table helpers ───────────────────────────────────────────────────────── */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-xl);
+}
+
+.scroll-hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  opacity: 0.55;
+  margin-bottom: 0.5rem;
+}
+
 /* ── Button small ────────────────────────────────────────────────────────── */
 .btn-sm {
   padding: 0.4rem 0.875rem;
