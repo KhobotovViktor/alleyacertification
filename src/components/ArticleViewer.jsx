@@ -11,22 +11,30 @@ const getEmbedUrl = (url) => {
     let embedUrl = url;
     if (url.includes('youtube.com/watch?v=')) {
         embedUrl = url.replace('youtube.com/watch?v=', 'youtube.com/embed/');
-        // strip ampersands arguments like &t=123s
         embedUrl = embedUrl.split('&')[0];
     } else if (url.includes('youtu.be/')) {
         embedUrl = url.replace('youtu.be/', 'youtube.com/embed/');
         embedUrl = embedUrl.split('?')[0];
     }
-    // VK Video support
     if (url.includes('vk.com/video')) {
-        // Very basic VK conversion (requires knowing owner_id and video_id)
-        // OID_VID -> oid=OID&id=VID
         const match = url.match(/video(-?\d+)_(\d+)/);
         if (match) {
             embedUrl = `https://vk.com/video_ext.php?oid=${match[1]}&id=${match[2]}&hd=2`;
         }
     }
     return embedUrl;
+};
+
+// Detect direct video file URLs (.mp4, .webm, .mov, etc.)
+const isDirectVideoUrl = (url) => {
+    if (!url) return false;
+    return /\.(mp4|webm|mov|avi|ogv|mkv)(\?|$)/i.test(url);
+};
+
+// Detect direct audio file URLs (.mp3, .wav, etc.)
+const isDirectAudioUrl = (url) => {
+    if (!url) return false;
+    return /\.(mp3|wav|ogg|aac|m4a|flac)(\?|$)/i.test(url);
 };
 
 export default function ArticleViewer() {
@@ -185,81 +193,101 @@ export default function ArticleViewer() {
                 </div>
 
                 {/* Video Embed */}
-                {article.videoUrl && getEmbedUrl(article.videoUrl) && (
-                    <div className="relative w-full aspect-video rounded-[3rem] overflow-hidden shadow-xl border-8 border-slate-50">
-                        <iframe
-                            src={getEmbedUrl(article.videoUrl)}
-                            className="absolute top-0 left-0 w-full h-full"
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                        ></iframe>
-                    </div>
+                {article.videoUrl && (
+                    isDirectVideoUrl(article.videoUrl) ? (
+                        /* Direct video file — native <video> player */
+                        <div className="w-full rounded-3xl overflow-hidden shadow-xl bg-black">
+                            <video
+                                src={article.videoUrl}
+                                controls
+                                className="w-full block"
+                                style={{ maxHeight: '72vh', objectFit: 'contain' }}
+                            />
+                        </div>
+                    ) : getEmbedUrl(article.videoUrl) ? (
+                        /* YouTube / VK embed — iframe */
+                        <div className="relative w-full aspect-video rounded-[3rem] overflow-hidden shadow-xl border-8 border-slate-50">
+                            <iframe
+                                src={getEmbedUrl(article.videoUrl)}
+                                className="absolute top-0 left-0 w-full h-full"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        </div>
+                    ) : null
                 )}
 
-                {/* Audio Player Component */}
+                {/* Audio / Video Player */}
                 {article.audioUrl && (
-                    <div className="w-full max-w-none mx-auto my-6 bento-card p-12 border-slate-100 bg-slate-50/40">
-                        <div className="flex flex-col gap-10">
-                            {/* Controls */}
-                            <div className="flex items-center justify-center gap-10">
-                                <button 
-                                    onClick={() => skip(-10)}
-                                    className="player-btn"
-                                    title="Назад на 10 сек"
-                                >
-                                    <RotateCcw size={28} />
-                                </button>
-                                
-                                <button 
-                                    onClick={togglePlay}
-                                    className="player-btn player-btn-play"
-                                    title={isPlaying ? 'Пауза' : 'Воспроизвести'}
-                                >
-                                    {isPlaying ? (
-                                        <Pause size={32} fill="currentColor" />
-                                    ) : (
-                                        <Play size={32} fill="currentColor" className="ml-1" />
-                                    )}
-                                </button>
-                                
-                                <button 
-                                    onClick={() => skip(10)}
-                                    className="player-btn"
-                                    title="Вперед на 10 сек"
-                                >
-                                    <RotateCw size={28} />
-                                </button>
-                            </div>
+                    <div className="w-full mx-auto bento-card border-slate-100 bg-slate-50/40 overflow-hidden">
 
-                            {/* Timeline */}
-                            <div className="flex flex-col gap-3">
-                                <input 
-                                    type="range"
-                                    min="0"
-                                    max={duration || 0}
-                                    value={currentTime}
-                                    onChange={handleSeek}
-                                    className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-[#10b981]"
-                                    style={{
-                                        background: `linear-gradient(to right, #10b981 0%, #10b981 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 100%)`
-                                    }}
+                        {/* ── If audioUrl is a VIDEO file — show inline video with custom controls ── */}
+                        {isDirectVideoUrl(article.audioUrl) ? (
+                            <>
+                                <video
+                                    ref={audioRef}
+                                    src={article.audioUrl}
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onLoadedMetadata={handleLoadedMetadata}
+                                    onEnded={() => setIsPlaying(false)}
+                                    className="w-full block"
+                                    style={{ maxHeight: '72vh', objectFit: 'contain', background: '#000' }}
                                 />
-                                <div className="flex justify-between text-sm font-bold text-slate-400">
-                                    <span>{formatTime(currentTime)}</span>
-                                    <span>{formatTime(duration)}</span>
+                                <div className="flex flex-col gap-4 p-5">
+                                    {/* Controls */}
+                                    <div className="flex items-center justify-center gap-8">
+                                        <button onClick={() => skip(-10)} className="player-btn scale-90" title="Назад на 10 сек"><RotateCcw size={24} /></button>
+                                        <button onClick={togglePlay} className="player-btn player-btn-play" title={isPlaying ? 'Пауза' : 'Воспроизвести'}>
+                                            {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" className="ml-1" />}
+                                        </button>
+                                        <button onClick={() => skip(10)} className="player-btn scale-90" title="Вперед на 10 сек"><RotateCw size={24} /></button>
+                                    </div>
+                                    {/* Timeline */}
+                                    <div className="flex flex-col gap-2">
+                                        <input type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek}
+                                            className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                                            style={{ background: `linear-gradient(to right, #10b981 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%)` }}
+                                        />
+                                        <div className="flex justify-between text-sm font-bold text-slate-400">
+                                            <span>{formatTime(currentTime)}</span>
+                                            <span>{formatTime(duration)}</span>
+                                        </div>
+                                    </div>
                                 </div>
+                            </>
+                        ) : (
+                            /* ── Audio file — custom audio player ── */
+                            <div className="flex flex-col gap-6 p-6 md:p-8">
+                                {/* Controls */}
+                                <div className="flex items-center justify-center gap-10">
+                                    <button onClick={() => skip(-10)} className="player-btn" title="Назад на 10 сек"><RotateCcw size={28} /></button>
+                                    <button onClick={togglePlay} className="player-btn player-btn-play" title={isPlaying ? 'Пауза' : 'Воспроизвести'}>
+                                        {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
+                                    </button>
+                                    <button onClick={() => skip(10)} className="player-btn" title="Вперед на 10 сек"><RotateCw size={28} /></button>
+                                </div>
+                                {/* Timeline */}
+                                <div className="flex flex-col gap-3">
+                                    <input type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek}
+                                        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                                        style={{ background: `linear-gradient(to right, #10b981 ${(currentTime / (duration || 1)) * 100}%, #e2e8f0 ${(currentTime / (duration || 1)) * 100}%)` }}
+                                    />
+                                    <div className="flex justify-between text-sm font-bold text-slate-400">
+                                        <span>{formatTime(currentTime)}</span>
+                                        <span>{formatTime(duration)}</span>
+                                    </div>
+                                </div>
+                                <audio
+                                    ref={audioRef}
+                                    src={article.audioUrl}
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onLoadedMetadata={handleLoadedMetadata}
+                                    onEnded={() => setIsPlaying(false)}
+                                    className="hidden"
+                                />
                             </div>
-                        </div>
-                        
-                        <audio 
-                            ref={audioRef}
-                            src={article.audioUrl}
-                            onTimeUpdate={handleTimeUpdate}
-                            onLoadedMetadata={handleLoadedMetadata}
-                            onEnded={() => setIsPlaying(false)}
-                            className="hidden"
-                        />
+                        )}
                     </div>
                 )}
 
