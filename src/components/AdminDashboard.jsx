@@ -606,141 +606,149 @@ export default function AdminDashboard() {
 
                 {/* Tests List */}
                 {activeTab === 'tests' && (
-                    <div className="w-full lg:col-span-2">
-                        <div className="flex items-center justify-between gap-3 mb-4 ml-1 flex-wrap">
-                            <div className="flex items-center gap-3">
-                                <BookOpen size={20} className="text-accent-primary" />
-                                <h3 className="m-0">Список тестов</h3>
+                    <div className="w-full lg:col-span-2 flex-col gap-3 animate-fade-in">
+
+                        {/* ── Header row: title + filter tabs ── */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <BookOpen size={18} style={{ color: 'var(--accent-primary)' }} />
+                                <h3 style={{ margin: 0 }}>Список тестов</h3>
+                                <span className="chip chip-neutral" style={{ fontVariantNumeric: 'tabular-nums' }}>{tests.length}</span>
                             </div>
-                            {/* Status filter chips */}
-                            <div style={{ display: 'flex', gap: '0.375rem', padding: '0.25rem', background: 'rgba(255,255,255,0.6)', borderRadius: '0.875rem', border: '1px solid rgba(255,255,255,0.8)', flexWrap: 'wrap' }}>
+                            {/* Filter tabs */}
+                            <div style={{ display: 'flex', gap: '0.25rem', padding: '0.25rem', background: 'rgba(255,255,255,0.7)', borderRadius: '0.875rem', border: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', flexWrap: 'wrap' }}>
                                 {[
-                                    { key: 'all', label: 'Все' },
-                                    { key: 'published', label: 'Опубликованные' },
-                                    { key: 'draft', label: 'Черновики' },
-                                    { key: 'user_created', label: 'От пользователей' },
+                                    { key: 'all',          label: 'Все' },
+                                    { key: 'published',    label: 'Опубликованные' },
+                                    { key: 'draft',        label: 'Черновики' },
+                                    { key: 'user_created', label: 'От сотрудников' },
                                 ].map(f => (
-                                    <button key={f.key} onClick={() => setTestStatusFilter(f.key)} style={{ padding: '0.3rem 0.75rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s', fontFamily: 'inherit', background: testStatusFilter === f.key ? 'white' : 'transparent', color: testStatusFilter === f.key ? 'var(--text-primary)' : 'var(--text-secondary)', boxShadow: testStatusFilter === f.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+                                    <button key={f.key} onClick={() => setTestStatusFilter(f.key)} style={{ padding: '0.3rem 0.7rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, transition: 'all 0.15s', fontFamily: 'inherit', background: testStatusFilter === f.key ? 'white' : 'transparent', color: testStatusFilter === f.key ? 'var(--text-primary)' : 'var(--text-secondary)', boxShadow: testStatusFilter === f.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
                                         {f.label}
                                     </button>
                                 ))}
                             </div>
                         </div>
+
+                        {/* ── Test list ── */}
                         {(() => {
                             const visibleTests = tests.filter(t => {
                                 if (testStatusFilter === 'all') return true;
                                 if (testStatusFilter === 'user_created') return !!t.createdBy;
-                                const s = t.status || 'published';
-                                return s === testStatusFilter;
+                                return (t.status || 'published') === testStatusFilter;
                             });
-                            return visibleTests.length === 0 ? (
-                            <div className="bento-card text-secondary p-8 text-center border-dashed">
-                                {tests.length === 0 ? 'У вас еще нет созданных тестов. Нажмите "Создать тест" чтобы начать.' : 'Нет тестов с таким статусом.'}
-                            </div>
-                            ) : (
-                            <div className="bento-grid">
-                                {visibleTests.map((test, index) => {
-                                    const isDraft = (test.status || 'published') === 'draft';
-                                    return (
-                                    <div key={test.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`} style={{ opacity: isDraft ? 0.85 : 1 }}>
-                                        <div className="flex-col gap-1.5 grow">
-                                            <div className="flex items-start justify-between gap-2 mb-1">
-                                                <div className="font-bold text-primary text-lg leading-tight">{test.title}</div>
-                                                {/* Status badge */}
-                                                <span className={`status-pill ${isDraft ? 'status-pill-draft' : 'status-pill-published'}`} style={{ flexShrink: 0 }}>
-                                                    {isDraft ? <PenLine size={10} /> : <CheckCircle size={10} />}
-                                                    {isDraft ? 'Черновик' : 'Опубликован'}
-                                                </span>
-                                            </div>
 
-                                            {/* Creator badge — shown when test was made by an employee */}
-                                            {test.createdBy && (() => {
-                                                const creator = allUsers.find(u => u.id === test.createdBy);
-                                                return creator ? (
-                                                    <div className="chip chip-purple" style={{ width: 'fit-content', marginBottom: '0.25rem' }}>
-                                                        <Users size={9}/> Автор: {creator.name}
-                                                    </div>
-                                                ) : null;
-                                            })()}
+                            if (visibleTests.length === 0) return (
+                                <div className="bento-card text-secondary p-8 text-center" style={{ borderStyle: 'dashed' }}>
+                                    {tests.length === 0 ? 'Нет созданных тестов. Нажмите «Создать тест» чтобы начать.' : 'Нет тестов с таким статусом.'}
+                                </div>
+                            );
 
-                                            <div className="text-secondary flex flex-wrap gap-2 mt-auto">
-                                                <span className="chip chip-neutral">{test.questions?.length || 0} вопр.</span>
-                                                <span className="chip chip-neutral">{test.timeLimit / 60} мин.</span>
-                                                <span className="chip chip-primary">Балл: {test.passingScore}</span>
-                                                {test.deadline && (() => {
-                                                    const dl = new Date(test.deadline);
-                                                    const expired = dl < new Date();
-                                                    return (
-                                                        <span className={`chip ${expired ? 'chip-slate' : 'chip-warning'}`} style={{ flexShrink: 0, gap: '0.25rem' }}>
-                                                            <CalendarClock size={10} />
-                                                            {expired ? 'Срок истёк' : `До ${dl.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100">
-                                            <Link to={`/admin/test/${test.id}`} className="btn btn-secondary flex-grow text-sm py-2 px-3 hover:text-accent-primary hover:border-accent-primary transition-all flex items-center justify-center gap-2">
-                                                <Edit size={16} /> <span>Изменить</span>
-                                            </Link>
-
-                                            {/* Publish / Unpublish toggle */}
-                                            <button
-                                                onClick={() => handleToggleStatus(test)}
-                                                title={isDraft ? 'Опубликовать тест' : 'Вернуть в черновики'}
-                                                style={{
-                                                    width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    background: isDraft ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)',
-                                                    color: isDraft ? 'var(--accent-primary)' : '#d97706',
-                                                    border: `1px solid ${isDraft ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`,
-                                                    cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
-                                                }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = isDraft ? 'var(--accent-primary)' : '#f59e0b'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'transparent'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = isDraft ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)'; e.currentTarget.style.color = isDraft ? 'var(--accent-primary)' : '#d97706'; e.currentTarget.style.borderColor = isDraft ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'; }}
-                                            >
-                                                {isDraft ? <Send size={15} style={{ pointerEvents: 'none' }} /> : <PenLine size={15} style={{ pointerEvents: 'none' }} />}
-                                            </button>
-
-                                            {test.isPublic && (
-                                                <button
-                                                    onClick={() => copyTestLink(test.id)}
-                                                    title="Скопировать ссылку на тест"
-                                                    style={{
-                                                        width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        background: copiedTestId === test.id ? 'var(--accent-primary)' : 'rgba(16,185,129,0.07)',
-                                                        color: copiedTestId === test.id ? 'white' : 'var(--accent-primary)',
-                                                        border: '1px solid rgba(16,185,129,0.2)', cursor: 'pointer',
-                                                        transition: 'all 0.2s', flexShrink: 0,
-                                                    }}
-                                                    onMouseEnter={e => { if (copiedTestId !== test.id) { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; }}}
-                                                    onMouseLeave={e => { if (copiedTestId !== test.id) { e.currentTarget.style.background = 'rgba(16,185,129,0.07)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}}
-                                                >
-                                                    {copiedTestId === test.id ? <Copy size={15} style={{ pointerEvents: 'none' }} /> : <Link2 size={15} style={{ pointerEvents: 'none' }} />}
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => handleDeleteTest(test.id)}
-                                                style={{
-                                                    width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    background: 'rgba(239,68,68,0.05)', color: '#ef4444',
-                                                    border: '1px solid rgba(239,68,68,0.1)', cursor: 'pointer',
-                                                    transition: 'all 0.2s', position: 'relative', zIndex: 50, pointerEvents: 'auto'
-                                                }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.05)'; e.currentTarget.style.color = '#ef4444'; }}
-                                                title="Удалить тест"
-                                            >
-                                                <Trash2 size={16} style={{ pointerEvents: 'none' }} />
-                                            </button>
-                                        </div>
+                            return (
+                                <div className="card p-0 overflow-hidden" style={{ borderRadius: 'var(--radius-2xl)' }}>
+                                    {/* Column headers */}
+                                    <div style={{ display: 'flex', alignItems: 'center', padding: '0.5rem 1rem', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+                                        <div style={{ flex: 1, fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Тест</div>
+                                        <div style={{ width: '7rem', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center', flexShrink: 0 }} className="mobile-hide">Статус</div>
+                                        <div style={{ width: '8rem', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'right', flexShrink: 0 }}>Действия</div>
                                     </div>
-                                    );
-                                })}
-                            </div>
+
+                                    {visibleTests.map((test, index) => {
+                                        const isDraft = (test.status || 'published') === 'draft';
+                                        const creator = test.createdBy ? allUsers.find(u => u.id === test.createdBy) : null;
+                                        const isCopied = copiedTestId === test.id;
+                                        const dl = test.deadline ? new Date(test.deadline) : null;
+                                        const expired = dl && dl < new Date();
+
+                                        return (
+                                            <div
+                                                key={test.id}
+                                                className={`animate-fade-in stagger-${(index % 5) + 1}`}
+                                                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderBottom: index < visibleTests.length - 1 ? '1px solid #f8fafc' : 'none', transition: 'background 0.15s', opacity: isDraft ? 0.88 : 1 }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                                                onMouseLeave={e => e.currentTarget.style.background = ''}
+                                            >
+                                                {/* ── Left: title + chips ── */}
+                                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: 1.3 }}>{test.title}</span>
+                                                        {creator && (
+                                                            <span className="chip chip-purple"><Users size={9}/> {creator.name}</span>
+                                                        )}
+                                                        {/* Mobile-only status */}
+                                                        <span className={`status-pill ${isDraft ? 'status-pill-draft' : 'status-pill-published'} mobile-only`}>
+                                                            {isDraft ? <PenLine size={9}/> : <CheckCircle size={9}/>}
+                                                            {isDraft ? 'Черновик' : 'Опубликован'}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                                                        <span className="chip chip-neutral">{test.questions?.length || 0} вопр.</span>
+                                                        <span className="chip chip-neutral">{test.timeLimit / 60} мин.</span>
+                                                        <span className="chip chip-primary">Балл: {test.passingScore}</span>
+                                                        {dl && (
+                                                            <span className={`chip ${expired ? 'chip-slate' : 'chip-warning'}`}>
+                                                                <CalendarClock size={9}/>
+                                                                {expired ? 'Срок истёк' : `До ${dl.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* ── Center: status (desktop only) ── */}
+                                                <div style={{ width: '7rem', flexShrink: 0, display: 'flex', justifyContent: 'center' }} className="mobile-hide">
+                                                    <span className={`status-pill ${isDraft ? 'status-pill-draft' : 'status-pill-published'}`}>
+                                                        {isDraft ? <PenLine size={9}/> : <CheckCircle size={9}/>}
+                                                        {isDraft ? 'Черновик' : 'Опубликован'}
+                                                    </span>
+                                                </div>
+
+                                                {/* ── Right: actions ── */}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0, width: '8rem', justifyContent: 'flex-end' }}>
+                                                    {/* Edit */}
+                                                    <Link
+                                                        to={`/admin/test/${test.id}`}
+                                                        className="btn btn-icon"
+                                                        title="Редактировать тест"
+                                                    >
+                                                        <Edit size={14}/>
+                                                    </Link>
+
+                                                    {/* Publish / Unpublish */}
+                                                    <button
+                                                        onClick={() => handleToggleStatus(test)}
+                                                        title={isDraft ? 'Опубликовать' : 'Снять с публикации'}
+                                                        className="btn btn-icon"
+                                                        style={{ color: isDraft ? 'var(--accent-primary)' : '#d97706', borderColor: isDraft ? 'rgba(16,185,129,0.25)' : 'rgba(245,158,11,0.25)', background: isDraft ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.06)' }}
+                                                    >
+                                                        {isDraft ? <Send size={14}/> : <PenLine size={14}/>}
+                                                    </button>
+
+                                                    {/* Copy link */}
+                                                    {test.isPublic && (
+                                                        <button
+                                                            onClick={() => copyTestLink(test.id)}
+                                                            title="Скопировать ссылку"
+                                                            className="btn btn-icon"
+                                                            style={isCopied ? { background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', borderColor: 'rgba(16,185,129,0.25)' } : {}}
+                                                        >
+                                                            {isCopied ? <Copy size={14}/> : <Link2 size={14}/>}
+                                                        </button>
+                                                    )}
+
+                                                    {/* Delete */}
+                                                    <button
+                                                        onClick={() => handleDeleteTest(test.id)}
+                                                        title="Удалить тест"
+                                                        className="btn btn-icon btn-icon-danger"
+                                                        style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)' }}
+                                                    >
+                                                        <Trash2 size={14}/>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             );
                         })()}
                     </div>
