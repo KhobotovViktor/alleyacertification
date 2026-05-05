@@ -1070,10 +1070,10 @@ tr:hover td {
 }
 
 /* ── Visibility helpers ───────────────────────────────────────────────────── */
-.mobile-only { display: none; }
+.mobile-only { display: none !important; }
 @media (max-width: 768px) {
   .mobile-hide { display: none !important; }
-  .mobile-only { display: inline-flex; }
+  .mobile-only { display: flex !important; }
 }
 
 /* ===== Mobile Responsive ===== */

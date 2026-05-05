@@ -955,38 +955,76 @@ export default function AdminDashboard() {
 
                 {/* Training Stats List */}
                 {activeTab === 'trainingStats' && (
-                    <div className="card flex-col gap-4 animate-fade-in w-full lg:col-span-2">
-                        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                            <h2 className="text-xl flex items-center gap-2 m-0"><Clock size={20} className="text-accent-primary" /> Прогресс обучения</h2>
+                    <div className="flex-col gap-3 animate-fade-in w-full lg:col-span-2">
+
+                        {/* Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Clock size={18} style={{ color: 'var(--accent-primary)' }} />
+                                <h3 style={{ margin: 0 }}>Прогресс обучения</h3>
+                                {articleProgress.length > 0 && (
+                                    <span className="chip chip-neutral" style={{ fontVariantNumeric: 'tabular-nums' }}>{articleProgress.length}</span>
+                                )}
+                            </div>
                         </div>
+
                         {articleProgress.length === 0 ? (
-                            <p className="text-secondary p-4 text-center border border-dashed border-[var(--border-color)] rounded-lg">Пока нет данных об изучении материалов.</p>
-                        ) : (
-                            <>
-                                <div className="table-container">
-                                    <table className="w-full text-left border-collapse" style={{ minWidth: '480px' }}>
-                                        <thead>
-                                            <tr className="bg-[var(--bg-secondary)] border-b border-[var(--border-color)]">
-                                                <th className="px-4 py-3 font-semibold text-secondary" style={{ whiteSpace: 'nowrap' }}>Сотрудник</th>
-                                                <th className="px-4 py-3 font-semibold text-secondary">Материал</th>
-                                                <th className="px-4 py-3 font-semibold text-secondary" style={{ whiteSpace: 'nowrap' }}>Время</th>
-                                                <th className="px-4 py-3 font-semibold text-secondary" style={{ whiteSpace: 'nowrap' }}>Завершено</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-[var(--border-color)]">
-                                            {[...articleProgress].sort((a, b) => new Date(b.lastReadAt).getTime() - new Date(a.lastReadAt).getTime()).map(prog => (
-                                                <tr key={prog.id} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                                                    <td className="px-4 py-3 font-medium" style={{ whiteSpace: 'nowrap' }}>{getEmpName(prog.userId)}</td>
-                                                    <td className="px-4 py-3">{getArticleTitle(prog.articleId)}</td>
-                                                    <td className="px-4 py-3 text-secondary" style={{ whiteSpace: 'nowrap' }}>{Math.round((prog.timeSpentSeconds || 0) / 60)} мин.</td>
-                                                    <td className="px-4 py-3 text-secondary" style={{ whiteSpace: 'nowrap' }}>{new Date(prog.lastReadAt).toLocaleDateString()}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                            <div className="bento-card text-secondary p-8 text-center" style={{ borderStyle: 'dashed' }}>
+                                Пока нет данных об изучении материалов.
+                            </div>
+                        ) : (() => {
+                            const sorted = [...articleProgress].sort((a, b) => new Date(b.lastReadAt) - new Date(a.lastReadAt));
+                            return (
+                                <div className="card p-0 overflow-hidden" style={{ borderRadius: 'var(--radius-2xl)' }}>
+
+                                    {/* ── Desktop: table header ── */}
+                                    <div className="mobile-hide" style={{ display: 'flex', alignItems: 'center', padding: '0.5rem 1rem', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', gap: '0.75rem' }}>
+                                        <div style={{ flex: '2', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Сотрудник</div>
+                                        <div style={{ flex: '3', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Материал</div>
+                                        <div style={{ flex: '1', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>Время</div>
+                                        <div style={{ flex: '1.5', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'right' }}>Завершено</div>
+                                    </div>
+
+                                    {sorted.map((prog, index) => {
+                                        const empName   = getEmpName(prog.userId);
+                                        const artTitle  = getArticleTitle(prog.articleId);
+                                        const minutes   = Math.round((prog.timeSpentSeconds || 0) / 60);
+                                        const dateStr   = new Date(prog.lastReadAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+
+                                        return (
+                                            <div
+                                                key={prog.id}
+                                                style={{ borderBottom: index < sorted.length - 1 ? '1px solid #f8fafc' : 'none', transition: 'background 0.15s' }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                                                onMouseLeave={e => e.currentTarget.style.background = ''}
+                                            >
+                                                {/* ── Desktop row ── */}
+                                                <div className="mobile-hide" style={{ display: 'flex', alignItems: 'center', padding: '0.7rem 1rem', gap: '0.75rem' }}>
+                                                    <div style={{ flex: '2', fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{empName}</div>
+                                                    <div style={{ flex: '3', fontSize: '0.875rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{artTitle}</div>
+                                                    <div style={{ flex: '1', textAlign: 'center' }}>
+                                                        <span className="chip chip-neutral">{minutes} мин.</span>
+                                                    </div>
+                                                    <div style={{ flex: '1.5', textAlign: 'right', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>{dateStr}</div>
+                                                </div>
+
+                                                {/* ── Mobile card ── */}
+                                                <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.75rem 1rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{empName}</span>
+                                                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', flexShrink: 0 }}>{dateStr}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{artTitle}</span>
+                                                        <span className="chip chip-neutral" style={{ flexShrink: 0 }}>{minutes} мин.</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            </>
-                        )}
+                            );
+                        })()}
                     </div>
                 )}
 
