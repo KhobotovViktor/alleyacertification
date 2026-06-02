@@ -3,13 +3,14 @@ import { supabase } from './supabaseClient';
 const STORAGE_KEY_CURRENT_USER = 'employee_current_user';
 
 // --- Auth ---
+// Login goes through a SECURITY DEFINER function that checks the bcrypt hash
+// server-side and returns the user WITHOUT any password field. The client can
+// no longer read the password column directly.
 export const login = async (userId, password) => {
-    const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .eq('password', password)
-        .single();
+    const { data: user, error } = await supabase.rpc('verify_login', {
+        p_id: userId,
+        p_password: password,
+    });
 
     if (user && !error) {
         localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
@@ -49,15 +50,14 @@ export const getFullUsersList = async () => {
 };
 
 export const createUser = async ({ id, name, password, role, department }) => {
-    const { error } = await supabase
-        .from('users')
-        .insert([{
-            id: id.trim(),
-            name: name.trim(),
-            password,
-            role,
-            department: department?.trim() || null,
-        }]);
+    // Password is hashed inside the SECURITY DEFINER function — never sent as plaintext to a row
+    const { error } = await supabase.rpc('admin_create_user', {
+        p_id: id.trim(),
+        p_name: name.trim(),
+        p_password: password,
+        p_role: role,
+        p_department: department?.trim() || null,
+    });
     if (error) {
         if (error.code === '23505') throw new Error('Пользователь с таким логином уже существует');
         throw error;
@@ -73,10 +73,10 @@ export const deleteUser = async (userId) => {
 };
 
 export const updateUserPassword = async (userId, password) => {
-    const { error } = await supabase
-        .from('users')
-        .update({ password })
-        .eq('id', userId);
+    const { error } = await supabase.rpc('admin_set_password', {
+        p_id: userId,
+        p_password: password,
+    });
     if (error) throw error;
 };
 
