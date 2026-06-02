@@ -342,28 +342,11 @@ export default function AdminDashboard() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: '1rem' }}>
                             {/* Score chip */}
-                            <div style={{
-                                padding: '0.4rem 0.9rem', borderRadius: '2rem', fontWeight: 700,
-                                fontSize: '0.85rem',
-                                background: selectedResult.passed ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-                                color: selectedResult.passed ? 'var(--success)' : 'var(--danger)',
-                                border: `1px solid ${selectedResult.passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                            }}>
+                            <span className={`chip ${selectedResult.passed ? 'chip-primary' : 'chip-danger'}`} style={{ fontSize: '0.85rem', padding: '0.4rem 0.9rem' }}>
                                 {selectedResult.score} / {selectedResult.total} баллов
-                            </div>
-                            <button
-                                onClick={() => setSelectedResult(null)}
-                                style={{
-                                    width: '2rem', height: '2rem', borderRadius: '0.5rem',
-                                    border: '1px solid #e2e8f0', background: '#f8fafc',
-                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color: 'var(--text-secondary)', transition: 'all 0.15s',
-                                    flexShrink: 0,
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#ef4444'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                            >
-                                <X size={14} style={{ pointerEvents: 'none' }} />
+                            </span>
+                            <button onClick={() => setSelectedResult(null)} className="btn btn-icon btn-icon-danger" title="Закрыть">
+                                <X size={14}/>
                             </button>
                         </div>
                     </div>
@@ -740,7 +723,6 @@ export default function AdminDashboard() {
                                                         onClick={() => handleDeleteTest(test.id)}
                                                         title="Удалить тест"
                                                         className="btn btn-icon btn-icon-danger"
-                                                        style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)' }}
                                                     >
                                                         <Trash2 size={14}/>
                                                     </button>
@@ -756,47 +738,57 @@ export default function AdminDashboard() {
 
                 {/* Articles List */}
                 {activeTab === 'articles' && (
-                    <div className="w-full lg:col-span-2">
-                        <div className="flex items-center gap-3 mb-4 ml-1">
-                            <FileText size={20} className="text-accent-primary" />
-                            <h3 className="m-0">Обучающие материалы</h3>
+                    <div className="w-full lg:col-span-2 flex-col gap-3 animate-fade-in">
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                            <FileText size={18} style={{ color: 'var(--accent-primary)' }} />
+                            <h3 style={{ margin: 0 }}>Обучающие материалы</h3>
+                            <span className="chip chip-neutral" style={{ fontVariantNumeric: 'tabular-nums' }}>{articles.length}</span>
                         </div>
+
                         {articles.length === 0 ? (
-                            <div className="bento-card text-secondary p-8 text-center border-dashed">
-                                У вас еще нет обучающих материалов. Нажмите "Добавить материал" чтобы начать.
+                            <div className="bento-card text-secondary p-8 text-center" style={{ borderStyle: 'dashed' }}>
+                                Нет обучающих материалов. Нажмите «Добавить материал» чтобы начать.
                             </div>
                         ) : (
-                            <div className="bento-grid">
+                            <div className="card p-0 overflow-hidden" style={{ borderRadius: 'var(--radius-2xl)' }}>
+                                {/* Column headers */}
+                                <div style={{ display: 'flex', alignItems: 'center', padding: '0.5rem 1rem', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+                                    <div style={{ flex: 1, fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Материал</div>
+                                    <div style={{ width: '6rem', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center', flexShrink: 0 }} className="mobile-hide">Дата</div>
+                                    <div style={{ width: '6rem', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'right', flexShrink: 0 }}>Действия</div>
+                                </div>
+
                                 {articles.map((article, index) => (
-                                    <div key={article.id} className={`bento-card animate-fade-in stagger-${(index % 5) + 1}`}>
-                                        <div className="flex-col gap-1.5 grow">
-                                            <div className="font-bold text-primary text-lg leading-tight mb-2">{article.title}</div>
-                                            <div className="text-xs text-secondary opacity-60">
-                                                Создан: {new Date(article.createdAt || Date.now()).toLocaleDateString()}
+                                    <div
+                                        key={article.id}
+                                        className={`animate-fade-in stagger-${(index % 5) + 1}`}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderBottom: index < articles.length - 1 ? '1px solid #f8fafc' : 'none', transition: 'background 0.15s' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                                    >
+                                        {/* Left: title + meta chips */}
+                                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{article.title}</span>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                                                {article.minTimeMinutes > 0 && <span className="chip chip-neutral"><Clock size={9}/> {article.minTimeMinutes} мин.</span>}
+                                                {article.videoUrl && <span className="chip chip-neutral">Видео</span>}
+                                                {article.audioUrl && <span className="chip chip-neutral">Аудио</span>}
                                             </div>
                                         </div>
-                                        
-                                        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100">
-                                            <Link to={`/admin/article/${article.id}`} className="btn btn-secondary flex-grow text-sm py-2 px-3 hover:text-accent-primary hover:border-accent-primary transition-all flex items-center justify-center gap-2">
-                                                <Edit size={16} /> <span>Изменить</span>
+
+                                        {/* Date (desktop) */}
+                                        <div style={{ width: '6rem', flexShrink: 0, textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }} className="mobile-hide">
+                                            {new Date(article.createdAt || Date.now()).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0, width: '6rem', justifyContent: 'flex-end' }}>
+                                            <Link to={`/admin/article/${article.id}`} className="btn btn-icon" title="Редактировать материал">
+                                                <Edit size={14}/>
                                             </Link>
-                                            <button 
-                                                onClick={() => handleDeleteArticle(article.id)} 
-                                                style={{
-                                                    width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444',
-                                                    border: '1px solid rgba(239, 68, 68, 0.1)', cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    position: 'relative',
-                                                    zIndex: 50,
-                                                    pointerEvents: 'auto'
-                                                }}
-                                                onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
-                                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; e.currentTarget.style.color = '#ef4444'; }}
-                                                title="Удалить материал"
-                                            >
-                                                <Trash2 size={16} style={{ pointerEvents: 'none' }} />
+                                            <button onClick={() => handleDeleteArticle(article.id)} className="btn btn-icon btn-icon-danger" title="Удалить материал">
+                                                <Trash2 size={14}/>
                                             </button>
                                         </div>
                                     </div>
@@ -808,18 +800,18 @@ export default function AdminDashboard() {
 
                 {/* Results List */}
                 {activeTab === 'results' && (
-                    <div className="card w-full lg:col-span-2">
-                        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                            <h3 className="flex items-center gap-2 m-0">
-                                <Users size={20} /> Последние результаты тестирования
-                            </h3>
+                    <div className="w-full lg:col-span-2 flex-col gap-3 animate-fade-in">
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <CheckCircle size={18} style={{ color: 'var(--accent-primary)' }} />
+                                <h3 style={{ margin: 0 }}>Результаты тестирования</h3>
+                                {results.length > 0 && <span className="chip chip-neutral" style={{ fontVariantNumeric: 'tabular-nums' }}>{results.length}</span>}
+                            </div>
                             {results.length > 0 && (
                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                    <button
-                                        onClick={exportResultsCSV}
-                                        className="btn btn-secondary text-xs py-1 px-3 flex items-center gap-1.5"
-                                    >
-                                        <Download size={13} /> Скачать CSV
+                                    <button onClick={exportResultsCSV} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '0.625rem' }}>
+                                        <Download size={13}/> Скачать CSV
                                     </button>
                                     <button
                                         onClick={async () => {
@@ -832,45 +824,55 @@ export default function AdminDashboard() {
                                                 setTimeout(() => setClearConfirm(false), 3000);
                                             }
                                         }}
-                                        className={`btn ${clearConfirm ? 'btn-danger' : 'btn-secondary'} text-xs py-1 px-3 transition-colors`}
+                                        className={`btn ${clearConfirm ? 'btn-danger' : 'btn-secondary'} transition-colors`}
+                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '0.625rem' }}
                                     >
                                         {clearConfirm ? 'Точно очистить?' : 'Очистить историю'}
                                     </button>
                                 </div>
                             )}
                         </div>
+
                         {results.length === 0 ? (
-                            <div className="text-secondary p-4 text-center border border-dashed border-[var(--border-color)] rounded-lg">
+                            <div className="bento-card text-secondary p-8 text-center" style={{ borderStyle: 'dashed' }}>
                                 Пока нет ни одного результата прохождения.
                             </div>
                         ) : (
-                            <div className="flex-col gap-3">
-                                {results.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50).map((result, index) => (
-                                    <div key={result.id} className={`flex items-center justify-between p-4 bg-white rounded-xl border border-[var(--border-color)] hover:shadow-md transition-all animate-fade-in stagger-${(index % 5) + 1}`} style={{ gap: '0.75rem' }}>
-                                        <div style={{ minWidth: 0, flex: 1 }}>
-                                            <div className="font-medium text-primary">{getEmpName(result.userId)}</div>
-                                            <div className="text-xs text-secondary mt-1">{getTestName(result.testId)} • {new Date(result.date).toLocaleString()}</div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                                            <div className={`badge ${result.passed ? 'bg-success/10 text-success border-success/30' : 'bg-danger/10 text-danger border-danger/30'}`}>
-                                                {result.score} / {result.total}
+                            <div className="card p-0 overflow-hidden" style={{ borderRadius: 'var(--radius-2xl)' }}>
+                                {/* Column headers */}
+                                <div style={{ display: 'flex', alignItems: 'center', padding: '0.5rem 1rem', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', gap: '0.75rem' }}>
+                                    <div style={{ flex: 1, fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Сотрудник / Тест</div>
+                                    <div style={{ width: '7.5rem', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center', flexShrink: 0 }} className="mobile-hide">Результат</div>
+                                    <div style={{ width: '3rem', fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'right', flexShrink: 0 }}></div>
+                                </div>
+
+                                {results.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50).map((result, index, arr) => (
+                                    <div
+                                        key={result.id}
+                                        className={`animate-fade-in stagger-${(index % 5) + 1}`}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.7rem 1rem', borderBottom: index < arr.length - 1 ? '1px solid #f8fafc' : 'none', transition: 'background 0.15s' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                                    >
+                                        {/* Info */}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getEmpName(result.userId)}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{getTestName(result.testId)}</span>
+                                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', flexShrink: 0 }}>{new Date(result.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                                                <span className={`chip ${result.passed ? 'chip-primary' : 'chip-danger'} mobile-only`}>{result.score}/{result.total}</span>
                                             </div>
-                                            <button
-                                                onClick={() => setSelectedResult(result)}
-                                                title="Посмотреть ответы"
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: '0.35rem',
-                                                    padding: '0.4rem 0.75rem', borderRadius: '0.625rem',
-                                                    border: '1px solid #e2e8f0', background: '#f8fafc',
-                                                    color: 'var(--text-secondary)', cursor: 'pointer',
-                                                    fontSize: '0.75rem', fontWeight: 600,
-                                                    transition: 'all 0.15s',
-                                                }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                                            >
-                                                <Eye size={13} style={{ pointerEvents: 'none' }} />
-                                                <span className="mobile-hide">Детали</span>
+                                        </div>
+
+                                        {/* Score (desktop) */}
+                                        <div style={{ width: '7.5rem', flexShrink: 0, display: 'flex', justifyContent: 'center' }} className="mobile-hide">
+                                            <span className={`chip ${result.passed ? 'chip-primary' : 'chip-danger'}`}>{result.score} / {result.total}</span>
+                                        </div>
+
+                                        {/* Details btn */}
+                                        <div style={{ width: '3rem', flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
+                                            <button onClick={() => setSelectedResult(result)} title="Посмотреть ответы" className="btn btn-icon">
+                                                <Eye size={14}/>
                                             </button>
                                         </div>
                                     </div>
@@ -883,8 +885,11 @@ export default function AdminDashboard() {
                 {/* ── Analytics ── */}
                 {activeTab === 'analytics' && (
                     <div className="card w-full lg:col-span-2 animate-fade-in">
-                        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                            <h3 className="flex items-center gap-2 m-0"><BarChart2 size={20} className="text-accent-primary" /> Аналитика по вопросам</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <BarChart2 size={18} style={{ color: 'var(--accent-primary)' }} />
+                                <h3 style={{ margin: 0 }}>Аналитика по вопросам</h3>
+                            </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <CustomSelect
                                     style={{ minWidth: '200px', maxWidth: '260px' }}
@@ -894,20 +899,7 @@ export default function AdminDashboard() {
                                     options={tests.map(t => ({ value: t.id, label: t.title }))}
                                 />
                                 {analyticsTestId && (
-                                    <button
-                                        onClick={() => setAnalyticsTestId('')}
-                                        title="Сбросить выбор"
-                                        style={{
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            width: '2.25rem', height: '2.25rem', flexShrink: 0,
-                                            background: 'white', border: '1px solid #e2e8f0',
-                                            borderRadius: '0.625rem', cursor: 'pointer',
-                                            color: 'var(--text-secondary)',
-                                            transition: 'all 0.2s',
-                                        }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; e.currentTarget.style.color = '#ef4444'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                                    >
+                                    <button onClick={() => setAnalyticsTestId('')} title="Сбросить выбор" className="btn btn-icon">
                                         <X size={14} />
                                     </button>
                                 )}
@@ -1034,10 +1026,11 @@ export default function AdminDashboard() {
 
                         {/* ── User Management ── */}
                         <div className="card">
-                            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                                <div className="flex items-center gap-3">
-                                    <Users size={20} className="text-accent-primary" />
-                                    <h3 className="m-0">Пользователи</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Users size={18} style={{ color: 'var(--accent-primary)' }} />
+                                    <h3 style={{ margin: 0 }}>Пользователи</h3>
+                                    {allUsers.length > 0 && <span className="chip chip-neutral" style={{ fontVariantNumeric: 'tabular-nums' }}>{allUsers.length}</span>}
                                 </div>
                                 <button
                                     onClick={() => { setShowAddUser(true); setNewUserError(''); }}
@@ -1057,7 +1050,7 @@ export default function AdminDashboard() {
                                     return (
                                         <div key={u.id} style={{ borderRadius: '0.875rem', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                                             {/* Main row */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'white', flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'white' }}>
                                                 {/* Avatar */}
                                                 <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '50%', background: u.role === 'admin' ? 'rgba(99,102,241,0.12)' : 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700, fontSize: '0.875rem', color: u.role === 'admin' ? '#6366f1' : 'var(--accent-primary)' }}>
                                                     {u.name.charAt(0).toUpperCase()}
@@ -1065,16 +1058,16 @@ export default function AdminDashboard() {
 
                                                 {/* Name + login */}
                                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                        {u.name}
-                                                        {isMe && <span className="chip chip-primary">вы</span>}
-                                                    </div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <span style={{ fontFamily: 'monospace' }}>@{u.id}</span>
-                                                        <span className={`chip ${u.role === 'admin' ? 'chip-purple' : 'chip-primary'}`}>
+                                                    <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{u.name}</span>
+                                                        {isMe && <span className="chip chip-primary" style={{ flexShrink: 0 }}>вы</span>}
+                                                        <span className={`chip ${u.role === 'admin' ? 'chip-purple' : 'chip-primary'}`} style={{ flexShrink: 0 }}>
                                                             {u.role === 'admin' ? <ShieldCheck size={9} /> : <Users size={9} />}
                                                             {u.role === 'admin' ? 'Админ' : 'Сотрудник'}
                                                         </span>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        @{u.id}
                                                     </div>
                                                 </div>
 
@@ -1084,9 +1077,7 @@ export default function AdminDashboard() {
                                                     <button
                                                         onClick={() => { setChangePwdRow(isPwdOpen ? null : u.id); setChangePwdValue(''); setShowChangePwd(false); setDeleteConfirmUserId(null); }}
                                                         title="Сменить пароль"
-                                                        style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid', borderColor: isPwdOpen ? 'rgba(99,102,241,0.4)' : '#e2e8f0', background: isPwdOpen ? 'rgba(99,102,241,0.08)' : 'white', color: isPwdOpen ? '#6366f1' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
-                                                        onMouseEnter={e => { if (!isPwdOpen) { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = '#6366f1'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; }}}
-                                                        onMouseLeave={e => { if (!isPwdOpen) { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}}
+                                                        className={`btn btn-icon${isPwdOpen ? ' btn-icon-active' : ''}`}
                                                     >
                                                         <KeyRound size={14} />
                                                     </button>
@@ -1095,9 +1086,7 @@ export default function AdminDashboard() {
                                                         <button
                                                             onClick={() => { setDeleteConfirmUserId(isDeleteOpen ? null : u.id); setChangePwdRow(null); }}
                                                             title="Удалить пользователя"
-                                                            style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid', borderColor: isDeleteOpen ? 'rgba(239,68,68,0.4)' : '#e2e8f0', background: isDeleteOpen ? 'rgba(239,68,68,0.08)' : 'white', color: isDeleteOpen ? '#ef4444' : 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
-                                                            onMouseEnter={e => { if (!isDeleteOpen) { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; }}}
-                                                            onMouseLeave={e => { if (!isDeleteOpen) { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}}
+                                                            className={`btn btn-icon${isDeleteOpen ? ' btn-icon-danger-active' : ' btn-icon-danger'}`}
                                                         >
                                                             <Trash2 size={14} />
                                                         </button>
@@ -1148,9 +1137,9 @@ export default function AdminDashboard() {
 
                         {/* ── Department Management ── */}
                         <div className="card">
-                            <div className="flex items-center gap-3 mb-2">
-                                <Users size={20} className="text-accent-primary" />
-                                <h3 className="m-0">Отделы</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                                <Users size={18} style={{ color: 'var(--accent-primary)' }} />
+                                <h3 style={{ margin: 0 }}>Отделы</h3>
                             </div>
                             <p className="text-sm text-secondary mb-4">Назначьте сотрудников по отделам — это позволит быстро выбирать аудиторию при назначении тестов.</p>
 
@@ -1223,13 +1212,8 @@ export default function AdminDashboard() {
                             <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Управление пользователями</div>
                             <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-primary)' }}>Новый пользователь</h3>
                         </div>
-                        <button
-                            onClick={() => { setShowAddUser(false); setNewUserError(''); }}
-                            style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flexShrink: 0 }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#ef4444'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                        >
-                            <X size={14} style={{ pointerEvents: 'none' }} />
+                        <button onClick={() => { setShowAddUser(false); setNewUserError(''); }} className="btn btn-icon btn-icon-danger" title="Закрыть">
+                            <X size={14}/>
                         </button>
                     </div>
 
