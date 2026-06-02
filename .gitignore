@@ -17,6 +17,9 @@ dist-ssr
 .env.*
 b24.env
 
+# One-off migration backups (large base64 dumps)
+migration-backup/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

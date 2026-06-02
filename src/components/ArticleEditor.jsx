@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Save, ArrowLeft, FileText, Users, Clock, Video, Headphones, Upload, Loader2 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
-import { getArticleById, saveArticle, getAllEmployees, uploadAudioFile } from '../services/db';
+import { getArticleById, saveArticle, getAllEmployees, uploadAudioFile, uploadQuestionMedia } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
-import { useRef } from 'react';
 
 export default function ArticleEditor() {
     const { id } = useParams();
@@ -26,7 +25,87 @@ export default function ArticleEditor() {
 
     const [isLoading, setIsLoading] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
+    const [isImageUploading, setIsImageUploading] = useState(false);
     const fileInputRef = useRef(null);
+    const quillRef = useRef(null);
+
+    // Upload an image File to Supabase Storage and insert it as a URL at the cursor.
+    // This replaces Quill's default behaviour of embedding images as huge base64
+    // data-URIs inside `content` (which bloated articles to 10+ MB and caused
+    // saves to exceed the DB statement timeout).
+    const insertImageFromFile = useCallback(async (file) => {
+        if (!file || !file.type.startsWith('image/')) return;
+        const editor = quillRef.current?.getEditor?.();
+        if (!editor) return;
+        setIsImageUploading(true);
+        try {
+            const { url } = await uploadQuestionMedia(file);
+            const range = editor.getSelection(true) || { index: editor.getLength() };
+            editor.insertEmbed(range.index, 'image', url, 'user');
+            editor.setSelection(range.index + 1, 0);
+        } catch (err) {
+            console.error('Image upload error:', err);
+            alert('Ошибка при загрузке изображения. Попробуйте файл меньшего размера.');
+        } finally {
+            setIsImageUploading(false);
+        }
+    }, []);
+
+    // Toolbar image button → open a file picker → upload to storage
+    const imageHandler = useCallback(() => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+        input.onchange = () => {
+            const file = input.files?.[0];
+            if (file) insertImageFromFile(file);
+        };
+    }, [insertImageFromFile]);
+
+    // Quill modules — stable reference so the custom image handler isn't lost on re-render
+    const quillModules = useMemo(() => ({
+        toolbar: {
+            container: [
+                [{ 'header': [1, 2, 3, false] }, { 'size': ['small', false, 'large', 'huge'] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                ['link', 'image', 'clean']
+            ],
+            handlers: { image: imageHandler }
+        }
+    }), [imageHandler]);
+
+    // Intercept pasted / dropped images so they go to storage instead of base64
+    useEffect(() => {
+        if (isLoading || activeTab !== 'content') return;
+        const editor = quillRef.current?.getEditor?.();
+        if (!editor) return;
+        const root = editor.root;
+
+        const handleImageEvent = (e, fileList) => {
+            for (const item of fileList) {
+                const file = typeof item.getAsFile === 'function' ? item.getAsFile() : item;
+                if (file && file.type && file.type.startsWith('image/')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertImageFromFile(file);
+                    return true;
+                }
+            }
+            return false;
+        };
+        const onPaste = (e) => { if (e.clipboardData?.items) handleImageEvent(e, e.clipboardData.items); };
+        const onDrop = (e) => { if (e.dataTransfer?.files?.length) handleImageEvent(e, e.dataTransfer.files); };
+
+        root.addEventListener('paste', onPaste, true);
+        root.addEventListener('drop', onDrop, true);
+        return () => {
+            root.removeEventListener('paste', onPaste, true);
+            root.removeEventListener('drop', onDrop, true);
+        };
+    }, [isLoading, activeTab, insertImageFromFile]);
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -64,8 +143,13 @@ export default function ArticleEditor() {
             await saveArticle(article);
             navigate('/admin');
         } catch (err) {
-            alert('Ошибка при сохранении материала');
             console.error(err);
+            const msg = (err?.message || '') + (err?.code || '');
+            if (/timeout|57014|statement/i.test(msg)) {
+                alert('Не удалось сохранить: материал слишком большой. Скорее всего в тексте есть изображения, вставленные напрямую. Удалите их и вставьте заново через кнопку — они загрузятся в хранилище и размер уменьшится.');
+            } else {
+                alert('Ошибка при сохранении материала');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -228,24 +312,27 @@ export default function ArticleEditor() {
                     </div>
 
                     <div className="form-group flex-1 flex flex-col">
-                        <label className="form-label">Текст материала <span className="text-danger">*</span></label>
+                        <label className="form-label flex items-center gap-2">
+                            Текст материала <span className="text-danger">*</span>
+                            {isImageUploading && (
+                                <span className="flex items-center gap-1 text-xs text-accent-primary font-semibold">
+                                    <Loader2 size={13} className="animate-spin" /> Загрузка изображения…
+                                </span>
+                            )}
+                        </label>
                         <div className="bg-white rounded-xl border border-[var(--border-color)] overflow-hidden" style={{ display: 'flex', flexDirection: 'column' }}>
                             <ReactQuill
+                                ref={quillRef}
                                 theme="snow"
                                 value={article.content}
                                 onChange={(content) => setArticle({ ...article, content })}
                                 style={{ height: '400px', display: 'flex', flexDirection: 'column' }}
                                 placeholder="Напишите всё, что сотруднику нужно знать перед прохождением теста..."
-                                modules={{
-                                    toolbar: [
-                                        [{ 'header': [1, 2, 3, false] }, { 'size': ['small', false, 'large', 'huge'] }],
-                                        ['bold', 'italic', 'underline', 'strike'],
-                                        [{ 'color': [] }, { 'background': [] }],
-                                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                                        ['link', 'image', 'clean']
-                                    ]
-                                }}
+                                modules={quillModules}
                             />
+                        </div>
+                        <div className="text-xs text-secondary mt-1">
+                            Изображения загружаются в хранилище автоматически — можно вставлять кнопкой, copy-paste или перетаскиванием.
                         </div>
                     </div>
                 </div>
