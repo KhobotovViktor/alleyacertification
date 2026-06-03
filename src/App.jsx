@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useNavigate } from 'react-router-dom';
 import { LogOut, BookOpen, ShieldCheck } from 'lucide-react';
-import { getCurrentUser, logout } from './services/db';
+import { getCurrentUser, logout, ensureFreshSession } from './services/db';
 import { registerServiceWorker, requestAndSubscribe } from './services/pushNotifications';
 
 // Pages — lazy loaded for route-based code splitting
@@ -35,6 +35,10 @@ const Layout = () => {
 
   // Register Service Worker once on mount
   useEffect(() => { registerServiceWorker(); }, []);
+
+  // Before row-level security is enforced: if a stored profile has no real
+  // Supabase session (logged in under the old code), prompt a fresh sign-in.
+  useEffect(() => { ensureFreshSession(); }, []);
 
   // Subscribe to push when user logs in
   useEffect(() => {

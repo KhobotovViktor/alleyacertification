@@ -64,6 +64,24 @@ export const getCurrentUser = () => {
     return user ? JSON.parse(user) : null;
 };
 
+// Ensures the stored profile is backed by a real Supabase Auth session.
+// Users who logged in under the previous code have a profile but no session;
+// once row-level security is enabled their requests would fail, so we log them
+// out here to prompt a fresh sign-in. Returns true if a valid session exists.
+export const ensureFreshSession = async () => {
+    if (!getCurrentUser()) return true; // not logged in — nothing to validate
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            logout();
+            return false;
+        }
+        return true;
+    } catch {
+        return true; // network hiccup — don't force a logout on transient errors
+    }
+};
+
 export const getAllUsers = async () => {
     const { data, error } = await supabase
         .from('users')
