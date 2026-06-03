@@ -5,6 +5,29 @@ import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedi
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
 
+// Synonyms field: keeps a local text string while editing so commas and spaces
+// type naturally, and only splits into the array on blur. (Previously the value
+// was round-tripped through split/trim/filter on every keystroke, which ate the
+// commas as you typed.)
+function SynonymsInput({ value, onCommit, className, style, placeholder }) {
+    const [text, setText] = useState((value || []).join(', '));
+    // Re-sync only when the underlying array reference actually changes
+    // (load / external commit), not while typing other fields of the question.
+    useEffect(() => { setText((value || []).join(', ')); }, [value]);
+    const commit = () => onCommit(text.split(',').map(s => s.trim()).filter(Boolean));
+    return (
+        <input
+            type="text"
+            className={className}
+            style={style}
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onBlur={commit}
+            placeholder={placeholder}
+        />
+    );
+}
+
 // Memoized single-question editor. Because TestEditor keeps untouched question
 // objects by reference and all callbacks below are stable (useCallback), only the
 // card whose question actually changed re-renders — typing in one question no
@@ -258,12 +281,11 @@ const QuestionCard = memo(function QuestionCard({
                         </div>
                         <div>
                             <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Синонимы (через запятую)</label>
-                            <input
-                                type="text"
+                            <SynonymsInput
+                                value={q.synonyms}
+                                onCommit={syns => updateQuestion(q.id, { synonyms: syns })}
                                 className="form-control h-11 px-5"
                                 style={{ borderRadius: '1rem', background: 'white' }}
-                                value={(q.synonyms || []).join(', ')}
-                                onChange={e => updateQuestion(q.id, { synonyms: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                                 placeholder="диван, кресло, диваны..."
                             />
                             <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
