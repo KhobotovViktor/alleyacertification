@@ -27,14 +27,16 @@ export default function CustomSelect({
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
-    /* close on outside click */
+    /* close on outside click — only listen while open (avoids one permanent
+       global listener per instance when many selects are on the page) */
     useEffect(() => {
+        if (!open) return;
         const handler = (e) => {
             if (ref.current && !ref.current.contains(e.target)) setOpen(false);
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
-    }, []);
+    }, [open]);
 
     /* close on Escape */
     useEffect(() => {

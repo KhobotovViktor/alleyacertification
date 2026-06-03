@@ -1,9 +1,281 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Save, ArrowLeft, Settings, List, FileQuestion, CheckCircle, Link2, Copy, Globe, Paperclip, X, ImageIcon, Music, Video, Loader2, Send, PenLine, CalendarClock, Users, ChevronDown } from 'lucide-react';
 import { getTestById, saveTest, getAllEmployees, getArticles, uploadQuestionMedia, notifyTestPublished, getCurrentUser, getFollowerIds, sendPushNotification, getTestCollaborators, addCollaborator, removeCollaborator, updateCollaboratorRole } from '../services/db';
 import { EditorSkeleton } from './SkeletonLoader';
 import CustomSelect from './ui/CustomSelect';
+
+// Memoized single-question editor. Because TestEditor keeps untouched question
+// objects by reference and all callbacks below are stable (useCallback), only the
+// card whose question actually changed re-renders — typing in one question no
+// longer re-renders every other card.
+const QuestionCard = memo(function QuestionCard({
+    question: q,
+    index: qIndex,
+    isUploading,
+    onUpdate: updateQuestion,
+    onRemove: removeQuestion,
+    onUpdateOption: updateOption,
+    onAddOption: addOption,
+    onRemoveOption: removeOption,
+    onToggleCorrect: toggleCorrectAnswer,
+    onMediaUpload: handleMediaUpload,
+}) {
+    return (
+        <div className="card relative border-l-4 border-l-accent-primary animate-fade-in" style={{ padding: '2rem', background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(12px)', borderRadius: '1.5rem' }}>
+            {/* Question Delete Button */}
+            <button
+                onClick={() => removeQuestion(q.id)}
+                title="Удалить вопрос"
+                style={{
+                    position: 'absolute', top: '1rem', right: '1rem',
+                    width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.15)', cursor: 'pointer',
+                    transition: 'all 0.25s', zIndex: 10
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+                <Trash2 size={18} />
+            </button>
+
+            <div className="flex-col gap-6">
+                {/* Header: Number, Input, Type */}
+                <div className="flex-col gap-4">
+                    {/* Row 1: Question Number Badge */}
+                    <div className="flex items-center">
+                        <div className="bg-accent-primary text-white px-4 h-10 flex items-center justify-center rounded-xl font-bold flex-shrink-0 shadow-[0_4px_12px_rgba(var(--accent-primary-rgb),0.3)] text-sm">
+                            Вопрос №{qIndex + 1}
+                        </div>
+                    </div>
+
+                    {/* Row 2: Widened Question Input aligned with Answer Inputs' right edge */}
+                    <div className="flex items-center gap-4">
+                        <input
+                            type="text"
+                            className="form-control flex-grow h-11 px-5"
+                            style={{ borderRadius: '1rem', background: 'white', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+                            value={q.text}
+                            onChange={e => updateQuestion(q.id, { text: e.target.value })}
+                            placeholder="Введите текст вопроса..."
+                        />
+                        <div className="w-11 shrink-0"></div> {/* Spacer to align right edge with answer inputs */}
+                    </div>
+
+                    {/* Row 3: Type Selector aligned with width */}
+                    <div className="flex items-center gap-4">
+                        <div className="flex flex-col gap-1" style={{ minWidth: '220px' }}>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-50 ml-1">Тип ответа</span>
+                            <CustomSelect
+                                style={{ borderRadius: '1rem' }}
+                                value={q.type}
+                                onChange={v => updateQuestion(q.id, {
+                                    type: v,
+                                    correctAnswers: v === 'single' && q.options.length ? [q.options[0]] : []
+                                })}
+                                options={[
+                                    { value: 'single', label: 'Один правильный' },
+                                    { value: 'multiple', label: 'Несколько ответов' },
+                                    { value: 'text', label: 'Текстовый ответ' },
+                                ]}
+                            />
+                        </div>
+                        <div className="flex-grow"></div>
+                        <div className="w-11 shrink-0"></div>
+                    </div>
+                </div>
+
+                {/* ── Media Attachment ── */}
+                <div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-50 ml-1 mb-2">Медиафайл к вопросу</div>
+
+                    {q.mediaUrl ? (
+                        /* ── Preview ── */
+                        <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                            {q.mediaType === 'image' && (
+                                <img
+                                    src={q.mediaUrl}
+                                    alt="Медиа вопроса"
+                                    style={{ display: 'block', width: '100%', maxHeight: '280px', objectFit: 'contain', background: '#f1f5f9' }}
+                                />
+                            )}
+                            {q.mediaType === 'audio' && (
+                                <div style={{ padding: '1rem' }}>
+                                    <audio controls src={q.mediaUrl} style={{ width: '100%', display: 'block' }} />
+                                </div>
+                            )}
+                            {q.mediaType === 'video' && (
+                                <video
+                                    controls
+                                    src={q.mediaUrl}
+                                    style={{ display: 'block', width: '100%', maxHeight: '280px', background: '#000' }}
+                                />
+                            )}
+                            {/* Remove button */}
+                            <button
+                                type="button"
+                                onClick={() => updateQuestion(q.id, { mediaUrl: null, mediaType: null })}
+                                title="Убрать медиафайл"
+                                style={{
+                                    position: 'absolute', top: '0.5rem', right: '0.5rem',
+                                    display: 'flex', alignItems: 'center', gap: '0.3rem',
+                                    padding: '0.3rem 0.65rem', borderRadius: '0.5rem',
+                                    border: 'none', background: 'rgba(15,23,42,0.65)',
+                                    color: 'white', fontSize: '0.75rem', fontWeight: 600,
+                                    cursor: 'pointer', backdropFilter: 'blur(4px)',
+                                    transition: 'background 0.2s', fontFamily: 'inherit',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(15,23,42,0.65)'; }}
+                            >
+                                <X size={12} /> Убрать
+                            </button>
+                        </div>
+                    ) : (
+                        /* ── Upload zone ── */
+                        <label style={{ display: 'block', cursor: isUploading ? 'wait' : 'pointer' }}>
+                            <input
+                                type="file"
+                                accept="image/*,audio/*,video/*"
+                                style={{ display: 'none' }}
+                                disabled={isUploading}
+                                onChange={e => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handleMediaUpload(q.id, f);
+                                    e.target.value = '';
+                                }}
+                            />
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexDirection: 'column', gap: '0.5rem',
+                                padding: '1.25rem', borderRadius: '1rem',
+                                border: '1.5px dashed #cbd5e1',
+                                background: 'rgba(248,250,252,0.8)',
+                                transition: 'all 0.2s',
+                                color: 'var(--text-secondary)',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.background = 'rgba(16,185,129,0.04)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'rgba(248,250,252,0.8)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <Loader2 size={20} style={{ animation: 'spin 0.8s linear infinite' }} />
+                                        <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Загрузка...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <ImageIcon size={18} />
+                                            <Music size={18} />
+                                            <Video size={18} />
+                                        </div>
+                                        <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Прикрепить изображение, аудио или видео</span>
+                                        <span style={{ fontSize: '0.72rem', opacity: 0.6 }}>Нажмите для выбора · до 50 МБ</span>
+                                    </>
+                                )}
+                            </div>
+                        </label>
+                    )}
+                </div>
+
+                {q.type !== 'text' ? (
+                    <div className="flex-col gap-4 bg-white/30 p-6 rounded-2xl border border-white/50 shadow-sm mt-2">
+                        <div className="text-[11px] font-black uppercase tracking-[0.15em] text-secondary mb-1 opacity-40">Варианты ответов</div>
+                        <div className="flex-col gap-3">
+                            {q.options.map((opt, optIdx) => (
+                                <div key={optIdx} className="flex items-center gap-4">
+                                    {/* Correct Answer Toggle */}
+                                    <div className="relative flex items-center justify-center group/check h-11 w-11 shrink-0">
+                                        <input
+                                            type={q.type === 'single' ? 'radio' : 'checkbox'}
+                                            name={`correct-${q.id}`}
+                                            checked={q.correctAnswers.includes(opt)}
+                                            onChange={() => toggleCorrectAnswer(q.id, opt, q.type)}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        />
+                                        <div className={`w-9 h-9 flex items-center justify-center transition-all duration-300 ${q.type === 'single' ? 'rounded-full' : 'rounded-lg'} ${q.correctAnswers.includes(opt) ? 'bg-success shadow-[0_4px_12px_rgba(34,197,94,0.4)] scale-100' : 'bg-white/80 border-2 border-slate-200 scale-95 group-hover/check:border-success/30'}`}>
+                                            {q.correctAnswers.includes(opt) && (
+                                                <div className={`w-3 h-3 bg-white ${q.type === 'single' ? 'rounded-full' : 'rounded-sm'} animate-scale-up`}></div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Option Input */}
+                                    <input
+                                        type="text"
+                                        className="form-control flex-grow h-11 px-5"
+                                        style={{ borderRadius: '1rem', background: 'white', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+                                        value={opt}
+                                        onChange={e => updateOption(q.id, optIdx, e.target.value)}
+                                    />
+
+                                    {/* Option Delete Button */}
+                                    <button
+                                        onClick={() => removeOption(q.id, optIdx)}
+                                        style={{
+                                            width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444',
+                                            border: '1px solid rgba(239, 68, 68, 0.1)', cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; e.currentTarget.style.color = '#ef4444'; }}
+                                        title="Удалить вариант"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Add Option Button - Matches Option Input Width */}
+                        <div className="flex items-center gap-4">
+                            <div className="w-11 h-11 shrink-0"></div>
+                            <button
+                                onClick={() => addOption(q.id)}
+                                className="btn btn-secondary flex items-center justify-center gap-2 h-11 flex-grow bg-white/60 hover:bg-white border-dashed text-accent-primary"
+                                style={{ borderRadius: '1rem' }}
+                            >
+                                <Plus size={18} /> Добавить вариант
+                            </button>
+                            <div className="w-[2.75rem] h-[2.75rem] shrink-0"></div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white/30 p-6 rounded-2xl border border-white/50 shadow-sm flex-col gap-4">
+                        <div>
+                            <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Правильный ответ</label>
+                            <input
+                                type="text"
+                                className="form-control h-12 px-5"
+                                style={{ borderRadius: '1rem', background: 'white' }}
+                                value={q.correctAnswers[0] || ''}
+                                onChange={e => updateQuestion(q.id, { correctAnswers: [e.target.value] })}
+                                placeholder="Введите эталонный ответ..."
+                            />
+                        </div>
+                        <div>
+                            <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Синонимы (через запятую)</label>
+                            <input
+                                type="text"
+                                className="form-control h-11 px-5"
+                                style={{ borderRadius: '1rem', background: 'white' }}
+                                value={(q.synonyms || []).join(', ')}
+                                onChange={e => updateQuestion(q.id, { synonyms: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                                placeholder="диван, кресло, диваны..."
+                            />
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                Все перечисленные варианты будут считаться правильными
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});
 
 export default function TestEditor() {
     const { id } = useParams();
@@ -52,18 +324,21 @@ export default function TestEditor() {
     const [addCollabRole, setAddCollabRole] = useState('edit');
     const [collabSubmitting, setCollabSubmitting] = useState(false);
 
-    const handleMediaUpload = async (qId, file) => {
+    const handleMediaUpload = useCallback(async (qId, file) => {
         if (!file) return;
         setUploadingQId(qId);
         try {
             const result = await uploadQuestionMedia(file);
-            updateQuestion(qId, { mediaUrl: result.url, mediaType: result.mediaType });
+            setTest(prev => ({
+                ...prev,
+                questions: prev.questions.map(q => q.id === qId ? { ...q, mediaUrl: result.url, mediaType: result.mediaType } : q)
+            }));
         } catch (err) {
             alert(`Ошибка загрузки: ${err.message}`);
         } finally {
             setUploadingQId(null);
         }
-    };
+    }, []);
 
     const testLink = !isNew && test.id ? `${window.location.origin}/test/${test.id}` : null;
 
@@ -160,7 +435,7 @@ export default function TestEditor() {
 
     const isDraft = (test.status || 'draft') === 'draft';
 
-    const addQuestion = () => {
+    const addQuestion = useCallback(() => {
         const newQuestion = {
             id: Date.now().toString(),
             type: 'single',
@@ -171,23 +446,23 @@ export default function TestEditor() {
         };
         setTest(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }));
         setActiveTab('questions');
-    };
+    }, []);
 
-    const updateQuestion = (qId, updates) => {
+    const updateQuestion = useCallback((qId, updates) => {
         setTest(prev => ({
             ...prev,
             questions: prev.questions.map(q => q.id === qId ? { ...q, ...updates } : q)
         }));
-    };
+    }, []);
 
-    const removeQuestion = (qId) => {
+    const removeQuestion = useCallback((qId) => {
         setTest(prev => ({
             ...prev,
             questions: prev.questions.filter(q => q.id !== qId)
         }));
-    };
+    }, []);
 
-    const updateOption = (qId, optionIndex, newValue) => {
+    const updateOption = useCallback((qId, optionIndex, newValue) => {
         setTest(prev => ({
             ...prev,
             questions: prev.questions.map(q => {
@@ -205,16 +480,16 @@ export default function TestEditor() {
                 return q;
             })
         }));
-    };
+    }, []);
 
-    const addOption = (qId) => {
+    const addOption = useCallback((qId) => {
         setTest(prev => ({
             ...prev,
             questions: prev.questions.map(q => q.id === qId ? { ...q, options: [...q.options, `Вариант ${q.options.length + 1}`] } : q)
         }));
-    };
+    }, []);
 
-    const removeOption = (qId, optionIndex) => {
+    const removeOption = useCallback((qId, optionIndex) => {
         setTest(prev => ({
             ...prev,
             questions: prev.questions.map(q => {
@@ -227,9 +502,9 @@ export default function TestEditor() {
                 return q;
             })
         }));
-    };
+    }, []);
 
-    const toggleCorrectAnswer = (qId, optionValue, type) => {
+    const toggleCorrectAnswer = useCallback((qId, optionValue, type) => {
         setTest(prev => ({
             ...prev,
             questions: prev.questions.map(q => {
@@ -249,7 +524,7 @@ export default function TestEditor() {
                 return q;
             })
         }));
-    };
+    }, []);
 
     const isOwner = !isNew && test.createdBy === currentUser?.id;
     const isCollaborator = !isNew && !isOwner && collaborators.some(c => c.userId === currentUser?.id);
@@ -778,258 +1053,19 @@ export default function TestEditor() {
             {activeTab === 'questions' && (
                 <div className="flex-col gap-6 animate-fade-in">
                     {test.questions.map((q, qIndex) => (
-                        <div key={q.id} className="card relative border-l-4 border-l-accent-primary animate-fade-in" style={{ padding: '2rem', background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(12px)', borderRadius: '1.5rem' }}>
-                            {/* Question Delete Button */}
-                            <button
-                                onClick={() => removeQuestion(q.id)}
-                                title="Удалить вопрос"
-                                style={{
-                                    position: 'absolute', top: '1rem', right: '1rem',
-                                    width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                                    border: '1px solid rgba(239, 68, 68, 0.15)', cursor: 'pointer',
-                                    transition: 'all 0.25s', zIndex: 10
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.transform = 'scale(1)'; }}
-                            >
-                                <Trash2 size={18} />
-                            </button>
-
-                            <div className="flex-col gap-6">
-                                {/* Header: Number, Input, Type */}
-                                <div className="flex-col gap-4">
-                                    {/* Row 1: Question Number Badge */}
-                                    <div className="flex items-center">
-                                        <div className="bg-accent-primary text-white px-4 h-10 flex items-center justify-center rounded-xl font-bold flex-shrink-0 shadow-[0_4px_12px_rgba(var(--accent-primary-rgb),0.3)] text-sm">
-                                            Вопрос №{qIndex + 1}
-                                        </div>
-                                    </div>
-
-                                    {/* Row 2: Widened Question Input aligned with Answer Inputs' right edge */}
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="text"
-                                            className="form-control flex-grow h-11 px-5"
-                                            style={{ borderRadius: '1rem', background: 'white', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
-                                            value={q.text}
-                                            onChange={e => updateQuestion(q.id, { text: e.target.value })}
-                                            placeholder="Введите текст вопроса..."
-                                        />
-                                        <div className="w-11 shrink-0"></div> {/* Spacer to align right edge with answer inputs */}
-                                    </div>
-
-                                    {/* Row 3: Type Selector aligned with width */}
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex flex-col gap-1" style={{ minWidth: '220px' }}>
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-50 ml-1">Тип ответа</span>
-                                            <CustomSelect
-                                                style={{ borderRadius: '1rem' }}
-                                                value={q.type}
-                                                onChange={v => updateQuestion(q.id, {
-                                                    type: v,
-                                                    correctAnswers: v === 'single' && q.options.length ? [q.options[0]] : []
-                                                })}
-                                                options={[
-                                                    { value: 'single', label: 'Один правильный' },
-                                                    { value: 'multiple', label: 'Несколько ответов' },
-                                                    { value: 'text', label: 'Текстовый ответ' },
-                                                ]}
-                                            />
-                                        </div>
-                                        <div className="flex-grow"></div>
-                                        <div className="w-11 shrink-0"></div>
-                                    </div>
-                                </div>
-
-                                {/* ── Media Attachment ── */}
-                                <div>
-                                    <div className="text-[10px] font-bold uppercase tracking-widest text-secondary opacity-50 ml-1 mb-2">Медиафайл к вопросу</div>
-
-                                    {q.mediaUrl ? (
-                                        /* ── Preview ── */
-                                        <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                                            {q.mediaType === 'image' && (
-                                                <img
-                                                    src={q.mediaUrl}
-                                                    alt="Медиа вопроса"
-                                                    style={{ display: 'block', width: '100%', maxHeight: '280px', objectFit: 'contain', background: '#f1f5f9' }}
-                                                />
-                                            )}
-                                            {q.mediaType === 'audio' && (
-                                                <div style={{ padding: '1rem' }}>
-                                                    <audio controls src={q.mediaUrl} style={{ width: '100%', display: 'block' }} />
-                                                </div>
-                                            )}
-                                            {q.mediaType === 'video' && (
-                                                <video
-                                                    controls
-                                                    src={q.mediaUrl}
-                                                    style={{ display: 'block', width: '100%', maxHeight: '280px', background: '#000' }}
-                                                />
-                                            )}
-                                            {/* Remove button */}
-                                            <button
-                                                type="button"
-                                                onClick={() => updateQuestion(q.id, { mediaUrl: null, mediaType: null })}
-                                                title="Убрать медиафайл"
-                                                style={{
-                                                    position: 'absolute', top: '0.5rem', right: '0.5rem',
-                                                    display: 'flex', alignItems: 'center', gap: '0.3rem',
-                                                    padding: '0.3rem 0.65rem', borderRadius: '0.5rem',
-                                                    border: 'none', background: 'rgba(15,23,42,0.65)',
-                                                    color: 'white', fontSize: '0.75rem', fontWeight: 600,
-                                                    cursor: 'pointer', backdropFilter: 'blur(4px)',
-                                                    transition: 'background 0.2s', fontFamily: 'inherit',
-                                                }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(15,23,42,0.65)'; }}
-                                            >
-                                                <X size={12} /> Убрать
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        /* ── Upload zone ── */
-                                        <label style={{ display: 'block', cursor: uploadingQId === q.id ? 'wait' : 'pointer' }}>
-                                            <input
-                                                type="file"
-                                                accept="image/*,audio/*,video/*"
-                                                style={{ display: 'none' }}
-                                                disabled={uploadingQId === q.id}
-                                                onChange={e => {
-                                                    const f = e.target.files?.[0];
-                                                    if (f) handleMediaUpload(q.id, f);
-                                                    e.target.value = '';
-                                                }}
-                                            />
-                                            <div style={{
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                flexDirection: 'column', gap: '0.5rem',
-                                                padding: '1.25rem', borderRadius: '1rem',
-                                                border: '1.5px dashed #cbd5e1',
-                                                background: 'rgba(248,250,252,0.8)',
-                                                transition: 'all 0.2s',
-                                                color: 'var(--text-secondary)',
-                                            }}
-                                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.background = 'rgba(16,185,129,0.04)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
-                                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'rgba(248,250,252,0.8)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                                            >
-                                                {uploadingQId === q.id ? (
-                                                    <>
-                                                        <Loader2 size={20} style={{ animation: 'spin 0.8s linear infinite' }} />
-                                                        <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Загрузка...</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                                            <ImageIcon size={18} />
-                                                            <Music size={18} />
-                                                            <Video size={18} />
-                                                        </div>
-                                                        <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Прикрепить изображение, аудио или видео</span>
-                                                        <span style={{ fontSize: '0.72rem', opacity: 0.6 }}>Нажмите для выбора · до 50 МБ</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </label>
-                                    )}
-                                </div>
-
-                                {q.type !== 'text' ? (
-                                    <div className="flex-col gap-4 bg-white/30 p-6 rounded-2xl border border-white/50 shadow-sm mt-2">
-                                        <div className="text-[11px] font-black uppercase tracking-[0.15em] text-secondary mb-1 opacity-40">Варианты ответов</div>
-                                        <div className="flex-col gap-3">
-                                            {q.options.map((opt, optIdx) => (
-                                                <div key={optIdx} className="flex items-center gap-4">
-                                                    {/* Correct Answer Toggle */}
-                                                    <div className="relative flex items-center justify-center group/check h-11 w-11 shrink-0">
-                                                        <input
-                                                            type={q.type === 'single' ? 'radio' : 'checkbox'}
-                                                            name={`correct-${q.id}`}
-                                                            checked={q.correctAnswers.includes(opt)}
-                                                            onChange={() => toggleCorrectAnswer(q.id, opt, q.type)}
-                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                        />
-                                                        <div className={`w-9 h-9 flex items-center justify-center transition-all duration-300 ${q.type === 'single' ? 'rounded-full' : 'rounded-lg'} ${q.correctAnswers.includes(opt) ? 'bg-success shadow-[0_4px_12px_rgba(34,197,94,0.4)] scale-100' : 'bg-white/80 border-2 border-slate-200 scale-95 group-hover/check:border-success/30'}`}>
-                                                            {q.correctAnswers.includes(opt) && (
-                                                                <div className={`w-3 h-3 bg-white ${q.type === 'single' ? 'rounded-full' : 'rounded-sm'} animate-scale-up`}></div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {/* Option Input */}
-                                                    <input
-                                                        type="text"
-                                                        className="form-control flex-grow h-11 px-5"
-                                                        style={{ borderRadius: '1rem', background: 'white', border: '1px solid #f1f5f9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
-                                                        value={opt}
-                                                        onChange={e => updateOption(q.id, optIdx, e.target.value)}
-                                                    />
-                                                    
-                                                    {/* Option Delete Button */}
-                                                    <button 
-                                                        onClick={() => removeOption(q.id, optIdx)}
-                                                        style={{
-                                                            width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444',
-                                                            border: '1px solid rgba(239, 68, 68, 0.1)', cursor: 'pointer',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
-                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; e.currentTarget.style.color = '#ef4444'; }}
-                                                        title="Удалить вариант"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {/* Add Option Button - Matches Option Input Width */}
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-11 h-11 shrink-0"></div>
-                                            <button 
-                                                onClick={() => addOption(q.id)} 
-                                                className="btn btn-secondary flex items-center justify-center gap-2 h-11 flex-grow bg-white/60 hover:bg-white border-dashed text-accent-primary"
-                                                style={{ borderRadius: '1rem' }}
-                                            >
-                                                <Plus size={18} /> Добавить вариант
-                                            </button>
-                                            <div className="w-[2.75rem] h-[2.75rem] shrink-0"></div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="bg-white/30 p-6 rounded-2xl border border-white/50 shadow-sm flex-col gap-4">
-                                        <div>
-                                            <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Правильный ответ</label>
-                                            <input
-                                                type="text"
-                                                className="form-control h-12 px-5"
-                                                style={{ borderRadius: '1rem', background: 'white' }}
-                                                value={q.correctAnswers[0] || ''}
-                                                onChange={e => updateQuestion(q.id, { correctAnswers: [e.target.value] })}
-                                                placeholder="Введите эталонный ответ..."
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="form-label text-[11px] font-black uppercase tracking-[0.15em] opacity-40">Синонимы (через запятую)</label>
-                                            <input
-                                                type="text"
-                                                className="form-control h-11 px-5"
-                                                style={{ borderRadius: '1rem', background: 'white' }}
-                                                value={(q.synonyms || []).join(', ')}
-                                                onChange={e => updateQuestion(q.id, { synonyms: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-                                                placeholder="диван, кресло, диваны..."
-                                            />
-                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                                                Все перечисленные варианты будут считаться правильными
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        <QuestionCard
+                            key={q.id}
+                            question={q}
+                            index={qIndex}
+                            isUploading={uploadingQId === q.id}
+                            onUpdate={updateQuestion}
+                            onRemove={removeQuestion}
+                            onUpdateOption={updateOption}
+                            onAddOption={addOption}
+                            onRemoveOption={removeOption}
+                            onToggleCorrect={toggleCorrectAnswer}
+                            onMediaUpload={handleMediaUpload}
+                        />
                     ))}
 
                     <div className="flex items-center gap-4 mt-2">
