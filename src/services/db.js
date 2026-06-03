@@ -3,24 +3,58 @@ import { supabase } from './supabaseClient';
 const STORAGE_KEY_CURRENT_USER = 'employee_current_user';
 
 // --- Auth ---
-// Login goes through a SECURITY DEFINER function that checks the bcrypt hash
-// server-side and returns the user WITHOUT any password field. The client can
-// no longer read the password column directly.
+// Logins are not emails, so each user maps to a synthetic Supabase Auth email.
+const AUTH_EMAIL_DOMAIN = 'alleya.local';
+const synthEmail = (userId) => `${String(userId).trim().toLowerCase()}@${AUTH_EMAIL_DOMAIN}`;
+
+// If the Supabase session ends (sign-out, refresh failure, account deleted),
+// clear the mirrored app profile so the UI logs out cleanly.
+supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') {
+        localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+        window.dispatchEvent(new CustomEvent('user-session-change'));
+    }
+});
+
+// Login establishes a real Supabase Auth session (JWT) — this is what future
+// row-level security relies on. The user profile is also mirrored to
+// localStorage so the rest of the app (which reads getCurrentUser() synchronously)
+// keeps working unchanged.
 export const login = async (userId, password) => {
-    const { data: user, error } = await supabase.rpc('verify_login', {
-        p_id: userId,
-        p_password: password,
+    const id = String(userId).trim();
+
+    let { error: authErr } = await supabase.auth.signInWithPassword({
+        email: synthEmail(id),
+        password,
     });
 
-    if (user && !error) {
-        localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
+    if (authErr) {
+        // Safety net: if a Supabase account is somehow missing/unsynced, fall back to the
+        // legacy hash check so a provisioning gap can't lock anyone out. (No JWT in this path.)
+        const { data: legacy } = await supabase.rpc('verify_login', { p_id: id, p_password: password });
+        if (!legacy) return null; // genuinely wrong credentials
+        console.warn('Login fell back to legacy verification for', id, '-', authErr.message);
+        localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(legacy));
         window.dispatchEvent(new CustomEvent('user-session-change'));
-        return user;
+        return legacy;
     }
-    return null;
+
+    // Real session active — fetch the profile (password columns are not readable) and mirror it.
+    const { data: profile } = await supabase
+        .from('users')
+        .select('id, name, role, department')
+        .eq('id', id)
+        .single();
+
+    const user = profile || { id, name: id, role: 'employee', department: null };
+    localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
+    window.dispatchEvent(new CustomEvent('user-session-change'));
+    return user;
 };
 
 export const logout = () => {
+    // End the Supabase session (revokes tokens + clears its local storage), then our mirror.
+    supabase.auth.signOut().catch(() => {});
     localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
     window.dispatchEvent(new CustomEvent('user-session-change'));
 };
