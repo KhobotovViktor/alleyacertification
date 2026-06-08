@@ -82,11 +82,11 @@ export const ensureFreshSession = async () => {
     }
 };
 
+// Public-safe user list (id, name, role only) via a SECURITY DEFINER function,
+// so the login screen can populate its dropdown before anyone is signed in.
+// (Reading the users table directly now requires an authenticated session.)
 export const getAllUsers = async () => {
-    const { data, error } = await supabase
-        .from('users')
-        .select('id, name, role')
-        .order('id');
+    const { data, error } = await supabase.rpc('list_login_users');
     if (error) throw error;
     return data || [];
 };
