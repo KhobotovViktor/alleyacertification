@@ -16,8 +16,11 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-quill': ['react-quill-new'],
           'vendor-icons': ['lucide-react'],
+          // NB: react-quill-new is intentionally NOT a manual vendor chunk — it is
+          // only used by the lazy-loaded ArticleEditor, so letting it stay inside
+          // that async chunk keeps its ~210 KB out of the initial page load
+          // (important for throttled connections).
         }
       }
     }
