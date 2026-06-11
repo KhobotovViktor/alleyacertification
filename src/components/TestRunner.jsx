@@ -461,7 +461,7 @@ export default function TestRunner() {
                             </div>
                         </div>
                         <div className="mt-4 pt-4 border-t border-[var(--border-color)]">
-                            <div className={`badge ${passed ? 'badge-success' : 'badge-danger'} text-sm py-1 px-3`}>
+                            <div className={`status-pill ${passed ? 'status-pill-published' : 'status-pill-danger'}`} style={{ whiteSpace: 'normal', textAlign: 'left' }}>
                                 {passed ? 'Тест успешно сдан' : 'К сожалению, вы не набрали нужное количество баллов'}
                             </div>
                         </div>
@@ -485,13 +485,7 @@ export default function TestRunner() {
                                             key={chip}
                                             type="button"
                                             onClick={() => setCommentText(prev => prev === chip ? '' : chip)}
-                                            style={{
-                                                padding: '0.3rem 0.7rem', borderRadius: '2rem', fontSize: '0.78rem', fontWeight: 600,
-                                                cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit',
-                                                border: `1.5px solid ${commentText === chip ? 'var(--accent-primary)' : '#e2e8f0'}`,
-                                                background: commentText === chip ? 'rgba(16,185,129,0.1)' : 'white',
-                                                color: commentText === chip ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                            }}
+                                            className={`chip chip-btn ${commentText === chip ? 'chip-primary' : 'chip-neutral'}`}
                                         >{chip}</button>
                                     ))}
                                 </div>
@@ -593,12 +587,10 @@ export default function TestRunner() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
                     <button
                         onClick={() => setShowExitConfirm(true)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '2.5rem', height: '2.5rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s', flexShrink: 0 }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                        className="btn btn-icon btn-icon-danger"
                         title="Выйти из теста"
                     >
-                        <ArrowLeft size={18} />
+                        <ArrowLeft size={16} />
                     </button>
                     <div style={{ minWidth: 0 }}>
                         <h3 style={{ fontWeight: 700, margin: 0, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{test.title}</h3>
@@ -613,10 +605,10 @@ export default function TestRunner() {
                         <button
                             onClick={copyTestLink}
                             title={copiedLink ? 'Скопировано!' : 'Скопировать ссылку на тест'}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', borderRadius: '0.75rem', border: '1px solid', borderColor: copiedLink ? 'rgba(16,185,129,0.4)' : '#e2e8f0', background: copiedLink ? 'rgba(16,185,129,0.08)' : 'white', color: copiedLink ? 'var(--accent-primary)' : 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                            className="btn btn-icon"
+                            style={copiedLink ? { background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', borderColor: 'rgba(16,185,129,0.25)' } : {}}
                         >
-                            <Link2 size={14} />
-                            <span className="mobile-hide">{copiedLink ? 'Скопировано!' : 'Поделиться'}</span>
+                            {copiedLink ? <CheckCircle size={14}/> : <Link2 size={14}/>}
                         </button>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: '0.75rem', fontFamily: 'monospace', fontSize: '1rem', fontWeight: 700, border: '1px solid', borderColor: timeLeft < 60 ? 'rgba(239,68,68,0.3)' : '#e2e8f0', background: timeLeft < 60 ? 'rgba(239,68,68,0.08)' : 'white', color: timeLeft < 60 ? '#ef4444' : 'var(--text-primary)' }}>

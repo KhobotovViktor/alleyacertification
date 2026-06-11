@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trophy, Plus, Trash2, Users, Target, Clock, CheckCircle, X } from 'lucide-react';
 import { getChallenges, createChallenge, deleteChallenge, joinChallenge, leaveChallenge } from '../services/db';
+import CustomSelect from './ui/CustomSelect';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 const GOAL_LABELS = {
@@ -87,14 +88,15 @@ const CreateForm = ({ onSubmit, onCancel, submitting }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem' }}>
                     <div>
                         <label className="form-label-sm">Цель *</label>
-                        <select
+                        <CustomSelect
+                            size="sm"
                             value={form.goalType}
-                            onChange={e => set('goalType', e.target.value)}
-                            className="form-control-sm"
-                        >
-                            <option value="tests_count">Количество сданных тестов</option>
-                            <option value="avg_score">Средний балл (%)</option>
-                        </select>
+                            onChange={v => set('goalType', v)}
+                            options={[
+                                { value: 'tests_count', label: 'Количество сданных тестов' },
+                                { value: 'avg_score', label: 'Средний балл (%)' },
+                            ]}
+                        />
                     </div>
                     <div>
                         <label className="form-label-sm">{form.goalType === 'tests_count' ? 'Тестов' : 'Балл %'}</label>
@@ -175,12 +177,10 @@ const ChallengeCard = ({ challenge, currentUser, isAdmin, onJoin, onLeave, onDel
                 {canDelete && (
                     <button
                         onClick={() => onDelete(challenge.id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: '0.2rem', flexShrink: 0, transition: 'color 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                        onMouseLeave={e => e.currentTarget.style.color = '#cbd5e1'}
+                        className="btn btn-icon btn-icon-danger"
                         title="Удалить челлендж"
                     >
-                        <Trash2 size={15} />
+                        <Trash2 size={14} />
                     </button>
                 )}
             </div>

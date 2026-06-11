@@ -714,7 +714,7 @@ export default function AdminDashboard() {
                                                             className="btn btn-icon"
                                                             style={isCopied ? { background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', borderColor: 'rgba(16,185,129,0.25)' } : {}}
                                                         >
-                                                            {isCopied ? <Copy size={14}/> : <Link2 size={14}/>}
+                                                            {isCopied ? <CheckCircle size={14}/> : <Link2 size={14}/>}
                                                         </button>
                                                     )}
 

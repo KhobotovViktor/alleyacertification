@@ -137,9 +137,7 @@ export default function CollectionViewer() {
                                         <button
                                             onClick={() => handleRemoveTest(test.id)}
                                             disabled={removing === test.id}
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: '0.15rem', flexShrink: 0, transition: 'color 0.15s' }}
-                                            onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                                            onMouseLeave={e => e.currentTarget.style.color = '#cbd5e1'}
+                                            className="btn btn-icon btn-icon-danger"
                                             title="Убрать из коллекции"
                                         >
                                             <Trash2 size={14}/>
@@ -149,15 +147,9 @@ export default function CollectionViewer() {
 
                                 {/* Meta chips */}
                                 <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                        <Clock size={10}/>{Math.round(test.timeLimit / 60)} мин.
-                                    </span>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
-                                        {test.questions?.length || 0} вопр.
-                                    </span>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                        <Target size={10}/>Балл: {test.passingScore}
-                                    </span>
+                                    <span className="chip chip-neutral"><Clock size={10}/>{Math.round(test.timeLimit / 60)} мин.</span>
+                                    <span className="chip chip-neutral">{test.questions?.length || 0} вопр.</span>
+                                    <span className="chip chip-primary"><Target size={10}/>Балл: {test.passingScore}</span>
                                 </div>
 
                                 <Link

@@ -50,18 +50,10 @@ const QuestionCard = memo(function QuestionCard({
             <button
                 onClick={() => removeQuestion(q.id)}
                 title="Удалить вопрос"
-                style={{
-                    position: 'absolute', top: '1rem', right: '1rem',
-                    width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                    border: '1px solid rgba(239, 68, 68, 0.15)', cursor: 'pointer',
-                    transition: 'all 0.25s', zIndex: 10
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.transform = 'scale(1)'; }}
+                className="btn btn-icon btn-icon-danger"
+                style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10 }}
             >
-                <Trash2 size={18} />
+                <Trash2 size={16} />
             </button>
 
             <div className="flex-col gap-6">
@@ -237,15 +229,7 @@ const QuestionCard = memo(function QuestionCard({
                                     {/* Option Delete Button */}
                                     <button
                                         onClick={() => removeOption(q.id, optIdx)}
-                                        style={{
-                                            width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444',
-                                            border: '1px solid rgba(239, 68, 68, 0.1)', cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'; e.currentTarget.style.color = '#ef4444'; }}
+                                        className="btn btn-icon btn-icon-danger"
                                         title="Удалить вариант"
                                     >
                                         <Trash2 size={16} />
@@ -263,7 +247,7 @@ const QuestionCard = memo(function QuestionCard({
                             >
                                 <Plus size={18} /> Добавить вариант
                             </button>
-                            <div className="w-[2.75rem] h-[2.75rem] shrink-0"></div>
+                            <div className="w-[2.125rem] h-[2.125rem] shrink-0"></div>
                         </div>
                     </div>
                 ) : (
@@ -598,23 +582,14 @@ export default function TestEditor() {
         <div className="flex-col gap-6 max-w-4xl mx-auto">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button onClick={() => navigate(backPath)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '0.75rem', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                    >
+                    <button onClick={() => navigate(backPath)} className="btn btn-icon" title="Назад">
                         <ArrowLeft size={16} />
                     </button>
                     <h2 style={{ margin: 0 }}>{isNew ? 'Создание нового теста' : 'Редактирование теста'}</h2>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {/* Status badge */}
-                    <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                        padding: '0.3rem 0.75rem', borderRadius: '2rem', fontSize: '0.75rem', fontWeight: 700,
-                        background: isDraft ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
-                        color: isDraft ? '#d97706' : 'var(--accent-primary)',
-                        border: `1px solid ${isDraft ? 'rgba(245,158,11,0.25)' : 'rgba(16,185,129,0.25)'}`,
-                    }}>
+                    <span className={`status-pill ${isDraft ? 'status-pill-draft' : 'status-pill-published'}`}>
                         {isDraft ? <PenLine size={12} /> : <CheckCircle size={12} />}
                         {isDraft ? 'Черновик' : 'Опубликован'}
                     </span>
@@ -718,7 +693,8 @@ export default function TestEditor() {
                                                         setTest({ ...test, allowedUsers: [...new Set([...current, ...deptIds])] });
                                                     }
                                                 }}
-                                                style={{ padding: '0.25rem 0.75rem', borderRadius: '2rem', fontSize: '0.78rem', fontWeight: 600, border: '1.5px solid', cursor: 'pointer', transition: 'all 0.15s', borderColor: allChecked ? 'var(--accent-primary)' : '#e2e8f0', background: allChecked ? 'rgba(16,185,129,0.1)' : '#f8fafc', color: allChecked ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+                                                className={`chip ${allChecked ? 'chip-primary' : 'chip-neutral'}`}
+                                                style={{ cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
                                                 {dept}
                                             </button>
                                         );
@@ -775,34 +751,31 @@ export default function TestEditor() {
                                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
                                     Пользователь (выберите из списка)
                                 </label>
-                                <select
+                                <CustomSelect
                                     value={addCollabId}
-                                    onChange={e => setAddCollabId(e.target.value)}
-                                    className="form-control"
-                                    style={{ fontSize: '0.875rem', padding: '0.5rem 0.75rem' }}
-                                >
-                                    <option value="">— выберите сотрудника —</option>
-                                    {employees
-                                        .filter(e => e.id !== currentUser?.id && !collaborators.some(c => c.userId === e.id))
-                                        .map(e => (
-                                            <option key={e.id} value={e.id}>{e.name}{e.department ? ` (${e.department})` : ''}</option>
-                                        ))
-                                    }
-                                </select>
+                                    onChange={v => setAddCollabId(v)}
+                                    placeholder="— выберите сотрудника —"
+                                    options={[
+                                        { value: '', label: '— выберите сотрудника —' },
+                                        ...employees
+                                            .filter(e => e.id !== currentUser?.id && !collaborators.some(c => c.userId === e.id))
+                                            .map(e => ({ value: e.id, label: `${e.name}${e.department ? ` (${e.department})` : ''}` }))
+                                    ]}
+                                />
                             </div>
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
                                     Права
                                 </label>
-                                <select
+                                <CustomSelect
                                     value={addCollabRole}
-                                    onChange={e => setAddCollabRole(e.target.value)}
-                                    className="form-control"
-                                    style={{ fontSize: '0.875rem', padding: '0.5rem 0.75rem' }}
-                                >
-                                    <option value="edit">Редактирование</option>
-                                    <option value="view">Просмотр</option>
-                                </select>
+                                    onChange={v => setAddCollabRole(v)}
+                                    style={{ minWidth: '160px' }}
+                                    options={[
+                                        { value: 'edit', label: 'Редактирование' },
+                                        { value: 'view', label: 'Просмотр' },
+                                    ]}
+                                />
                             </div>
                             <button
                                 onClick={handleAddCollab}
@@ -831,9 +804,7 @@ export default function TestEditor() {
                                         {test.createdBy === currentUser?.id && ' (вы)'}
                                     </div>
                                 </div>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '2rem', background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                                    Владелец
-                                </span>
+                                <span className="chip chip-primary">Владелец</span>
                             </div>
                         </div>
                     )}
@@ -855,26 +826,26 @@ export default function TestEditor() {
                                         </div>
                                         {isOwner ? (
                                             <>
-                                                <select
+                                                <CustomSelect
+                                                    size="sm"
                                                     value={c.role}
-                                                    onChange={e => handleChangeRole(c.userId, e.target.value)}
-                                                    style={{ fontSize: '0.78rem', fontWeight: 600, borderRadius: '0.5rem', border: '1px solid #e2e8f0', padding: '0.3rem 0.5rem', cursor: 'pointer', background: 'white', color: c.role === 'edit' ? '#6366f1' : '#64748b' }}
-                                                >
-                                                    <option value="edit">Редактирование</option>
-                                                    <option value="view">Просмотр</option>
-                                                </select>
+                                                    onChange={v => handleChangeRole(c.userId, v)}
+                                                    style={{ minWidth: '150px' }}
+                                                    options={[
+                                                        { value: 'edit', label: 'Редактирование' },
+                                                        { value: 'view', label: 'Просмотр' },
+                                                    ]}
+                                                />
                                                 <button
                                                     onClick={() => handleRemoveCollab(c.userId)}
-                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: '0.25rem', transition: 'color 0.15s', flexShrink: 0 }}
-                                                    onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                                                    onMouseLeave={e => e.currentTarget.style.color = '#cbd5e1'}
+                                                    className="btn btn-icon btn-icon-danger"
                                                     title="Удалить"
                                                 >
-                                                    <X size={16}/>
+                                                    <X size={14}/>
                                                 </button>
                                             </>
                                         ) : (
-                                            <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '2rem', background: c.role === 'edit' ? 'rgba(99,102,241,0.08)' : '#f1f5f9', color: c.role === 'edit' ? '#6366f1' : '#64748b', border: `1px solid ${c.role === 'edit' ? 'rgba(99,102,241,0.2)' : '#e2e8f0'}` }}>
+                                            <span className={`chip ${c.role === 'edit' ? 'chip-purple' : 'chip-slate'}`}>
                                                 {c.role === 'edit' ? 'Редактирование' : 'Просмотр'}
                                             </span>
                                         )}

@@ -275,7 +275,7 @@ export default function CollectionsTab({ currentUser }) {
                                     {/* Expand/collapse */}
                                     <button
                                         onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
-                                        style={{ display: 'flex', alignItems: 'center', padding: '0.4rem 0.55rem', borderRadius: '0.625rem', border: '1px solid #e2e8f0', background: 'white', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}
+                                        className="btn btn-icon"
                                         title={expandedId === c.id ? 'Свернуть' : 'Показать тесты'}
                                     >
                                         <span style={{ fontSize: '0.8rem', transform: expandedId === c.id ? 'rotate(180deg)' : 'rotate(0)', display: 'inline-block', transition: 'transform 0.2s' }}>▾</span>
@@ -284,9 +284,7 @@ export default function CollectionsTab({ currentUser }) {
                                     <button
                                         onClick={() => handleDelete(c.id)}
                                         title="Удалить коллекцию"
-                                        style={{ display: 'flex', alignItems: 'center', padding: '0.4rem 0.55rem', borderRadius: '0.625rem', border: '1px solid #e2e8f0', background: 'white', color: '#cbd5e1', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}
-                                        onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                                        className="btn btn-icon btn-icon-danger"
                                     >
                                         <Trash2 size={14}/>
                                     </button>
@@ -351,16 +349,15 @@ function CollectionTestList({ collectionId, onCountChange }) {
                     <span style={{ fontSize: '0.7rem', color: '#94a3b8', flexShrink: 0 }}>{Math.round(t.timeLimit / 60)} мин</span>
                     <Link
                         to={`/test/${t.id}`}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', padding: '0.25rem 0.6rem', borderRadius: '0.5rem', border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.06)', color: 'var(--accent-primary)', fontSize: '0.72rem', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}
+                        className="chip chip-btn chip-primary"
+                        style={{ textDecoration: 'none', flexShrink: 0 }}
                     >
                         <Play size={11}/> Пройти
                     </Link>
                     <button
                         onClick={() => handleRemove(t.id)}
                         disabled={removing === t.id}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: '0.2rem', flexShrink: 0, transition: 'color 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                        onMouseLeave={e => e.currentTarget.style.color = '#cbd5e1'}
+                        className="btn btn-icon btn-icon-danger"
                         title="Убрать из коллекции"
                     >
                         <X size={14}/>

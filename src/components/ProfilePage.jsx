@@ -194,15 +194,9 @@ export default function ProfilePage() {
                             <div key={test.id} className="bento-card" style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column' }}>
                                 <div style={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.35, marginBottom: '0.6rem', color: 'var(--text-primary)' }}>{test.title}</div>
                                 <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.875rem' }}>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
-                                        {test.questions?.length || 0} вопр.
-                                    </span>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: '#f1f5f9', color: '#64748b' }}>
-                                        {test.timeLimit / 60} мин.
-                                    </span>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', background: 'rgba(16,185,129,0.08)', color: 'var(--accent-primary)' }}>
-                                        Балл: {test.passingScore}
-                                    </span>
+                                    <span className="chip chip-neutral">{test.questions?.length || 0} вопр.</span>
+                                    <span className="chip chip-neutral">{test.timeLimit / 60} мин.</span>
+                                    <span className="chip chip-primary">Балл: {test.passingScore}</span>
                                 </div>
                                 <Link
                                     to={`/test/${test.id}`}

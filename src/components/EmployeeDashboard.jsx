@@ -1100,7 +1100,7 @@ export default function EmployeeDashboard() {
                                                         <button
                                                             onClick={() => handleFollowAuthor(test.createdBy)}
                                                             disabled={followInProgress.has(test.createdBy)}
-                                                            style={{ fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '0.5rem', border: `1px solid ${followedAuthorIds.has(test.createdBy) ? 'rgba(16,185,129,0.3)' : '#e2e8f0'}`, background: followedAuthorIds.has(test.createdBy) ? 'rgba(16,185,129,0.08)' : 'white', color: followedAuthorIds.has(test.createdBy) ? 'var(--accent-primary)' : '#64748b', cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}
+                                                            className={`chip chip-btn ${followedAuthorIds.has(test.createdBy) ? 'chip-primary' : 'chip-neutral'}`}
                                                         >
                                                             {followedAuthorIds.has(test.createdBy) ? '✓ Слежу' : '+ Следить'}
                                                         </button>
@@ -1127,18 +1127,8 @@ export default function EmployeeDashboard() {
                                                     onClick={() => handleLike(test.id)}
                                                     disabled={pending}
                                                     title={liked ? 'Убрать лайк' : 'Понравилось'}
-                                                    style={{
-                                                        display: 'flex', alignItems: 'center', gap: '0.3rem',
-                                                        padding: '0.45rem 0.65rem', borderRadius: '0.625rem',
-                                                        border: `1.5px solid ${liked ? 'rgba(239,68,68,0.3)' : '#e2e8f0'}`,
-                                                        background: liked ? 'rgba(239,68,68,0.07)' : 'white',
-                                                        color: liked ? '#ef4444' : 'var(--text-secondary)',
-                                                        fontSize: '0.8rem', fontWeight: 700,
-                                                        cursor: pending ? 'wait' : 'pointer',
-                                                        transition: 'all 0.2s', flexShrink: 0,
-                                                    }}
-                                                    onMouseEnter={e => { if (!pending) { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)'; e.currentTarget.style.background = 'rgba(239,68,68,0.07)'; e.currentTarget.style.color = '#ef4444'; }}}
-                                                    onMouseLeave={e => { if (!pending) { e.currentTarget.style.borderColor = liked ? 'rgba(239,68,68,0.3)' : '#e2e8f0'; e.currentTarget.style.background = liked ? 'rgba(239,68,68,0.07)' : 'white'; e.currentTarget.style.color = liked ? '#ef4444' : 'var(--text-secondary)'; }}}
+                                                    className={`chip chip-btn ${liked ? 'chip-danger' : 'chip-neutral'}`}
+                                                    style={{ flexShrink: 0 }}
                                                 >
                                                     <Heart size={13} style={{ fill: liked ? '#ef4444' : 'none', transition: 'fill 0.2s' }}/>
                                                     {test.likeCount > 0 && <span>{test.likeCount}</span>}
@@ -1148,17 +1138,8 @@ export default function EmployeeDashboard() {
                                                 <button
                                                     onClick={() => toggleComments(test.id)}
                                                     title="Комментарии"
-                                                    style={{
-                                                        display: 'flex', alignItems: 'center', gap: '0.25rem',
-                                                        padding: '0.45rem 0.65rem', borderRadius: '0.625rem',
-                                                        border: `1.5px solid ${openCommentTestId === test.id ? 'rgba(99,102,241,0.35)' : '#e2e8f0'}`,
-                                                        background: openCommentTestId === test.id ? 'rgba(99,102,241,0.07)' : 'white',
-                                                        color: openCommentTestId === test.id ? '#6366f1' : 'var(--text-secondary)',
-                                                        fontSize: '0.8rem', fontWeight: 700,
-                                                        cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
-                                                    }}
-                                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; e.currentTarget.style.color = '#6366f1'; }}
-                                                    onMouseLeave={e => { e.currentTarget.style.borderColor = openCommentTestId === test.id ? 'rgba(99,102,241,0.35)' : '#e2e8f0'; e.currentTarget.style.background = openCommentTestId === test.id ? 'rgba(99,102,241,0.07)' : 'white'; e.currentTarget.style.color = openCommentTestId === test.id ? '#6366f1' : 'var(--text-secondary)'; }}
+                                                    className={`chip chip-btn ${openCommentTestId === test.id ? 'chip-purple' : 'chip-neutral'}`}
+                                                    style={{ flexShrink: 0 }}
                                                 >
                                                     💬{test.commentCount > 0 && <span>{test.commentCount}</span>}
                                                 </button>
@@ -1170,16 +1151,8 @@ export default function EmployeeDashboard() {
                                                 <button
                                                     onClick={() => copyFeedLink(test.id)}
                                                     title="Скопировать ссылку"
-                                                    style={{
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        width: '2.1rem', height: '2.1rem', borderRadius: '0.625rem',
-                                                        border: `1.5px solid ${isCopied ? 'rgba(16,185,129,0.35)' : '#e2e8f0'}`,
-                                                        background: isCopied ? 'rgba(16,185,129,0.08)' : 'white',
-                                                        color: isCopied ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                                        cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
-                                                    }}
-                                                    onMouseEnter={e => { if (!isCopied) { e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)'; e.currentTarget.style.background = 'rgba(16,185,129,0.06)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}}
-                                                    onMouseLeave={e => { if (!isCopied) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; }}}
+                                                    className="btn btn-icon"
+                                                    style={isCopied ? { background: 'rgba(16,185,129,0.1)', color: 'var(--accent-primary)', borderColor: 'rgba(16,185,129,0.25)' } : {}}
                                                 >
                                                     {isCopied ? <CheckCircle size={13}/> : <Link2 size={13}/>}
                                                 </button>
@@ -1197,16 +1170,7 @@ export default function EmployeeDashboard() {
                                                         onClick={() => handleCopyTest(test.id)}
                                                         disabled={copyingTestId === test.id}
                                                         title="Взять за основу — создать копию в «Мои тесты»"
-                                                        style={{
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            width: '2.1rem', height: '2.1rem', borderRadius: '0.625rem',
-                                                            border: '1.5px solid #e2e8f0', background: 'white',
-                                                            color: 'var(--text-secondary)',
-                                                            cursor: copyingTestId === test.id ? 'wait' : 'pointer',
-                                                            transition: 'all 0.2s', flexShrink: 0,
-                                                        }}
-                                                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.35)'; e.currentTarget.style.background = 'rgba(99,102,241,0.07)'; e.currentTarget.style.color = '#6366f1'; }}
-                                                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                                        className="btn btn-icon"
                                                     >
                                                         {copyingTestId === test.id
                                                             ? <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>…</span>
@@ -1399,14 +1363,15 @@ export default function EmployeeDashboard() {
                                                         <button
                                                             onClick={() => handleFollowAuthor(result.userId)}
                                                             disabled={followInProgress.has(result.userId)}
-                                                            style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.3rem 0.75rem', borderRadius: '2rem', border: `1.5px solid ${followedAuthorIds.has(result.userId) ? 'rgba(16,185,129,0.3)' : '#e2e8f0'}`, background: followedAuthorIds.has(result.userId) ? 'rgba(16,185,129,0.07)' : 'white', color: followedAuthorIds.has(result.userId) ? 'var(--accent-primary)' : '#64748b', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+                                                            className={`chip chip-btn ${followedAuthorIds.has(result.userId) ? 'chip-primary' : 'chip-neutral'}`}
                                                         >
                                                             {followedAuthorIds.has(result.userId) ? '✓ Слежу' : '+ Следить'}
                                                         </button>
                                                     )}
                                                     <Link
                                                         to={`/test/${result.testId}`}
-                                                        style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.3rem 0.85rem', borderRadius: '2rem', border: '1.5px solid rgba(99,102,241,0.25)', background: 'rgba(99,102,241,0.07)', color: '#6366f1', textDecoration: 'none', transition: 'all 0.15s' }}
+                                                        className="chip chip-btn chip-primary"
+                                                        style={{ textDecoration: 'none' }}
                                                     >
                                                         ▶ Пройти тест
                                                     </Link>
@@ -1533,8 +1498,7 @@ export default function EmployeeDashboard() {
                                             {test.commentCount > 0 && (
                                                 <button
                                                     onClick={() => toggleComments(test.id)}
-                                                    className={`chip ${openCommentTestId === test.id ? 'chip-purple' : 'chip-neutral'}`}
-                                                    style={{ cursor: 'pointer', border: 'none', transition: 'all 0.15s' }}
+                                                    className={`chip chip-btn ${openCommentTestId === test.id ? 'chip-purple' : 'chip-neutral'}`}
                                                 >
                                                     💬 {test.commentCount}
                                                 </button>
@@ -1542,8 +1506,7 @@ export default function EmployeeDashboard() {
                                             {(test.questionCount > 0 || test.unansweredQuestionCount > 0) && (
                                                 <button
                                                     onClick={() => toggleQuestions(test.id)}
-                                                    className={`chip ${openQuestionTestId === test.id || test.unansweredQuestionCount > 0 ? 'chip-warning' : 'chip-neutral'}`}
-                                                    style={{ cursor: 'pointer', border: 'none', transition: 'all 0.15s' }}
+                                                    className={`chip chip-btn ${openQuestionTestId === test.id || test.unansweredQuestionCount > 0 ? 'chip-warning' : 'chip-neutral'}`}
                                                 >
                                                     ❓ {test.unansweredQuestionCount > 0 ? `${test.unansweredQuestionCount} новых` : test.questionCount}
                                                 </button>
@@ -1589,9 +1552,8 @@ export default function EmployeeDashboard() {
                                             <button
                                                 onClick={() => handleToggleMyTestStatus(test)}
                                                 title={isDraft ? 'Опубликовать' : 'Снять с публикации'}
-                                                style={{ width: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.75rem', border: `1px solid ${isDraft ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`, background: isDraft ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)', color: isDraft ? 'var(--accent-primary)' : '#d97706', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = isDraft ? 'var(--accent-primary)' : '#f59e0b'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'transparent'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = isDraft ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)'; e.currentTarget.style.color = isDraft ? 'var(--accent-primary)' : '#d97706'; e.currentTarget.style.borderColor = isDraft ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'; }}
+                                                className="btn btn-icon"
+                                                style={{ color: isDraft ? 'var(--accent-primary)' : '#d97706', borderColor: isDraft ? 'rgba(16,185,129,0.25)' : 'rgba(245,158,11,0.25)', background: isDraft ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.06)' }}
                                             >
                                                 {isDraft ? <Send size={14}/> : <PenLine size={14}/>}
                                             </button>
@@ -1600,9 +1562,7 @@ export default function EmployeeDashboard() {
                                             <button
                                                 onClick={() => setDeleteMyTestId(isConfirmDelete ? null : test.id)}
                                                 title="Удалить тест"
-                                                style={{ width: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '0.75rem', border: `1px solid ${isConfirmDelete ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.15)'}`, background: isConfirmDelete ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
-                                                onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'transparent'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.background = isConfirmDelete ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.05)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = isConfirmDelete ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.15)'; }}
+                                                className={`btn btn-icon ${isConfirmDelete ? 'btn-icon-danger-active' : 'btn-icon-danger'}`}
                                             >
                                                 <Trash2 size={14}/>
                                             </button>
@@ -1693,7 +1653,7 @@ export default function EmployeeDashboard() {
                                             </td>
                                             <td className="py-4 px-3 text-[11px] text-secondary text-center">{formatDate(res.date)}</td>
                                             <td className="py-4 px-3 text-center">
-                                                <span className={`badge ${res.passed ? 'badge-success' : 'badge-danger'}`} style={{ display: 'inline-flex' }}>
+                                                <span className={`status-pill ${res.passed ? 'status-pill-published' : 'status-pill-danger'}`}>
                                                     {res.passed ? 'Сдано' : 'Не сдано'}
                                                 </span>
                                             </td>
@@ -1822,12 +1782,8 @@ export default function EmployeeDashboard() {
                             </div>
                             {results.length > 0 && (
                                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.75rem', borderRadius: '2rem', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', fontSize: '0.75rem', fontWeight: 700, color: '#f97316' }}>
-                                        <Flame size={12}/> Серия: {currentStreak}
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.75rem', borderRadius: '2rem', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b' }}>
-                                        <Star size={12}/> Рекорд: {bestPct}%
-                                    </div>
+                                    <span className="chip chip-orange"><Flame size={12}/> Серия: {currentStreak}</span>
+                                    <span className="chip chip-warning"><Star size={12}/> Рекорд: {bestPct}%</span>
                                 </div>
                             )}
                         </div>
@@ -1848,9 +1804,7 @@ export default function EmployeeDashboard() {
                                         </p>
                                     </div>
                                     {myRank > 0 && (
-                                        <div style={{ padding: '0.3rem 0.85rem', borderRadius: '2rem', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
-                                            Ваше место: #{myRank}
-                                        </div>
+                                        <span className="chip chip-primary">Ваше место: #{myRank}</span>
                                     )}
                                 </div>
 

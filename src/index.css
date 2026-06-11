@@ -620,6 +620,18 @@ textarea.form-control {
 .chip-warning { background: rgba(245,158,11,0.1);   color: #d97706;             border-color: rgba(245,158,11,0.2); }
 .chip-danger  { background: rgba(239,68,68,0.08);   color: #ef4444;             border-color: rgba(239,68,68,0.18); }
 .chip-slate   { background: rgba(100,116,139,0.08); color: #64748b;             border-color: rgba(100,116,139,0.18); }
+.chip-orange  { background: rgba(249,115,22,0.08);  color: #f97316;             border-color: rgba(249,115,22,0.2); }
+
+/* Clickable chip — interactive variant for toggles/filters (like, comments, follow) */
+.chip-btn {
+  cursor: pointer;
+  padding: 0.32rem 0.7rem;
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.chip-btn:hover:not(:disabled) { filter: brightness(0.96); transform: translateY(-1px); }
+.chip-btn:disabled { opacity: 0.6; cursor: wait; }
 
 /* ── Status pill — full-rounded status badge ─────────────────────────────── */
 .status-pill {
