@@ -20,6 +20,7 @@ export default function AdminDashboard() {
     const [clearConfirm, setClearConfirm] = useState(false);
     const [selectedResult, setSelectedResult] = useState(null);
     const [analyticsTestId, setAnalyticsTestId] = useState('');
+    const [analyticsUserId, setAnalyticsUserId] = useState(''); // '' = все сотрудники
     const [departments, setDepartments] = useState([]);
     const [newDeptInput, setNewDeptInput] = useState('');
     const [allUsers, setAllUsers] = useState([]);
@@ -244,11 +245,12 @@ export default function AdminDashboard() {
     };
 
     // ── Question analytics ──
-    const getQuestionAnalytics = (testId) => {
+    // userId = '' → по всем сотрудникам; иначе только попытки выбранного
+    const getQuestionAnalytics = (testId, userId = '') => {
         const test = tests.find(t => t.id === testId);
         if (!test?.questions) return [];
         // Only count completed attempts (those with saved userAnswers)
-        const testResults = results.filter(r => r.testId === testId && r.userAnswers);
+        const testResults = results.filter(r => r.testId === testId && r.userAnswers && (!userId || r.userId === userId));
         return test.questions.map(q => {
             const qIdStr = String(q.id); // JSON keys are always strings after DB round-trip
             const appearances = testResults.filter(r => {
@@ -888,33 +890,110 @@ export default function AdminDashboard() {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <BarChart2 size={18} style={{ color: 'var(--accent-primary)' }} />
-                                <h3 style={{ margin: 0 }}>Аналитика по вопросам</h3>
+                                <h3 style={{ margin: 0 }}>Аналитика</h3>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <CustomSelect
-                                    style={{ width: 'min(620px, calc(100vw - 6rem))' }}
+                                    style={{ width: 'min(420px, calc(100vw - 6rem))' }}
                                     value={analyticsTestId}
                                     onChange={v => setAnalyticsTestId(v)}
                                     placeholder="— Выберите тест —"
                                     options={tests.map(t => ({ value: t.id, label: t.title }))}
                                 />
-                                {analyticsTestId && (
-                                    <button onClick={() => setAnalyticsTestId('')} title="Сбросить выбор" className="btn btn-icon">
+                                <CustomSelect
+                                    style={{ width: 'min(240px, calc(100vw - 6rem))' }}
+                                    value={analyticsUserId}
+                                    onChange={v => setAnalyticsUserId(v)}
+                                    placeholder="— Все сотрудники —"
+                                    options={[
+                                        { value: '', label: '— Все сотрудники —' },
+                                        ...[...employees].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(e => ({ value: e.id, label: e.name })),
+                                    ]}
+                                />
+                                {(analyticsTestId || analyticsUserId) && (
+                                    <button onClick={() => { setAnalyticsTestId(''); setAnalyticsUserId(''); }} title="Сбросить фильтры" className="btn btn-icon">
                                         <X size={14} />
                                     </button>
                                 )}
                             </div>
                         </div>
-                        {!analyticsTestId ? (
-                            <div className="text-secondary p-6 text-center border border-dashed border-[var(--border-color)] rounded-xl">Выберите тест выше</div>
-                        ) : (() => {
-                            const analytics = getQuestionAnalytics(analyticsTestId);
-                            // Count only completed attempts (those with userAnswers saved) to match analytics data
-                            const testResultsCount = results.filter(r => r.testId === analyticsTestId && r.userAnswers).length;
+                        {!analyticsTestId && !analyticsUserId ? (
+                            <div className="text-secondary p-6 text-center border border-dashed border-[var(--border-color)] rounded-xl">Выберите тест и/или сотрудника выше</div>
+                        ) : !analyticsTestId ? (() => {
+                            /* ── Только сотрудник: сводка по всем его тестам ── */
+                            const empAttempts = results.filter(r => r.userId === analyticsUserId);
+                            if (empAttempts.length === 0) return (
+                                <div className="text-secondary p-6 text-center border border-dashed border-[var(--border-color)] rounded-xl">
+                                    У сотрудника пока нет попыток прохождения тестов.
+                                </div>
+                            );
+                            const byTest = {};
+                            empAttempts.forEach(r => { (byTest[r.testId] = byTest[r.testId] || []).push(r); });
+                            const rows = Object.entries(byTest).map(([tid, rs]) => {
+                                const best = rs.reduce((b, r) => (!b || (r.total && r.score / r.total > (b.score / (b.total || 1)))) ? r : b, null);
+                                return {
+                                    tid,
+                                    attempts: rs.length,
+                                    passed: rs.some(r => r.passed),
+                                    best,
+                                    lastDate: rs.reduce((m, r) => Math.max(m, new Date(r.date).getTime()), 0),
+                                };
+                            }).sort((a, b) => b.lastDate - a.lastDate);
+                            const passedCount = rows.filter(r => r.passed).length;
                             return (
                                 <div className="flex-col gap-3">
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                                        Всего попыток: <strong>{testResultsCount}</strong>
+                                    {/* Summary chips */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                                        <span className="chip chip-purple"><Users size={9}/> {getEmpName(analyticsUserId)}</span>
+                                        <span className="chip chip-neutral">Попыток: {empAttempts.length}</span>
+                                        <span className={`chip ${passedCount > 0 ? 'chip-primary' : 'chip-neutral'}`}>Сдано: {passedCount} из {rows.length} тестов</span>
+                                    </div>
+                                    {/* Per-test rows */}
+                                    {rows.map(row => (
+                                        <div key={row.tid} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', background: 'white', borderRadius: '0.875rem', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+                                            <div style={{ flex: 1, minWidth: '180px' }}>
+                                                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{getTestName(row.tid)}</div>
+                                                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                                                    <span className="chip chip-neutral">{row.attempts} попыт.</span>
+                                                    {row.best && row.best.total > 0 && (
+                                                        <span className="chip chip-neutral">Лучший: {row.best.score} / {row.best.total} ({Math.round((row.best.score / row.best.total) * 100)}%)</span>
+                                                    )}
+                                                    <span className="chip chip-slate">{new Date(row.lastDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                                                </div>
+                                            </div>
+                                            <span className={`status-pill ${row.passed ? 'status-pill-published' : 'status-pill-danger'}`} style={{ flexShrink: 0 }}>
+                                                {row.passed ? <CheckCircle size={9}/> : <AlertCircle size={9}/>}
+                                                {row.passed ? 'Сдан' : 'Не сдан'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.7 }}>
+                                        Выберите тест выше, чтобы посмотреть разбор по вопросам для этого сотрудника.
+                                    </div>
+                                </div>
+                            );
+                        })() : (() => {
+                            /* ── Тест (± сотрудник): разбор по вопросам ── */
+                            const analytics = getQuestionAnalytics(analyticsTestId, analyticsUserId);
+                            // Count only completed attempts (those with userAnswers saved) to match analytics data
+                            const matching = results.filter(r => r.testId === analyticsTestId && r.userAnswers && (!analyticsUserId || r.userId === analyticsUserId));
+                            const testResultsCount = matching.length;
+                            if (analyticsUserId && testResultsCount === 0) return (
+                                <div className="text-secondary p-6 text-center border border-dashed border-[var(--border-color)] rounded-xl">
+                                    У {getEmpName(analyticsUserId)} нет завершённых попыток по этому тесту.
+                                </div>
+                            );
+                            const bestAttempt = matching.reduce((b, r) => (!b || (r.total && r.score / r.total > (b.score / (b.total || 1)))) ? r : b, null);
+                            return (
+                                <div className="flex-col gap-3">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                                        {analyticsUserId && <span className="chip chip-purple"><Users size={9}/> {getEmpName(analyticsUserId)}</span>}
+                                        <span className="chip chip-neutral">Попыток: {testResultsCount}</span>
+                                        {analyticsUserId && bestAttempt && bestAttempt.total > 0 && (
+                                            <span className={`chip ${matching.some(r => r.passed) ? 'chip-primary' : 'chip-danger'}`}>
+                                                Лучший: {bestAttempt.score} / {bestAttempt.total} ({Math.round((bestAttempt.score / bestAttempt.total) * 100)}%)
+                                            </span>
+                                        )}
                                     </div>
                                     {analytics.map((item, idx) => (
                                         <div key={item.question.id} style={{ padding: '1rem', background: 'white', borderRadius: '0.875rem', border: '1px solid #e2e8f0' }}>
