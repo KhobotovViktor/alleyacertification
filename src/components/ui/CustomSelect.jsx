@@ -26,6 +26,15 @@ export default function CustomSelect({
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
+    const listRef = useRef(null);
+
+    /* when opening, bring the selected option fully into view so its green
+       highlight is never half-cut at the bottom edge of the scroll area */
+    useEffect(() => {
+        if (!open || !listRef.current) return;
+        const sel = listRef.current.querySelector('.dropdown-item--selected');
+        if (sel) sel.scrollIntoView({ block: 'nearest' });
+    }, [open]);
 
     /* close on outside click — only listen while open (avoids one permanent
        global listener per instance when many selects are on the page) */
@@ -76,7 +85,7 @@ export default function CustomSelect({
             </button>
 
             {open && (
-                <div className="dropdown-list" role="listbox" style={{ zIndex: 200 }}>
+                <div className="dropdown-list" role="listbox" style={{ zIndex: 200 }} ref={listRef}>
                     {options.map(opt => {
                         const isSelected = String(opt.value) === String(value);
                         return (

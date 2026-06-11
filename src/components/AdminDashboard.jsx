@@ -892,7 +892,7 @@ export default function AdminDashboard() {
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <CustomSelect
-                                    style={{ minWidth: '200px', maxWidth: '260px' }}
+                                    style={{ width: 'min(620px, calc(100vw - 6rem))' }}
                                     value={analyticsTestId}
                                     onChange={v => setAnalyticsTestId(v)}
                                     placeholder="— Выберите тест —"
