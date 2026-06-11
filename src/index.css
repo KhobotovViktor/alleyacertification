@@ -160,15 +160,22 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
-
-  /* Animated Mesh Gradient Background */
   background-color: var(--bg-primary);
+  overflow-x: hidden;
+}
+
+/* Mesh gradient on a viewport-fixed layer: a body background-image tiled and
+   showed a color seam below the body box whenever an overlay (open dropdown)
+   stretched the document taller than the page content. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
     radial-gradient(at 20% 20%, rgba(16, 185, 129, 0.12) 0px, transparent 50%),
     radial-gradient(at 80% 80%, rgba(52, 211, 153, 0.12) 0px, transparent 50%);
-  background-attachment: scroll;
-  background-size: cover;
-  overflow-x: hidden;
 }
 
 /* meshGradient animation removed — background-attachment: fixed
