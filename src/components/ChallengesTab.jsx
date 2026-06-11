@@ -391,12 +391,12 @@ export default function ChallengesTab({ currentUser, isAdmin }) {
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {/* Filter toggle */}
-                    <div style={{ display: 'inline-flex', borderRadius: '0.75rem', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                    <div className="filter-tabs">
                         {['active', 'all'].map(f => (
                             <button
                                 key={f}
                                 onClick={() => setFilter(f)}
-                                style={{ padding: '0.35rem 0.85rem', border: 'none', background: filter === f ? 'var(--accent-primary)' : 'white', color: filter === f ? 'white' : 'var(--text-secondary)', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+                                className={`filter-tab${filter === f ? ' filter-tab-active' : ''}`}
                             >
                                 {f === 'active' ? 'Активные' : 'Все'}
                             </button>

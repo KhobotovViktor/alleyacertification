@@ -599,14 +599,14 @@ export default function AdminDashboard() {
                                 <span className="chip chip-neutral" style={{ fontVariantNumeric: 'tabular-nums' }}>{tests.length}</span>
                             </div>
                             {/* Filter tabs */}
-                            <div style={{ display: 'flex', gap: '0.25rem', padding: '0.25rem', background: 'rgba(255,255,255,0.7)', borderRadius: '0.875rem', border: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', flexWrap: 'wrap' }}>
+                            <div className="filter-tabs">
                                 {[
                                     { key: 'all',          label: 'Все' },
                                     { key: 'published',    label: 'Опубликованные' },
                                     { key: 'draft',        label: 'Черновики' },
                                     { key: 'user_created', label: 'От сотрудников' },
                                 ].map(f => (
-                                    <button key={f.key} onClick={() => setTestStatusFilter(f.key)} style={{ padding: '0.3rem 0.7rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, transition: 'all 0.15s', fontFamily: 'inherit', background: testStatusFilter === f.key ? 'white' : 'transparent', color: testStatusFilter === f.key ? 'var(--text-primary)' : 'var(--text-secondary)', boxShadow: testStatusFilter === f.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+                                    <button key={f.key} onClick={() => setTestStatusFilter(f.key)} className={`filter-tab${testStatusFilter === f.key ? ' filter-tab-active' : ''}`}>
                                         {f.label}
                                     </button>
                                 ))}

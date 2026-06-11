@@ -80,7 +80,8 @@
               border-color 0.3s ease;
   box-shadow: var(--shadow-md);
   position: relative;
-  overflow: hidden;
+  /* no overflow:hidden — dropdowns must escape; ::after glow clips itself
+     via border-radius:inherit */
   display: flex;
   flex-direction: column;
 }
@@ -93,6 +94,7 @@
     left: 0;
     width: 100%;
     height: 100%;
+    border-radius: inherit;
     background: radial-gradient(
       800px circle at var(--mouse-x, 0px) var(--mouse-y, 0px),
       rgba(16, 185, 129, 0.08),
@@ -633,6 +635,35 @@ textarea.form-control {
 .chip-btn:hover:not(:disabled) { filter: brightness(0.96); transform: translateY(-1px); }
 .chip-btn:disabled { opacity: 0.6; cursor: wait; }
 
+/* ── Segmented filter tabs — small pill group (status filters etc.) ──────── */
+.filter-tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 0.875rem;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  flex-wrap: wrap;
+}
+.filter-tab {
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.625rem;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all 0.15s;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.filter-tab-active {
+  background: white;
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
 /* ── Status pill — full-rounded status badge ─────────────────────────────── */
 .status-pill {
   display: inline-flex;
@@ -945,7 +976,8 @@ textarea.form-control {
               border-color 0.3s ease;
   box-shadow: var(--shadow-md);
   position: relative;
-  overflow: hidden;
+  /* no overflow:hidden — dropdowns (CustomSelect) must escape the card;
+     use the .overflow-hidden utility where clipping is wanted */
 }
 
 .card::before {
